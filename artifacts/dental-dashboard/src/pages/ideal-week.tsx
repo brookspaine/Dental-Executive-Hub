@@ -682,7 +682,7 @@ function WeeklyScheduleTemplate() {
     <>
       <Card>
         <CardHeader className="pb-1 pt-3 px-4">
-          <CardTitle className="text-sm">Weekly Schedule Template</CardTitle>
+          <CardTitle className="text-sm">Ideal Week</CardTitle>
         </CardHeader>
         <CardContent className="p-3 pt-1">
           <div className="flex flex-wrap gap-1.5 mb-2">
