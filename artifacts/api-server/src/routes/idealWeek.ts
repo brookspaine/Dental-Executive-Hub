@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table } from "@workspace/db";
 import {
   ListIdealWeekRitualsResponse,
   UpdateIdealWeekRitualParams,
@@ -114,6 +114,75 @@ router.post("/ideal-week/completions/toggle", async (req, res): Promise<void> =>
   }
 
   res.json(ToggleIdealWeekCompletionResponse.parse(completion));
+});
+
+router.get("/ideal-week/weekly-top3", async (req, res): Promise<void> => {
+  const weekStart = req.query.weekStart as string | undefined;
+  if (!weekStart) {
+    res.status(400).json({ error: "weekStart query parameter is required" });
+    return;
+  }
+  const items = await db
+    .select()
+    .from(weeklyTop3Table)
+    .where(eq(weeklyTop3Table.weekStart, weekStart))
+    .orderBy(weeklyTop3Table.priority);
+  res.json(items);
+});
+
+router.post("/ideal-week/weekly-top3", async (req, res): Promise<void> => {
+  const { title, priority, weekStart } = req.body;
+  if (!title || priority == null || !weekStart) {
+    res.status(400).json({ error: "title, priority, and weekStart are required" });
+    return;
+  }
+  const [item] = await db
+    .insert(weeklyTop3Table)
+    .values({ title, priority, weekStart })
+    .returning();
+  res.status(201).json(item);
+});
+
+router.patch("/ideal-week/weekly-top3/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const updates: Record<string, any> = {};
+  if (req.body.title !== undefined) updates.title = req.body.title;
+  if (req.body.completed !== undefined) updates.completed = req.body.completed;
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+  const [item] = await db
+    .update(weeklyTop3Table)
+    .set(updates)
+    .where(eq(weeklyTop3Table.id, id))
+    .returning();
+  if (!item) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  res.json(item);
+});
+
+router.delete("/ideal-week/weekly-top3/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "Invalid id" });
+    return;
+  }
+  const [item] = await db
+    .delete(weeklyTop3Table)
+    .where(eq(weeklyTop3Table.id, id))
+    .returning();
+  if (!item) {
+    res.status(404).json({ error: "Item not found" });
+    return;
+  }
+  res.sendStatus(204);
 });
 
 export default router;

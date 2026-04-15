@@ -1,15 +1,29 @@
-import { useState, useMemo } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useMemo, useRef } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useListIdealWeekRituals,
   useToggleIdealWeekCompletion,
+  useListDailyTop3,
+  useCreateDailyTop3,
+  useUpdateDailyTop3,
+  useDeleteDailyTop3,
 } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, RotateCcw } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  RotateCcw,
+  Plus,
+  Trash2,
+  Star,
+  Target,
+} from "lucide-react";
 import {
   schedule,
   categoryColors,
@@ -66,6 +80,140 @@ function useWeekCompletions(startDate: string, endDate: string) {
   });
 }
 
+type WeeklyItem = {
+  id: number;
+  title: string;
+  completed: boolean;
+  priority: number;
+  weekStart: string;
+  createdAt: string;
+};
+
+function useWeeklyTop3(weekStart: string) {
+  return useQuery<WeeklyItem[]>({
+    queryKey: ["weekly-top3", weekStart],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(
+        `${base}api/ideal-week/weekly-top3?weekStart=${weekStart}`
+      );
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+function Big3Section({
+  title,
+  icon: Icon,
+  items,
+  completedCount,
+  totalCount,
+  onAdd,
+  onToggle,
+  onDelete,
+  canAdd,
+  addPlaceholder,
+}: {
+  title: string;
+  icon: React.ElementType;
+  items: { id: number; title: string; completed: boolean }[];
+  completedCount: number;
+  totalCount: number;
+  onAdd: (title: string) => void;
+  onToggle: (id: number, completed: boolean) => void;
+  onDelete: (id: number) => void;
+  canAdd: boolean;
+  addPlaceholder: string;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleAdd = () => {
+    if (!newTitle.trim()) return;
+    onAdd(newTitle.trim());
+    setNewTitle("");
+    inputRef.current?.focus();
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Icon className="h-4 w-4" />
+            {title}
+          </CardTitle>
+          <Badge
+            variant={completedCount === totalCount && totalCount > 0 ? "default" : "secondary"}
+            className="text-xs"
+          >
+            {completedCount}/{totalCount}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.map((item) => (
+          <div
+            key={item.id}
+            className="flex items-center gap-3 group p-2 rounded-md hover:bg-muted/50 transition-colors"
+          >
+            <Checkbox
+              checked={item.completed}
+              onCheckedChange={(checked) =>
+                onToggle(item.id, checked === true)
+              }
+            />
+            <span
+              className={`flex-1 text-sm ${
+                item.completed
+                  ? "line-through text-muted-foreground"
+                  : "font-medium"
+              }`}
+            >
+              {item.title}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+              onClick={() => onDelete(item.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+            </Button>
+          </div>
+        ))}
+        {canAdd && (
+          <div className="flex items-center gap-2 pt-1">
+            <Input
+              ref={inputRef}
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              placeholder={addPlaceholder}
+              className="h-8 text-sm"
+            />
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 shrink-0"
+              onClick={handleAdd}
+              disabled={!newTitle.trim()}
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
+        {items.length === 0 && !canAdd && (
+          <p className="text-sm text-muted-foreground text-center py-2">
+            No items yet
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function IdealWeek() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
@@ -73,9 +221,56 @@ export function IdealWeek() {
   const startStr = formatDate(weekDates[0]);
   const endStr = formatDate(weekDates[6]);
 
-  const { data: rituals, isLoading: ritualsLoading } = useListIdealWeekRituals();
-  const { data: completions, isLoading: completionsLoading } = useWeekCompletions(startStr, endStr);
+  const { data: rituals, isLoading: ritualsLoading } =
+    useListIdealWeekRituals();
+  const { data: completions, isLoading: completionsLoading } =
+    useWeekCompletions(startStr, endStr);
   const toggleCompletion = useToggleIdealWeekCompletion();
+
+  const { data: dailyTop3 = [] } = useListDailyTop3();
+  const createDaily = useCreateDailyTop3();
+  const updateDaily = useUpdateDailyTop3();
+  const deleteDaily = useDeleteDailyTop3();
+
+  const { data: weeklyTop3 = [] } = useWeeklyTop3(startStr);
+
+  const base = import.meta.env.BASE_URL || "/";
+
+  const createWeekly = useMutation({
+    mutationFn: async (data: { title: string; priority: number; weekStart: string }) => {
+      const res = await fetch(`${base}api/ideal-week/weekly-top3`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["weekly-top3", startStr] }),
+  });
+
+  const updateWeekly = useMutation({
+    mutationFn: async ({ id, ...data }: { id: number; completed?: boolean; title?: string }) => {
+      const res = await fetch(`${base}api/ideal-week/weekly-top3/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["weekly-top3", startStr] }),
+  });
+
+  const deleteWeekly = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`${base}api/ideal-week/weekly-top3/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["weekly-top3", startStr] }),
+  });
 
   const isLoading = ritualsLoading || completionsLoading;
 
@@ -130,11 +325,8 @@ export function IdealWeek() {
 
   const weekLabel = `${weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${weekDates[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
-  const getBlockStyle = (block: ScheduleBlock) => {
-    const top = (block.start - 6) * 3.5;
-    const height = block.duration * 3.5;
-    return { top: `${top}rem`, height: `${height}rem` };
-  };
+  const dailyCompleted = dailyTop3.filter((i) => i.completed).length;
+  const weeklyCompleted = weeklyTop3.filter((i) => i.completed).length;
 
   return (
     <div className="space-y-6">
@@ -173,6 +365,45 @@ export function IdealWeek() {
           </div>
         </CardContent>
       </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <Big3Section
+          title="Today's Big 3"
+          icon={Star}
+          items={dailyTop3}
+          completedCount={dailyCompleted}
+          totalCount={dailyTop3.length}
+          canAdd={dailyTop3.length < 3}
+          addPlaceholder="Add today's priority..."
+          onAdd={(title) =>
+            createDaily.mutate({
+              data: { title, priority: dailyTop3.length + 1 },
+            })
+          }
+          onToggle={(id, completed) =>
+            updateDaily.mutate({ id, data: { completed } })
+          }
+          onDelete={(id) => deleteDaily.mutate({ id })}
+        />
+        <Big3Section
+          title="This Week's Big 3"
+          icon={Target}
+          items={weeklyTop3}
+          completedCount={weeklyCompleted}
+          totalCount={weeklyTop3.length}
+          canAdd={weeklyTop3.length < 3}
+          addPlaceholder="Add weekly priority..."
+          onAdd={(title) =>
+            createWeekly.mutate({
+              title,
+              priority: weeklyTop3.length + 1,
+              weekStart: startStr,
+            })
+          }
+          onToggle={(id, completed) => updateWeekly.mutate({ id, completed })}
+          onDelete={(id) => deleteWeekly.mutate(id)}
+        />
+      </div>
 
       <Card>
         <CardContent className="p-4">
@@ -323,7 +554,8 @@ export function IdealWeek() {
                       const block = blocks.find(
                         (b) => hour >= b.start && hour < b.start + b.duration
                       );
-                      const isBlockStart = block && hour === Math.floor(block.start);
+                      const isBlockStart =
+                        block && hour === Math.floor(block.start);
                       const c = block ? categoryColors[block.category] : null;
 
                       if (block && !isBlockStart) {
