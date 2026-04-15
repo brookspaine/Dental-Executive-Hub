@@ -26,6 +26,7 @@ import {
   Sun,
   Rocket,
   Moon,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   schedule,
@@ -540,6 +541,35 @@ function ShutdownRitualSection() {
   );
 }
 
+const WEEKLY_REVIEW_ITEMS = [
+  "Review schedule and energy last week and compare to intentions",
+  "Total up time journal activities and put into spreadsheet",
+  "Read Epic Year",
+  "AMS",
+  "Review Vision Board & Read Goals",
+];
+
+function WeeklyReviewSection() {
+  return (
+    <Card className="border-t-0">
+      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#b4a7d6]">
+        <div className="flex items-center gap-2 text-purple-900 font-semibold">
+          <ClipboardCheck className="h-4 w-4" />
+          Weekly Review
+        </div>
+      </div>
+      <CardContent className="space-y-1">
+        {WEEKLY_REVIEW_ITEMS.map((item, i) => (
+          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
+            <span className="text-muted-foreground mt-0.5">•</span>
+            <span className="text-sm font-medium">{item}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function IdealWeek() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
@@ -740,6 +770,8 @@ export function IdealWeek() {
       <StartupRitualSection />
 
       <ShutdownRitualSection />
+
+      <WeeklyReviewSection />
 
       <Card>
         <CardContent className="p-4">
