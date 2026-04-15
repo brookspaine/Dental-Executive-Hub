@@ -486,13 +486,26 @@ function StartupRitualSection() {
 }
 
 const SHUTDOWN_RITUAL_ITEMS = [
-  "Clear Inbox and capture open loops",
-  "Time Journal",
-  "Evening Ritual Reflection",
-  "Disconnect and Intentionally Switch to Family Time",
+  { label: "Clear Inbox and capture open loops", key: "clear_inbox" },
+  { label: "Time Journal", key: "time_journal" },
+  { label: "Evening Ritual Reflection", key: "evening_reflection" },
+  { label: "Disconnect and Intentionally Switch to Family Time", key: "disconnect" },
+];
+
+const EVENING_PROMPTS = [
+  { key: "evening_handled_well", label: "A situation or task I handled well today:" },
+  { key: "evening_coach", label: "If I was my own high performance coach, I'd tell myself today:" },
+  { key: "evening_mice_antelopes", label: "Did I spend today chasing field mice or hunting antelopes?" },
+  { key: "evening_time_energy", label: "How could I have managed my time and energy better today?" },
+  { key: "evening_learned", label: "Something I realized or learned today is..." },
 ];
 
 function ShutdownRitualSection() {
+  const today = formatDate(new Date());
+  const { data: journalResponses = [] } = useJournalResponses(today);
+  const getResponse = (promptKey: string) =>
+    journalResponses.find((r) => r.promptKey === promptKey)?.response || "";
+
   return (
     <Card className="border-t-0">
       <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#a4c2f4]">
@@ -502,10 +515,24 @@ function ShutdownRitualSection() {
         </div>
       </div>
       <CardContent className="space-y-1">
-        {SHUTDOWN_RITUAL_ITEMS.map((item, i) => (
-          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span className="text-sm font-medium">{item}</span>
+        {SHUTDOWN_RITUAL_ITEMS.map((item) => (
+          <div key={item.key}>
+            <div className="flex items-start gap-3 p-2 rounded-md">
+              <span className="text-muted-foreground mt-0.5">•</span>
+              <span className="text-sm font-medium">{item.label}</span>
+            </div>
+            {item.key === "evening_reflection" && (
+              <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
+                {EVENING_PROMPTS.map((prompt) => (
+                  <JournalPromptField
+                    key={prompt.key}
+                    prompt={prompt}
+                    date={today}
+                    savedResponse={getResponse(prompt.key)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         ))}
       </CardContent>
