@@ -24,6 +24,7 @@ import {
   Star,
   Target,
   Sun,
+  Rocket,
 } from "lucide-react";
 import {
   schedule,
@@ -451,6 +452,38 @@ function MorningRitualSection() {
   );
 }
 
+const STARTUP_RITUAL_ITEMS = [
+  "Daily Brainwashing Sheet or Words of Wisdom",
+  "Review Weekly Goals and Yearly Goals",
+  "Set Big 3",
+  "Block Deep Work session(s)",
+  "Time Journal catch-up",
+  "If I decide it's important → Reply to Emails\n(be timely, reply quickly, don't do other's jobs for them)",
+];
+
+function StartupRitualSection() {
+  return (
+    <Card className="border-t-0">
+      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#93c47d]">
+        <div className="flex items-center gap-2 text-green-900 font-semibold">
+          <Rocket className="h-4 w-4" />
+          Startup Ritual
+        </div>
+      </div>
+      <CardContent className="space-y-1">
+        {STARTUP_RITUAL_ITEMS.map((item, i) => (
+          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
+            <span className="text-muted-foreground mt-0.5">•</span>
+            <span className="text-sm font-medium whitespace-pre-line">
+              {item}
+            </span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function IdealWeek() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
@@ -647,6 +680,8 @@ export function IdealWeek() {
       </div>
 
       <MorningRitualSection />
+
+      <StartupRitualSection />
 
       <Card>
         <CardContent className="p-4">
