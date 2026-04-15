@@ -690,7 +690,12 @@ router.get("/ideal-week/calendar-events", async (req, res): Promise<void> => {
     }
 
     const calListData = await listRes.json() as { items?: { id: string; summary: string; backgroundColor?: string }[] };
-    const calendars = calListData.items || [];
+    const excludedCalendars = [
+      "Staff - URGENT DENTAL",
+      "Holidays in United States",
+      "Brooks's SportsLink Calendar",
+    ];
+    const calendars = (calListData.items || []).filter(c => !excludedCalendars.includes(c.summary));
 
     const allEvents: {
       id: string;
