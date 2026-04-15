@@ -358,3 +358,73 @@ export const GetRecentActivityResponseItem = zod.object({
 export const GetRecentActivityResponse = zod.array(
   GetRecentActivityResponseItem,
 );
+
+/**
+ * @summary List all ideal week rituals
+ */
+export const ListIdealWeekRitualsResponseItem = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  frequency: zod.enum(["daily", "weekly", "monthly"]),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListIdealWeekRitualsResponse = zod.array(
+  ListIdealWeekRitualsResponseItem,
+);
+
+/**
+ * @summary Update a ritual
+ */
+export const UpdateIdealWeekRitualParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateIdealWeekRitualBody = zod.object({
+  name: zod.string().optional(),
+  frequency: zod.enum(["daily", "weekly", "monthly"]).optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateIdealWeekRitualResponse = zod.object({
+  id: zod.number(),
+  name: zod.string(),
+  frequency: zod.enum(["daily", "weekly", "monthly"]),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List completions for a given date
+ */
+export const ListIdealWeekCompletionsQueryParams = zod.object({
+  date: zod.date(),
+});
+
+export const ListIdealWeekCompletionsResponseItem = zod.object({
+  id: zod.number(),
+  ritualId: zod.number(),
+  date: zod.coerce.date(),
+  completed: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});
+export const ListIdealWeekCompletionsResponse = zod.array(
+  ListIdealWeekCompletionsResponseItem,
+);
+
+/**
+ * @summary Toggle completion status for a ritual on a given date
+ */
+export const ToggleIdealWeekCompletionBody = zod.object({
+  ritualId: zod.number(),
+  date: zod.coerce.date(),
+  completed: zod.boolean(),
+});
+
+export const ToggleIdealWeekCompletionResponse = zod.object({
+  id: zod.number(),
+  ritualId: zod.number(),
+  date: zod.coerce.date(),
+  completed: zod.boolean(),
+  createdAt: zod.coerce.date(),
+});

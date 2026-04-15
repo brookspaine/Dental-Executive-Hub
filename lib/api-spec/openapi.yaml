@@ -22,6 +22,8 @@ tags:
     description: Dashboard summary data
   - name: activity
     description: Recent activity feed
+  - name: idealWeek
+    description: Ideal Week ritual tracking
 
 paths:
   /healthz:
@@ -376,6 +378,87 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/ActivityItem"
+
+  /ideal-week/rituals:
+    get:
+      operationId: listIdealWeekRituals
+      tags: [idealWeek]
+      summary: List all ideal week rituals
+      responses:
+        "200":
+          description: List of rituals
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IdealWeekRitual"
+
+  /ideal-week/rituals/{id}:
+    patch:
+      operationId: updateIdealWeekRitual
+      tags: [idealWeek]
+      summary: Update a ritual
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateIdealWeekRitualBody"
+      responses:
+        "200":
+          description: Updated ritual
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdealWeekRitual"
+
+  /ideal-week/completions:
+    get:
+      operationId: listIdealWeekCompletions
+      tags: [idealWeek]
+      summary: List completions for a given date
+      parameters:
+        - name: date
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: List of completions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/IdealWeekCompletion"
+
+  /ideal-week/completions/toggle:
+    post:
+      operationId: toggleIdealWeekCompletion
+      tags: [idealWeek]
+      summary: Toggle completion status for a ritual on a given date
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ToggleIdealWeekCompletionBody"
+      responses:
+        "200":
+          description: Updated completion
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/IdealWeekCompletion"
 
 components:
   schemas:
@@ -741,3 +824,73 @@ components:
         - type
         - message
         - createdAt
+
+    IdealWeekRitual:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - frequency
+        - sortOrder
+        - createdAt
+
+    UpdateIdealWeekRitualBody:
+      type: object
+      properties:
+        name:
+          type: string
+        frequency:
+          type: string
+          enum: [daily, weekly, monthly]
+        sortOrder:
+          type: integer
+
+    IdealWeekCompletion:
+      type: object
+      properties:
+        id:
+          type: integer
+        ritualId:
+          type: integer
+        date:
+          type: string
+          format: date
+        completed:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - ritualId
+        - date
+        - completed
+        - createdAt
+
+    ToggleIdealWeekCompletionBody:
+      type: object
+      properties:
+        ritualId:
+          type: integer
+        date:
+          type: string
+          format: date
+        completed:
+          type: boolean
+      required:
+        - ritualId
+        - date
+        - completed

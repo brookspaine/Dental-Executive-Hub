@@ -1,11 +1,12 @@
 import { Link, useLocation } from "wouter";
-import { Activity, Building2, LayoutDashboard, Megaphone, Users, Bell, Zap } from "lucide-react";
+import { Activity, Building2, LayoutDashboard, Megaphone, Users, Bell, Zap, CalendarCheck } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
+  { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/direct-reports", label: "Direct Reports", icon: Users },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
 ];

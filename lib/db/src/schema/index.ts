@@ -3,3 +3,4 @@ export * from "./organizations";
 export * from "./directReports";
 export * from "./announcements";
 export * from "./activity";
+export * from "./idealWeek";

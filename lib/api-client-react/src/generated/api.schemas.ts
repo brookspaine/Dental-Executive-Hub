@@ -264,6 +264,56 @@ export interface ActivityItem {
   createdAt: string;
 }
 
+export type IdealWeekRitualFrequency =
+  (typeof IdealWeekRitualFrequency)[keyof typeof IdealWeekRitualFrequency];
+
+export const IdealWeekRitualFrequency = {
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+} as const;
+
+export interface IdealWeekRitual {
+  id: number;
+  name: string;
+  frequency: IdealWeekRitualFrequency;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export type UpdateIdealWeekRitualBodyFrequency =
+  (typeof UpdateIdealWeekRitualBodyFrequency)[keyof typeof UpdateIdealWeekRitualBodyFrequency];
+
+export const UpdateIdealWeekRitualBodyFrequency = {
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+} as const;
+
+export interface UpdateIdealWeekRitualBody {
+  name?: string;
+  frequency?: UpdateIdealWeekRitualBodyFrequency;
+  sortOrder?: number;
+}
+
+export interface IdealWeekCompletion {
+  id: number;
+  ritualId: number;
+  date: string;
+  completed: boolean;
+  createdAt: string;
+}
+
+export interface ToggleIdealWeekCompletionBody {
+  ritualId: number;
+  date: string;
+  completed: boolean;
+}
+
 export type GetRecentActivityParams = {
   limit?: number;
+};
+
+export type ListIdealWeekCompletionsParams = {
+  date: string;
 };

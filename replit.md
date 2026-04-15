@@ -20,15 +20,19 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 
 ## Features
 
-- **Dashboard**: KPI overview cards (revenue, patients, organizations, reports), Daily Top 3 priorities checklist, organization performance bar chart with progress bars, recent activity feed, latest announcements
-- **Organizations**: CRUD management for dental practice locations with address, contact info, provider/patient counts, monthly revenue, and status tracking
+- **Dashboard**: KPI overview cards (revenue, patients, EDGE locations, reports), Daily Top 3 priorities checklist, EDGE performance bar chart with progress bars, recent activity feed, latest announcements
+- **EDGE**: CRUD management for EDGE dental practice locations with address, contact info, provider/patient counts, monthly revenue, and status tracking
+- **Urgent Dental**: Single-location detail view for the urgent dental care practice with inline editing
+- **Ideal Week**: Daily ritual tracker with checkboxes for Morning Ritual, Morning Journal, Startup Rituals, Daily Big 3, Daily Brainwashing, Shutdown Rituals, Evening Ritual Reflection, Weekly Review, and Monthly Review. Includes date navigation and progress tracking.
 - **Direct Reports**: Card-based view of team members with roles, organization assignment, contact details, performance ratings, and status management
 - **Announcements**: Color-coded announcements (info, warning, success, urgent) with create/delete functionality
 
 ## Database Schema
 
 - `daily_top3` - Daily priority items with title, description, completion status, priority order, and date
-- `organizations` - Dental practice locations with address, contact, provider/patient counts, revenue, status
+- `organizations` - Dental practice locations with address, contact, provider/patient counts, revenue, status, and category (edge/urgent_dental)
+- `ideal_week_rituals` - Ritual definitions with name, frequency (daily/weekly/monthly), and sort order
+- `ideal_week_completions` - Per-date completion tracking for each ritual
 - `direct_reports` - Team members with role, organization assignment, performance rating, hire date
 - `announcements` - Team-wide announcements with type classification
 - `activity` - Activity feed tracking events across the system

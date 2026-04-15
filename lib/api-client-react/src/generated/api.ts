@@ -28,10 +28,15 @@ import type {
   DirectReport,
   GetRecentActivityParams,
   HealthStatus,
+  IdealWeekCompletion,
+  IdealWeekRitual,
+  ListIdealWeekCompletionsParams,
   OrgPerformance,
   Organization,
+  ToggleIdealWeekCompletionBody,
   UpdateDailyTop3Body,
   UpdateDirectReportBody,
+  UpdateIdealWeekRitualBody,
   UpdateOrganizationBody,
 } from "./api.schemas";
 
@@ -1780,3 +1785,356 @@ export function useGetRecentActivity<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all ideal week rituals
+ */
+export const getListIdealWeekRitualsUrl = () => {
+  return `/api/ideal-week/rituals`;
+};
+
+export const listIdealWeekRituals = async (
+  options?: RequestInit,
+): Promise<IdealWeekRitual[]> => {
+  return customFetch<IdealWeekRitual[]>(getListIdealWeekRitualsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListIdealWeekRitualsQueryKey = () => {
+  return [`/api/ideal-week/rituals`] as const;
+};
+
+export const getListIdealWeekRitualsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listIdealWeekRituals>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listIdealWeekRituals>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListIdealWeekRitualsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listIdealWeekRituals>>
+  > = ({ signal }) => listIdealWeekRituals({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listIdealWeekRituals>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListIdealWeekRitualsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listIdealWeekRituals>>
+>;
+export type ListIdealWeekRitualsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all ideal week rituals
+ */
+
+export function useListIdealWeekRituals<
+  TData = Awaited<ReturnType<typeof listIdealWeekRituals>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listIdealWeekRituals>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListIdealWeekRitualsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a ritual
+ */
+export const getUpdateIdealWeekRitualUrl = (id: number) => {
+  return `/api/ideal-week/rituals/${id}`;
+};
+
+export const updateIdealWeekRitual = async (
+  id: number,
+  updateIdealWeekRitualBody: UpdateIdealWeekRitualBody,
+  options?: RequestInit,
+): Promise<IdealWeekRitual> => {
+  return customFetch<IdealWeekRitual>(getUpdateIdealWeekRitualUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateIdealWeekRitualBody),
+  });
+};
+
+export const getUpdateIdealWeekRitualMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateIdealWeekRitual>>,
+    TError,
+    { id: number; data: BodyType<UpdateIdealWeekRitualBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateIdealWeekRitual>>,
+  TError,
+  { id: number; data: BodyType<UpdateIdealWeekRitualBody> },
+  TContext
+> => {
+  const mutationKey = ["updateIdealWeekRitual"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateIdealWeekRitual>>,
+    { id: number; data: BodyType<UpdateIdealWeekRitualBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateIdealWeekRitual(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateIdealWeekRitualMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateIdealWeekRitual>>
+>;
+export type UpdateIdealWeekRitualMutationBody =
+  BodyType<UpdateIdealWeekRitualBody>;
+export type UpdateIdealWeekRitualMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a ritual
+ */
+export const useUpdateIdealWeekRitual = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateIdealWeekRitual>>,
+    TError,
+    { id: number; data: BodyType<UpdateIdealWeekRitualBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateIdealWeekRitual>>,
+  TError,
+  { id: number; data: BodyType<UpdateIdealWeekRitualBody> },
+  TContext
+> => {
+  return useMutation(getUpdateIdealWeekRitualMutationOptions(options));
+};
+
+/**
+ * @summary List completions for a given date
+ */
+export const getListIdealWeekCompletionsUrl = (
+  params: ListIdealWeekCompletionsParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/ideal-week/completions?${stringifiedParams}`
+    : `/api/ideal-week/completions`;
+};
+
+export const listIdealWeekCompletions = async (
+  params: ListIdealWeekCompletionsParams,
+  options?: RequestInit,
+): Promise<IdealWeekCompletion[]> => {
+  return customFetch<IdealWeekCompletion[]>(
+    getListIdealWeekCompletionsUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getListIdealWeekCompletionsQueryKey = (
+  params?: ListIdealWeekCompletionsParams,
+) => {
+  return [`/api/ideal-week/completions`, ...(params ? [params] : [])] as const;
+};
+
+export const getListIdealWeekCompletionsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listIdealWeekCompletions>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListIdealWeekCompletionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listIdealWeekCompletions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListIdealWeekCompletionsQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listIdealWeekCompletions>>
+  > = ({ signal }) =>
+    listIdealWeekCompletions(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listIdealWeekCompletions>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListIdealWeekCompletionsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listIdealWeekCompletions>>
+>;
+export type ListIdealWeekCompletionsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List completions for a given date
+ */
+
+export function useListIdealWeekCompletions<
+  TData = Awaited<ReturnType<typeof listIdealWeekCompletions>>,
+  TError = ErrorType<unknown>,
+>(
+  params: ListIdealWeekCompletionsParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listIdealWeekCompletions>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListIdealWeekCompletionsQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Toggle completion status for a ritual on a given date
+ */
+export const getToggleIdealWeekCompletionUrl = () => {
+  return `/api/ideal-week/completions/toggle`;
+};
+
+export const toggleIdealWeekCompletion = async (
+  toggleIdealWeekCompletionBody: ToggleIdealWeekCompletionBody,
+  options?: RequestInit,
+): Promise<IdealWeekCompletion> => {
+  return customFetch<IdealWeekCompletion>(getToggleIdealWeekCompletionUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(toggleIdealWeekCompletionBody),
+  });
+};
+
+export const getToggleIdealWeekCompletionMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleIdealWeekCompletion>>,
+    TError,
+    { data: BodyType<ToggleIdealWeekCompletionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof toggleIdealWeekCompletion>>,
+  TError,
+  { data: BodyType<ToggleIdealWeekCompletionBody> },
+  TContext
+> => {
+  const mutationKey = ["toggleIdealWeekCompletion"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof toggleIdealWeekCompletion>>,
+    { data: BodyType<ToggleIdealWeekCompletionBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return toggleIdealWeekCompletion(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ToggleIdealWeekCompletionMutationResult = NonNullable<
+  Awaited<ReturnType<typeof toggleIdealWeekCompletion>>
+>;
+export type ToggleIdealWeekCompletionMutationBody =
+  BodyType<ToggleIdealWeekCompletionBody>;
+export type ToggleIdealWeekCompletionMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Toggle completion status for a ritual on a given date
+ */
+export const useToggleIdealWeekCompletion = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof toggleIdealWeekCompletion>>,
+    TError,
+    { data: BodyType<ToggleIdealWeekCompletionBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof toggleIdealWeekCompletion>>,
+  TError,
+  { data: BodyType<ToggleIdealWeekCompletionBody> },
+  TContext
+> => {
+  return useMutation(getToggleIdealWeekCompletionMutationOptions(options));
+};

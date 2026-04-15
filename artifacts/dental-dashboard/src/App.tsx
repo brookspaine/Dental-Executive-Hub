@@ -7,6 +7,7 @@ import { Layout } from "@/components/layout";
 import { Dashboard } from "@/pages/dashboard";
 import { Organizations } from "@/pages/organizations";
 import { UrgentDental } from "@/pages/urgent-dental";
+import { IdealWeek } from "@/pages/ideal-week";
 import { DirectReports } from "@/pages/direct-reports";
 import { Announcements } from "@/pages/announcements";
 
@@ -19,6 +20,7 @@ function Router() {
         <Route path="/" component={Dashboard} />
         <Route path="/organizations" component={Organizations} />
         <Route path="/urgent-dental" component={UrgentDental} />
+        <Route path="/ideal-week" component={IdealWeek} />
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/announcements" component={Announcements} />
         <Route component={NotFound} />
