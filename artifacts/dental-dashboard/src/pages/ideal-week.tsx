@@ -413,10 +413,10 @@ function MorningRitualSection() {
     journalResponses.find((r) => r.promptKey === promptKey)?.response || "";
 
   return (
-    <Card>
+    <Card className="border-t-4 border-t-amber-400">
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
+          <CardTitle className="text-base flex items-center gap-2 text-amber-700">
             <Sun className="h-4 w-4" />
             Morning Ritual
           </CardTitle>
