@@ -8,7 +8,13 @@ import {
   useCreateDailyTop3,
   useUpdateDailyTop3,
   useDeleteDailyTop3,
+  useListScheduleBlocks,
+  useCreateScheduleBlock,
+  useUpdateScheduleBlock,
+  useDeleteScheduleBlock,
+  getListScheduleBlocksQueryKey,
 } from "@workspace/api-client-react";
+import type { ScheduleBlock as ScheduleBlockType } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -16,6 +22,21 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import {
   ChevronLeft,
   ChevronRight,
@@ -40,13 +61,11 @@ import {
   Stethoscope,
 } from "lucide-react";
 import {
-  schedule,
   categoryColors,
   categoryLabels,
   DAYS,
   TIME_SLOTS,
   formatHour,
-  type ScheduleBlock,
 } from "@/data/ideal-week-schedule";
 
 function getMonday(date: Date): Date {
@@ -544,6 +563,320 @@ function EditableRitualSection({
   );
 }
 
+const DURATION_OPTIONS = [
+  { value: "0.5", label: "30 min" },
+  { value: "1", label: "1 hour" },
+  { value: "1.5", label: "1.5 hours" },
+  { value: "2", label: "2 hours" },
+  { value: "2.5", label: "2.5 hours" },
+  { value: "3", label: "3 hours" },
+  { value: "3.5", label: "3.5 hours" },
+  { value: "4", label: "4 hours" },
+];
+
+const START_TIME_OPTIONS = Array.from({ length: 30 }, (_, i) => {
+  const t = 6 + i * 0.5;
+  const h = Math.floor(t) % 12 || 12;
+  const m = t % 1 === 0.5 ? "30" : "00";
+  const ampm = t < 12 ? "AM" : "PM";
+  return { value: String(t), label: `${h}:${m} ${ampm}` };
+});
+
+function WeeklyScheduleTemplate() {
+  const queryClient = useQueryClient();
+  const { data: blocks = [], isLoading } = useListScheduleBlocks();
+  const createBlock = useCreateScheduleBlock();
+  const updateBlock = useUpdateScheduleBlock();
+  const deleteBlock = useDeleteScheduleBlock();
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingBlock, setEditingBlock] = useState<ScheduleBlockType | null>(null);
+  const [formDay, setFormDay] = useState<string>("Mon");
+  const [formStart, setFormStart] = useState<string>("9");
+  const [formDuration, setFormDuration] = useState<string>("1");
+  const [formLabel, setFormLabel] = useState("");
+  const [formCategory, setFormCategory] = useState<string>("deepwork");
+
+  const scheduleByDay = useMemo(() => {
+    const map: Record<string, ScheduleBlockType[]> = {};
+    for (const day of DAYS) {
+      map[day] = [];
+    }
+    for (const block of blocks) {
+      if (map[block.day]) {
+        map[block.day].push(block);
+      }
+    }
+    return map;
+  }, [blocks]);
+
+  function openCreateDialog(day: string, hour: number) {
+    setEditingBlock(null);
+    setFormDay(day);
+    setFormStart(String(hour));
+    setFormDuration("1");
+    setFormLabel("");
+    setFormCategory("deepwork");
+    setDialogOpen(true);
+  }
+
+  function openEditDialog(block: ScheduleBlockType) {
+    setEditingBlock(block);
+    setFormDay(block.day);
+    setFormStart(String(block.start));
+    setFormDuration(String(block.duration));
+    setFormLabel(block.label);
+    setFormCategory(block.category);
+    setDialogOpen(true);
+  }
+
+  function handleSave() {
+    if (!formLabel.trim()) return;
+
+    const invalidate = () =>
+      queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+
+    if (editingBlock) {
+      updateBlock.mutate(
+        {
+          id: editingBlock.id,
+          data: {
+            day: formDay,
+            start: parseFloat(formStart),
+            duration: parseFloat(formDuration),
+            label: formLabel.trim(),
+            category: formCategory,
+          },
+        },
+        { onSuccess: () => { invalidate(); setDialogOpen(false); } }
+      );
+    } else {
+      createBlock.mutate(
+        {
+          data: {
+            day: formDay,
+            start: parseFloat(formStart),
+            duration: parseFloat(formDuration),
+            label: formLabel.trim(),
+            category: formCategory,
+          },
+        },
+        { onSuccess: () => { invalidate(); setDialogOpen(false); } }
+      );
+    }
+  }
+
+  function handleDelete() {
+    if (!editingBlock) return;
+    const invalidate = () =>
+      queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+    deleteBlock.mutate(
+      { id: editingBlock.id },
+      { onSuccess: () => { invalidate(); setDialogOpen(false); } }
+    );
+  }
+
+  const isSaving = createBlock.isPending || updateBlock.isPending || deleteBlock.isPending;
+
+  return (
+    <>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Weekly Schedule Template</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {Object.entries(categoryLabels).map(([key, label]) => {
+              const c = categoryColors[key];
+              return (
+                <span
+                  key={key}
+                  className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} font-medium`}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-[400px] w-full" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <div className="min-w-[700px]">
+                <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0.5">
+                  <div className="h-8" />
+                  {DAYS.map((day) => (
+                    <div
+                      key={day}
+                      className="h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground bg-muted/50 rounded-t"
+                    >
+                      {day}
+                    </div>
+                  ))}
+
+                  {TIME_SLOTS.map((hour) => (
+                    <div key={hour} className="contents">
+                      <div className="h-14 flex items-start justify-end pr-2 text-xs text-muted-foreground pt-0.5">
+                        {formatHour(hour)}
+                      </div>
+                      {DAYS.map((day) => {
+                        const dayBlocks = scheduleByDay[day] || [];
+                        const block = dayBlocks.find(
+                          (b) => hour >= b.start && hour < b.start + b.duration
+                        );
+                        const isBlockStart =
+                          block && hour === Math.floor(block.start);
+                        const c = block ? categoryColors[block.category] : null;
+
+                        if (block && !isBlockStart) {
+                          return (
+                            <div
+                              key={day}
+                              className={`h-14 border-x cursor-pointer ${c?.bg} ${c?.border}`}
+                              onClick={() => openEditDialog(block)}
+                            />
+                          );
+                        }
+
+                        if (block && isBlockStart) {
+                          return (
+                            <div
+                              key={day}
+                              className={`h-14 border rounded-t text-xs font-medium flex items-start justify-center pt-1 cursor-pointer hover:opacity-80 ${c?.bg} ${c?.text} ${c?.border}`}
+                              onClick={() => openEditDialog(block)}
+                            >
+                              <span className="truncate px-0.5 text-center leading-tight">
+                                {block.label}
+                              </span>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div
+                            key={day}
+                            className="h-14 border border-dashed border-muted bg-background cursor-pointer hover:bg-muted/30 transition-colors"
+                            onClick={() => openCreateDialog(day, hour)}
+                          />
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingBlock ? "Edit Schedule Block" : "New Schedule Block"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Label</Label>
+              <Input
+                value={formLabel}
+                onChange={(e) => setFormLabel(e.target.value)}
+                placeholder="e.g. Morning Ritual"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Day</Label>
+                <Select value={formDay} onValueChange={setFormDay}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DAYS.map((d) => (
+                      <SelectItem key={d} value={d}>{d}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Category</Label>
+                <Select value={formCategory} onValueChange={setFormCategory}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(categoryLabels).map(([key, label]) => (
+                      <SelectItem key={key} value={key}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Start Time</Label>
+                <Select value={formStart} onValueChange={setFormStart}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {START_TIME_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Duration</Label>
+                <Select value={formDuration} onValueChange={setFormDuration}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DURATION_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="flex-row justify-between sm:justify-between">
+            {editingBlock && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isSaving}
+              >
+                <Trash2 className="h-4 w-4 mr-1" />
+                Delete
+              </Button>
+            )}
+            <div className="flex gap-2 ml-auto">
+              <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={isSaving || !formLabel.trim()}
+              >
+                {isSaving ? "Saving..." : editingBlock ? "Update" : "Create"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
+
 export function IdealWeek() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
@@ -1019,6 +1352,7 @@ export function IdealWeek() {
         </CardContent>
       </Card>
 
+      <WeeklyScheduleTemplate />
     </div>
   );
 }

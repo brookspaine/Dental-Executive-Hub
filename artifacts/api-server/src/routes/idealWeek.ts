@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable } from "@workspace/db";
+import type { ScheduleBlock } from "@workspace/db";
 import { asc } from "drizzle-orm";
 import {
   ListIdealWeekRitualsResponse,
@@ -9,9 +10,182 @@ import {
   UpdateIdealWeekRitualResponse,
   ListIdealWeekCompletionsResponse,
   ToggleIdealWeekCompletionResponse,
+  CreateScheduleBlockBody,
+  UpdateScheduleBlockBody,
+  UpdateScheduleBlockParams,
+  DeleteScheduleBlockParams,
 } from "@workspace/api-zod";
 
+const DAY_ORDER: Record<string, number> = { Mon: 0, Tue: 1, Wed: 2, Thu: 3, Fri: 4, Sat: 5, Sun: 6 };
+
+const DEFAULT_SCHEDULE_BLOCKS = [
+  { day: "Mon", start: 6, duration: 1.5, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Mon", start: 7.5, duration: 1, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Mon", start: 8.5, duration: 0.5, label: "Morning Huddle", category: "meeting", sortOrder: 2 },
+  { day: "Mon", start: 9, duration: 3, label: "Patient Care", category: "patient", sortOrder: 3 },
+  { day: "Mon", start: 12, duration: 4, label: "Patient Care", category: "patient", sortOrder: 4 },
+  { day: "Mon", start: 16, duration: 1, label: "Shutdown Ritual", category: "shutdown", sortOrder: 5 },
+  { day: "Mon", start: 17, duration: 2, label: "Family & Dinner", category: "family", sortOrder: 6 },
+  { day: "Mon", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 7 },
+  { day: "Tue", start: 6, duration: 1.5, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Tue", start: 7.5, duration: 1, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Tue", start: 8.5, duration: 1.5, label: "Weekly Review", category: "review", sortOrder: 2 },
+  { day: "Tue", start: 10, duration: 2, label: "Deepwork", category: "deepwork", sortOrder: 3 },
+  { day: "Tue", start: 12, duration: 3.5, label: "Deepwork", category: "deepwork", sortOrder: 4 },
+  { day: "Tue", start: 15.5, duration: 0.5, label: "Execution Block", category: "executive", sortOrder: 5 },
+  { day: "Tue", start: 16, duration: 1, label: "Shutdown Ritual", category: "shutdown", sortOrder: 6 },
+  { day: "Tue", start: 17, duration: 2, label: "Family & Dinner", category: "family", sortOrder: 7 },
+  { day: "Tue", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 8 },
+  { day: "Wed", start: 6, duration: 1.5, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Wed", start: 7.5, duration: 1, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Wed", start: 8.5, duration: 1.5, label: "Deepwork", category: "deepwork", sortOrder: 2 },
+  { day: "Wed", start: 10, duration: 0.5, label: "UC Meeting", category: "meeting", sortOrder: 3 },
+  { day: "Wed", start: 10.5, duration: 1.5, label: "Deepwork", category: "deepwork", sortOrder: 4 },
+  { day: "Wed", start: 12, duration: 3, label: "Deepwork", category: "deepwork", sortOrder: 5 },
+  { day: "Wed", start: 15, duration: 1, label: "Execution Block", category: "executive", sortOrder: 6 },
+  { day: "Wed", start: 16, duration: 1, label: "Shutdown Ritual", category: "shutdown", sortOrder: 7 },
+  { day: "Wed", start: 17, duration: 1, label: "Workout", category: "workout", sortOrder: 8 },
+  { day: "Wed", start: 18, duration: 1, label: "Dinner", category: "family", sortOrder: 9 },
+  { day: "Wed", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 10 },
+  { day: "Thu", start: 6, duration: 1.5, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Thu", start: 7.5, duration: 1, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Thu", start: 8.5, duration: 0.5, label: "Morning Huddle", category: "meeting", sortOrder: 2 },
+  { day: "Thu", start: 9, duration: 3, label: "Patient Care", category: "patient", sortOrder: 3 },
+  { day: "Thu", start: 12, duration: 1, label: "Deepwork", category: "deepwork", sortOrder: 4 },
+  { day: "Thu", start: 13, duration: 2, label: "Execution Block", category: "executive", sortOrder: 5 },
+  { day: "Thu", start: 15, duration: 1, label: "Execution Block", category: "executive", sortOrder: 6 },
+  { day: "Thu", start: 16, duration: 1, label: "Shutdown Ritual", category: "shutdown", sortOrder: 7 },
+  { day: "Thu", start: 17, duration: 2, label: "Family & Dinner", category: "family", sortOrder: 8 },
+  { day: "Thu", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 9 },
+  { day: "Fri", start: 6, duration: 1.5, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Fri", start: 7.5, duration: 1, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Fri", start: 8.5, duration: 0.5, label: "Morning Huddle", category: "meeting", sortOrder: 2 },
+  { day: "Fri", start: 9, duration: 3, label: "Patient Care", category: "patient", sortOrder: 3 },
+  { day: "Fri", start: 12, duration: 3, label: "Patient Care", category: "patient", sortOrder: 4 },
+  { day: "Fri", start: 15, duration: 1, label: "Shutdown Ritual", category: "shutdown", sortOrder: 5 },
+  { day: "Fri", start: 16, duration: 1, label: "Shutdown Ritual", category: "shutdown", sortOrder: 6 },
+  { day: "Fri", start: 17, duration: 2, label: "Family & Dinner", category: "family", sortOrder: 7 },
+  { day: "Fri", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 8 },
+  { day: "Sat", start: 6, duration: 1, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Sat", start: 7, duration: 0.5, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Sat", start: 7.5, duration: 1, label: "Workout", category: "workout", sortOrder: 2 },
+  { day: "Sat", start: 8.5, duration: 3.5, label: "Patient Care", category: "patient", sortOrder: 3 },
+  { day: "Sat", start: 12, duration: 3, label: "Patient Care", category: "patient", sortOrder: 4 },
+  { day: "Sat", start: 15, duration: 2, label: "Family Time", category: "family", sortOrder: 5 },
+  { day: "Sat", start: 17, duration: 2, label: "Family & Dinner", category: "family", sortOrder: 6 },
+  { day: "Sat", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 7 },
+  { day: "Sun", start: 6, duration: 1.5, label: "Morning Ritual", category: "morning", sortOrder: 0 },
+  { day: "Sun", start: 7.5, duration: 1, label: "Startup Ritual", category: "startup", sortOrder: 1 },
+  { day: "Sun", start: 8.5, duration: 3.5, label: "Patient Care", category: "patient", sortOrder: 2 },
+  { day: "Sun", start: 12, duration: 2, label: "Deepwork", category: "deepwork", sortOrder: 3 },
+  { day: "Sun", start: 14, duration: 2, label: "Shutdown Ritual", category: "shutdown", sortOrder: 4 },
+  { day: "Sun", start: 16, duration: 1, label: "Family Outing", category: "family", sortOrder: 5 },
+  { day: "Sun", start: 17, duration: 2, label: "Family & Dinner", category: "family", sortOrder: 6 },
+  { day: "Sun", start: 19, duration: 1, label: "Evening Ritual", category: "evening", sortOrder: 7 },
+];
+
 const router: IRouter = Router();
+
+function sortBlocksByDayAndStart(blocks: ScheduleBlock[]): ScheduleBlock[] {
+  return blocks.sort((a, b) => {
+    const dayDiff = (DAY_ORDER[a.day] ?? 99) - (DAY_ORDER[b.day] ?? 99);
+    if (dayDiff !== 0) return dayDiff;
+    return a.start - b.start;
+  });
+}
+
+router.get("/ideal-week/schedule-blocks", async (_req, res): Promise<void> => {
+  let blocks = await db
+    .select()
+    .from(scheduleBlocksTable);
+
+  if (blocks.length === 0) {
+    try {
+      blocks = await db
+        .insert(scheduleBlocksTable)
+        .values(DEFAULT_SCHEDULE_BLOCKS)
+        .returning();
+    } catch {
+      blocks = await db
+        .select()
+        .from(scheduleBlocksTable);
+    }
+  }
+
+  res.json(sortBlocksByDayAndStart(blocks));
+});
+
+router.post("/ideal-week/schedule-blocks", async (req, res): Promise<void> => {
+  const parsed = CreateScheduleBlockBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+  const [block] = await db
+    .insert(scheduleBlocksTable)
+    .values({ ...parsed.data, sortOrder: parsed.data.sortOrder ?? 0 })
+    .returning();
+  res.status(201).json(block);
+});
+
+router.patch("/ideal-week/schedule-blocks/:id", async (req, res): Promise<void> => {
+  const params = UpdateScheduleBlockParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+
+  const parsed = UpdateScheduleBlockBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: parsed.error.message });
+    return;
+  }
+
+  const { day, start, duration, label, category, sortOrder } = parsed.data;
+  const updates: Partial<Pick<ScheduleBlock, "day" | "start" | "duration" | "label" | "category" | "sortOrder">> = {};
+  if (day !== undefined) updates.day = day;
+  if (start !== undefined) updates.start = start;
+  if (duration !== undefined) updates.duration = duration;
+  if (label !== undefined) updates.label = label;
+  if (category !== undefined) updates.category = category;
+  if (sortOrder !== undefined) updates.sortOrder = sortOrder;
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "No fields to update" });
+    return;
+  }
+  const id = params.data.id;
+
+  const [block] = await db
+    .update(scheduleBlocksTable)
+    .set(updates)
+    .where(eq(scheduleBlocksTable.id, id))
+    .returning();
+
+  if (!block) {
+    res.status(404).json({ error: "Block not found" });
+    return;
+  }
+
+  res.json(block);
+});
+
+router.delete("/ideal-week/schedule-blocks/:id", async (req, res): Promise<void> => {
+  const params = DeleteScheduleBlockParams.safeParse(req.params);
+  if (!params.success) {
+    res.status(400).json({ error: params.error.message });
+    return;
+  }
+  const [block] = await db
+    .delete(scheduleBlocksTable)
+    .where(eq(scheduleBlocksTable.id, params.data.id))
+    .returning();
+  if (!block) {
+    res.status(404).json({ error: "Block not found" });
+    return;
+  }
+  res.sendStatus(204);
+});
 
 router.get("/ideal-week/rituals", async (_req, res): Promise<void> => {
   const rituals = await db

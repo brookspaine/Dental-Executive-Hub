@@ -23,7 +23,7 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 - **Dashboard**: KPI overview cards (revenue, patients, EDGE locations, reports), Daily Top 3 priorities checklist, EDGE performance bar chart with progress bars, recent activity feed, latest announcements
 - **EDGE**: CRUD management for EDGE dental practice locations with address, contact info, provider/patient counts, monthly revenue, and status tracking
 - **Urgent Dental**: Single-location detail view for the urgent dental care practice with inline editing
-- **Ideal Week**: Weekly scorecard with 12 identity/habit items (Bed Before 9:30 PM, Morning Ritual, Morning Journal, Movement or Workout, etc.) displayed as a Mon–Sun checkbox grid with per-row scores and overall weekly progress. Below the scorecard is a color-coded weekly schedule template showing time blocks for Morning Ritual, Startup/Shutdown Rituals, Deepwork, Patient Care, Meetings, Family, and more. Week navigation with prev/next and "This Week" buttons. API supports date-range queries for efficient weekly data fetching.
+- **Ideal Week**: Weekly scorecard with 12 identity/habit items (Bed Before 9:30 PM, Morning Ritual, Morning Journal, Movement or Workout, etc.) displayed as a Mon–Sun checkbox grid with per-row scores and overall weekly progress. Below the scorecard is an **editable** color-coded weekly schedule template showing time blocks for Morning Ritual, Startup/Shutdown Rituals, Deepwork, Patient Care, Meetings, Family, and more. Users can click empty slots to create blocks, click existing blocks to edit/delete them via a dialog. Schedule data persists in the database (`schedule_blocks` table) and auto-seeds defaults on first load. Week navigation with prev/next and "This Week" buttons. API supports date-range queries for efficient weekly data fetching.
 - **Direct Reports**: Card-based view of team members with roles, organization assignment, contact details, performance ratings, and status management
 - **Announcements**: Color-coded announcements (info, warning, success, urgent) with create/delete functionality
 
@@ -36,6 +36,7 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 - `direct_reports` - Team members with role, organization assignment, performance rating, hire date
 - `announcements` - Team-wide announcements with type classification
 - `activity` - Activity feed tracking events across the system
+- `schedule_blocks` - Weekly schedule template blocks with day, start time, duration, label, and category
 
 ## Key Commands
 

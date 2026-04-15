@@ -310,6 +310,35 @@ export interface ToggleIdealWeekCompletionBody {
   completed: boolean;
 }
 
+export interface ScheduleBlock {
+  id: number;
+  day: string;
+  start: number;
+  duration: number;
+  label: string;
+  category: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CreateScheduleBlockBody {
+  day: string;
+  start: number;
+  duration: number;
+  label: string;
+  category: string;
+  sortOrder?: number;
+}
+
+export interface UpdateScheduleBlockBody {
+  day?: string;
+  start?: number;
+  duration?: number;
+  label?: string;
+  category?: string;
+  sortOrder?: number;
+}
+
 export type GetRecentActivityParams = {
   limit?: number;
 };

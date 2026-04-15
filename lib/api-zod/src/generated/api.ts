@@ -360,6 +360,69 @@ export const GetRecentActivityResponse = zod.array(
 );
 
 /**
+ * @summary List all schedule blocks (auto-seeds defaults on first call)
+ */
+export const ListScheduleBlocksResponseItem = zod.object({
+  id: zod.number(),
+  day: zod.string(),
+  start: zod.number(),
+  duration: zod.number(),
+  label: zod.string(),
+  category: zod.string(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListScheduleBlocksResponse = zod.array(
+  ListScheduleBlocksResponseItem,
+);
+
+/**
+ * @summary Create a schedule block
+ */
+export const CreateScheduleBlockBody = zod.object({
+  day: zod.string(),
+  start: zod.number(),
+  duration: zod.number(),
+  label: zod.string(),
+  category: zod.string(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a schedule block
+ */
+export const UpdateScheduleBlockParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateScheduleBlockBody = zod.object({
+  day: zod.string().optional(),
+  start: zod.number().optional(),
+  duration: zod.number().optional(),
+  label: zod.string().optional(),
+  category: zod.string().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateScheduleBlockResponse = zod.object({
+  id: zod.number(),
+  day: zod.string(),
+  start: zod.number(),
+  duration: zod.number(),
+  label: zod.string(),
+  category: zod.string(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a schedule block
+ */
+export const DeleteScheduleBlockParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List all ideal week rituals
  */
 export const ListIdealWeekRitualsResponseItem = zod.object({

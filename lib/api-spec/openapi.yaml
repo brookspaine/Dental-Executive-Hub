@@ -379,6 +379,76 @@ paths:
                 items:
                   $ref: "#/components/schemas/ActivityItem"
 
+  /ideal-week/schedule-blocks:
+    get:
+      operationId: listScheduleBlocks
+      tags: [idealWeek]
+      summary: List all schedule blocks (auto-seeds defaults on first call)
+      responses:
+        "200":
+          description: List of schedule blocks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ScheduleBlock"
+    post:
+      operationId: createScheduleBlock
+      tags: [idealWeek]
+      summary: Create a schedule block
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateScheduleBlockBody"
+      responses:
+        "201":
+          description: Created schedule block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleBlock"
+
+  /ideal-week/schedule-blocks/{id}:
+    patch:
+      operationId: updateScheduleBlock
+      tags: [idealWeek]
+      summary: Update a schedule block
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateScheduleBlockBody"
+      responses:
+        "200":
+          description: Updated schedule block
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ScheduleBlock"
+    delete:
+      operationId: deleteScheduleBlock
+      tags: [idealWeek]
+      summary: Delete a schedule block
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /ideal-week/rituals:
     get:
       operationId: listIdealWeekRituals
@@ -894,3 +964,71 @@ components:
         - ritualId
         - date
         - completed
+
+    ScheduleBlock:
+      type: object
+      properties:
+        id:
+          type: integer
+        day:
+          type: string
+        start:
+          type: number
+        duration:
+          type: number
+        label:
+          type: string
+        category:
+          type: string
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - day
+        - start
+        - duration
+        - label
+        - category
+        - sortOrder
+        - createdAt
+
+    CreateScheduleBlockBody:
+      type: object
+      properties:
+        day:
+          type: string
+        start:
+          type: number
+        duration:
+          type: number
+        label:
+          type: string
+        category:
+          type: string
+        sortOrder:
+          type: integer
+      required:
+        - day
+        - start
+        - duration
+        - label
+        - category
+
+    UpdateScheduleBlockBody:
+      type: object
+      properties:
+        day:
+          type: string
+        start:
+          type: number
+        duration:
+          type: number
+        label:
+          type: string
+        category:
+          type: string
+        sortOrder:
+          type: integer

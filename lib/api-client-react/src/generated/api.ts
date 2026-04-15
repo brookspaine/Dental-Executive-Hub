@@ -23,6 +23,7 @@ import type {
   CreateDailyTop3Body,
   CreateDirectReportBody,
   CreateOrganizationBody,
+  CreateScheduleBlockBody,
   DailyTop3Item,
   DashboardSummary,
   DirectReport,
@@ -33,11 +34,13 @@ import type {
   ListIdealWeekCompletionsParams,
   OrgPerformance,
   Organization,
+  ScheduleBlock,
   ToggleIdealWeekCompletionBody,
   UpdateDailyTop3Body,
   UpdateDirectReportBody,
   UpdateIdealWeekRitualBody,
   UpdateOrganizationBody,
+  UpdateScheduleBlockBody,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -1785,6 +1788,338 @@ export function useGetRecentActivity<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all schedule blocks (auto-seeds defaults on first call)
+ */
+export const getListScheduleBlocksUrl = () => {
+  return `/api/ideal-week/schedule-blocks`;
+};
+
+export const listScheduleBlocks = async (
+  options?: RequestInit,
+): Promise<ScheduleBlock[]> => {
+  return customFetch<ScheduleBlock[]>(getListScheduleBlocksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListScheduleBlocksQueryKey = () => {
+  return [`/api/ideal-week/schedule-blocks`] as const;
+};
+
+export const getListScheduleBlocksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listScheduleBlocks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleBlocks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListScheduleBlocksQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listScheduleBlocks>>
+  > = ({ signal }) => listScheduleBlocks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleBlocks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListScheduleBlocksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listScheduleBlocks>>
+>;
+export type ListScheduleBlocksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all schedule blocks (auto-seeds defaults on first call)
+ */
+
+export function useListScheduleBlocks<
+  TData = Awaited<ReturnType<typeof listScheduleBlocks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listScheduleBlocks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListScheduleBlocksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a schedule block
+ */
+export const getCreateScheduleBlockUrl = () => {
+  return `/api/ideal-week/schedule-blocks`;
+};
+
+export const createScheduleBlock = async (
+  createScheduleBlockBody: CreateScheduleBlockBody,
+  options?: RequestInit,
+): Promise<ScheduleBlock> => {
+  return customFetch<ScheduleBlock>(getCreateScheduleBlockUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createScheduleBlockBody),
+  });
+};
+
+export const getCreateScheduleBlockMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createScheduleBlock>>,
+    TError,
+    { data: BodyType<CreateScheduleBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createScheduleBlock>>,
+  TError,
+  { data: BodyType<CreateScheduleBlockBody> },
+  TContext
+> => {
+  const mutationKey = ["createScheduleBlock"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createScheduleBlock>>,
+    { data: BodyType<CreateScheduleBlockBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createScheduleBlock(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateScheduleBlockMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createScheduleBlock>>
+>;
+export type CreateScheduleBlockMutationBody = BodyType<CreateScheduleBlockBody>;
+export type CreateScheduleBlockMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a schedule block
+ */
+export const useCreateScheduleBlock = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createScheduleBlock>>,
+    TError,
+    { data: BodyType<CreateScheduleBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createScheduleBlock>>,
+  TError,
+  { data: BodyType<CreateScheduleBlockBody> },
+  TContext
+> => {
+  return useMutation(getCreateScheduleBlockMutationOptions(options));
+};
+
+/**
+ * @summary Update a schedule block
+ */
+export const getUpdateScheduleBlockUrl = (id: number) => {
+  return `/api/ideal-week/schedule-blocks/${id}`;
+};
+
+export const updateScheduleBlock = async (
+  id: number,
+  updateScheduleBlockBody: UpdateScheduleBlockBody,
+  options?: RequestInit,
+): Promise<ScheduleBlock> => {
+  return customFetch<ScheduleBlock>(getUpdateScheduleBlockUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateScheduleBlockBody),
+  });
+};
+
+export const getUpdateScheduleBlockMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateScheduleBlock>>,
+    TError,
+    { id: number; data: BodyType<UpdateScheduleBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateScheduleBlock>>,
+  TError,
+  { id: number; data: BodyType<UpdateScheduleBlockBody> },
+  TContext
+> => {
+  const mutationKey = ["updateScheduleBlock"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateScheduleBlock>>,
+    { id: number; data: BodyType<UpdateScheduleBlockBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateScheduleBlock(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateScheduleBlockMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateScheduleBlock>>
+>;
+export type UpdateScheduleBlockMutationBody = BodyType<UpdateScheduleBlockBody>;
+export type UpdateScheduleBlockMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a schedule block
+ */
+export const useUpdateScheduleBlock = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateScheduleBlock>>,
+    TError,
+    { id: number; data: BodyType<UpdateScheduleBlockBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateScheduleBlock>>,
+  TError,
+  { id: number; data: BodyType<UpdateScheduleBlockBody> },
+  TContext
+> => {
+  return useMutation(getUpdateScheduleBlockMutationOptions(options));
+};
+
+/**
+ * @summary Delete a schedule block
+ */
+export const getDeleteScheduleBlockUrl = (id: number) => {
+  return `/api/ideal-week/schedule-blocks/${id}`;
+};
+
+export const deleteScheduleBlock = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteScheduleBlockUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteScheduleBlockMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteScheduleBlock>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteScheduleBlock>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteScheduleBlock"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteScheduleBlock>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteScheduleBlock(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteScheduleBlockMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteScheduleBlock>>
+>;
+
+export type DeleteScheduleBlockMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a schedule block
+ */
+export const useDeleteScheduleBlock = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteScheduleBlock>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteScheduleBlock>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteScheduleBlockMutationOptions(options));
+};
 
 /**
  * @summary List all ideal week rituals
