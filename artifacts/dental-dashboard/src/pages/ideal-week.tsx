@@ -414,7 +414,7 @@ function MorningRitualSection() {
 
   return (
     <Card className="border-t-0">
-      <div className="bg-amber-400 rounded-t-lg px-6 py-3 flex items-center justify-between">
+      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#f7e26d]">
         <div className="flex items-center gap-2 text-amber-900 font-semibold">
           <Sun className="h-4 w-4" />
           Morning Ritual
