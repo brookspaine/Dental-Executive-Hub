@@ -696,6 +696,89 @@ export function IdealWeek() {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Weekly Schedule Template</CardTitle>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="flex flex-wrap gap-2 mb-4">
+            {Object.entries(categoryLabels).map(([key, label]) => {
+              const c = categoryColors[key];
+              return (
+                <span
+                  key={key}
+                  className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} font-medium`}
+                >
+                  {label}
+                </span>
+              );
+            })}
+          </div>
+
+          <div className="overflow-x-auto">
+            <div className="min-w-[700px]">
+              <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0.5">
+                <div className="h-8" />
+                {DAYS.map((day) => (
+                  <div
+                    key={day}
+                    className="h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground bg-muted/50 rounded-t"
+                  >
+                    {day}
+                  </div>
+                ))}
+
+                {TIME_SLOTS.map((hour) => (
+                  <div key={hour} className="contents">
+                    <div className="h-14 flex items-start justify-end pr-2 text-xs text-muted-foreground pt-0.5">
+                      {formatHour(hour)}
+                    </div>
+                    {DAYS.map((day) => {
+                      const blocks = schedule[day] || [];
+                      const block = blocks.find(
+                        (b) => hour >= b.start && hour < b.start + b.duration
+                      );
+                      const isBlockStart =
+                        block && hour === Math.floor(block.start);
+                      const c = block ? categoryColors[block.category] : null;
+
+                      if (block && !isBlockStart) {
+                        return (
+                          <div
+                            key={day}
+                            className={`h-14 border-x ${c?.bg} ${c?.border}`}
+                          />
+                        );
+                      }
+
+                      if (block && isBlockStart) {
+                        return (
+                          <div
+                            key={day}
+                            className={`h-14 border rounded-t text-xs font-medium flex items-start justify-center pt-1 ${c?.bg} ${c?.text} ${c?.border}`}
+                          >
+                            <span className="truncate px-0.5 text-center leading-tight">
+                              {block.label}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={day}
+                          className="h-14 border border-dashed border-muted bg-background"
+                        />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Big3Section
           title="Today's Big 3"
@@ -936,88 +1019,6 @@ export function IdealWeek() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Weekly Schedule Template</CardTitle>
-        </CardHeader>
-        <CardContent className="p-4">
-          <div className="flex flex-wrap gap-2 mb-4">
-            {Object.entries(categoryLabels).map(([key, label]) => {
-              const c = categoryColors[key];
-              return (
-                <span
-                  key={key}
-                  className={`text-xs px-2 py-1 rounded-full ${c.bg} ${c.text} font-medium`}
-                >
-                  {label}
-                </span>
-              );
-            })}
-          </div>
-
-          <div className="overflow-x-auto">
-            <div className="min-w-[700px]">
-              <div className="grid grid-cols-[60px_repeat(7,1fr)] gap-0.5">
-                <div className="h-8" />
-                {DAYS.map((day) => (
-                  <div
-                    key={day}
-                    className="h-8 flex items-center justify-center text-xs font-semibold text-muted-foreground bg-muted/50 rounded-t"
-                  >
-                    {day}
-                  </div>
-                ))}
-
-                {TIME_SLOTS.map((hour) => (
-                  <div key={hour} className="contents">
-                    <div className="h-14 flex items-start justify-end pr-2 text-xs text-muted-foreground pt-0.5">
-                      {formatHour(hour)}
-                    </div>
-                    {DAYS.map((day) => {
-                      const blocks = schedule[day] || [];
-                      const block = blocks.find(
-                        (b) => hour >= b.start && hour < b.start + b.duration
-                      );
-                      const isBlockStart =
-                        block && hour === Math.floor(block.start);
-                      const c = block ? categoryColors[block.category] : null;
-
-                      if (block && !isBlockStart) {
-                        return (
-                          <div
-                            key={day}
-                            className={`h-14 border-x ${c?.bg} ${c?.border}`}
-                          />
-                        );
-                      }
-
-                      if (block && isBlockStart) {
-                        return (
-                          <div
-                            key={day}
-                            className={`h-14 border rounded-t text-xs font-medium flex items-start justify-center pt-1 ${c?.bg} ${c?.text} ${c?.border}`}
-                          >
-                            <span className="truncate px-0.5 text-center leading-tight">
-                              {block.label}
-                            </span>
-                          </div>
-                        );
-                      }
-
-                      return (
-                        <div
-                          key={day}
-                          className="h-14 border border-dashed border-muted bg-background"
-                        />
-                      );
-                    })}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
