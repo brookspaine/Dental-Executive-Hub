@@ -437,24 +437,9 @@ function MorningRitualSection() {
           const checked = isItemCompleted(item.key);
           return (
             <div key={item.key}>
-              <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
-                <Checkbox
-                  checked={checked}
-                  onCheckedChange={() =>
-                    toggleMorningItem.mutate({
-                      itemKey: item.key,
-                      date: today,
-                      completed: !checked,
-                    })
-                  }
-                />
-                <span
-                  className={`text-sm ${
-                    checked
-                      ? "line-through text-muted-foreground"
-                      : "font-medium"
-                  }`}
-                >
+              <div className="flex items-center gap-3 p-2 rounded-md">
+                <span className="text-muted-foreground">•</span>
+                <span className="text-sm font-medium">
                   {item.label}
                 </span>
               </div>
