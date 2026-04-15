@@ -5,6 +5,7 @@
  * Dental CEO Dashboard API
  * OpenAPI spec version: 0.1.0
  */
+import type { OrganizationCategory } from "./organizationCategory";
 import type { OrganizationStatus } from "./organizationStatus";
 
 export interface Organization {
@@ -18,6 +19,7 @@ export interface Organization {
   providerCount?: number;
   patientCount?: number;
   monthlyRevenue?: number;
+  category?: OrganizationCategory;
   status: OrganizationStatus;
   createdAt: Date;
 }

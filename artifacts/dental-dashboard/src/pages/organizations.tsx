@@ -66,7 +66,8 @@ const emptyForm: OrgFormData = {
 
 export function Organizations() {
   const queryClient = useQueryClient();
-  const { data: orgs, isLoading } = useListOrganizations();
+  const { data: allOrgs, isLoading } = useListOrganizations();
+  const orgs = allOrgs?.filter((o: any) => !o.category || o.category === "edge");
   const createOrg = useCreateOrganization();
   const updateOrg = useUpdateOrganization();
   const deleteOrg = useDeleteOrganization();

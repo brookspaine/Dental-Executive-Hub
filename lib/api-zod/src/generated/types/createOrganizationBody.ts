@@ -5,6 +5,7 @@
  * Dental CEO Dashboard API
  * OpenAPI spec version: 0.1.0
  */
+import type { CreateOrganizationBodyCategory } from "./createOrganizationBodyCategory";
 import type { CreateOrganizationBodyStatus } from "./createOrganizationBodyStatus";
 
 export interface CreateOrganizationBody {
@@ -17,5 +18,6 @@ export interface CreateOrganizationBody {
   providerCount?: number;
   patientCount?: number;
   monthlyRevenue?: number;
+  category?: CreateOrganizationBodyCategory;
   status?: CreateOrganizationBodyStatus;
 }

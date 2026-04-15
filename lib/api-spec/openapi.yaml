@@ -462,6 +462,9 @@ components:
           type: integer
         monthlyRevenue:
           type: number
+        category:
+          type: string
+          enum: [edge, urgent_dental]
         status:
           type: string
           enum: [active, inactive]
@@ -498,6 +501,9 @@ components:
           type: integer
         monthlyRevenue:
           type: number
+        category:
+          type: string
+          enum: [edge, urgent_dental]
         status:
           type: string
           enum: [active, inactive]
@@ -528,6 +534,9 @@ components:
           type: integer
         monthlyRevenue:
           type: number
+        category:
+          type: string
+          enum: [edge, urgent_dental]
         status:
           type: string
           enum: [active, inactive]

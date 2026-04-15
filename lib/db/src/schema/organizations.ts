@@ -13,6 +13,7 @@ export const organizationsTable = pgTable("organizations", {
   providerCount: integer("provider_count").default(0),
   patientCount: integer("patient_count").default(0),
   monthlyRevenue: real("monthly_revenue").default(0),
+  category: text("category").notNull().default("edge"),
   status: text("status").notNull().default("active"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

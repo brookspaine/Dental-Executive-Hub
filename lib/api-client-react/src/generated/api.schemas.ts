@@ -32,6 +32,14 @@ export interface UpdateDailyTop3Body {
   priority?: number;
 }
 
+export type OrganizationCategory =
+  (typeof OrganizationCategory)[keyof typeof OrganizationCategory];
+
+export const OrganizationCategory = {
+  edge: "edge",
+  urgent_dental: "urgent_dental",
+} as const;
+
 export type OrganizationStatus =
   (typeof OrganizationStatus)[keyof typeof OrganizationStatus];
 
@@ -51,9 +59,18 @@ export interface Organization {
   providerCount?: number;
   patientCount?: number;
   monthlyRevenue?: number;
+  category?: OrganizationCategory;
   status: OrganizationStatus;
   createdAt: string;
 }
+
+export type CreateOrganizationBodyCategory =
+  (typeof CreateOrganizationBodyCategory)[keyof typeof CreateOrganizationBodyCategory];
+
+export const CreateOrganizationBodyCategory = {
+  edge: "edge",
+  urgent_dental: "urgent_dental",
+} as const;
 
 export type CreateOrganizationBodyStatus =
   (typeof CreateOrganizationBodyStatus)[keyof typeof CreateOrganizationBodyStatus];
@@ -73,8 +90,17 @@ export interface CreateOrganizationBody {
   providerCount?: number;
   patientCount?: number;
   monthlyRevenue?: number;
+  category?: CreateOrganizationBodyCategory;
   status?: CreateOrganizationBodyStatus;
 }
+
+export type UpdateOrganizationBodyCategory =
+  (typeof UpdateOrganizationBodyCategory)[keyof typeof UpdateOrganizationBodyCategory];
+
+export const UpdateOrganizationBodyCategory = {
+  edge: "edge",
+  urgent_dental: "urgent_dental",
+} as const;
 
 export type UpdateOrganizationBodyStatus =
   (typeof UpdateOrganizationBodyStatus)[keyof typeof UpdateOrganizationBodyStatus];
@@ -94,6 +120,7 @@ export interface UpdateOrganizationBody {
   providerCount?: number;
   patientCount?: number;
   monthlyRevenue?: number;
+  category?: UpdateOrganizationBodyCategory;
   status?: UpdateOrganizationBodyStatus;
 }
 

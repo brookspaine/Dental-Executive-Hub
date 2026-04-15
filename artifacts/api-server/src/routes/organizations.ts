@@ -19,7 +19,13 @@ router.get("/organizations", async (_req, res): Promise<void> => {
     .select()
     .from(organizationsTable)
     .orderBy(organizationsTable.name);
-  res.json(ListOrganizationsResponse.parse(orgs));
+  const mapped = orgs.map((o) => ({
+    ...o,
+    category: o.category ?? "edge",
+    phone: o.phone ?? undefined,
+    email: o.email ?? undefined,
+  }));
+  res.json(ListOrganizationsResponse.parse(mapped));
 });
 
 router.post("/organizations", async (req, res): Promise<void> => {
@@ -36,11 +42,16 @@ router.post("/organizations", async (req, res): Promise<void> => {
 
   await db.insert(activityTable).values({
     type: "org_updated",
-    message: `New organization "${org.name}" was added`,
+    message: `New location "${org.name}" was added`,
     entityName: org.name,
   });
 
-  res.status(201).json(GetOrganizationResponse.parse(org));
+  res.status(201).json(GetOrganizationResponse.parse({
+    ...org,
+    category: org.category ?? "edge",
+    phone: org.phone ?? undefined,
+    email: org.email ?? undefined,
+  }));
 });
 
 router.get("/organizations/:id", async (req, res): Promise<void> => {
@@ -60,7 +71,12 @@ router.get("/organizations/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(GetOrganizationResponse.parse(org));
+  res.json(GetOrganizationResponse.parse({
+    ...org,
+    category: org.category ?? "edge",
+    phone: org.phone ?? undefined,
+    email: org.email ?? undefined,
+  }));
 });
 
 router.patch("/organizations/:id", async (req, res): Promise<void> => {
@@ -89,11 +105,16 @@ router.patch("/organizations/:id", async (req, res): Promise<void> => {
 
   await db.insert(activityTable).values({
     type: "org_updated",
-    message: `Organization "${org.name}" was updated`,
+    message: `Location "${org.name}" was updated`,
     entityName: org.name,
   });
 
-  res.json(UpdateOrganizationResponse.parse(org));
+  res.json(UpdateOrganizationResponse.parse({
+    ...org,
+    category: org.category ?? "edge",
+    phone: org.phone ?? undefined,
+    email: org.email ?? undefined,
+  }));
 });
 
 router.delete("/organizations/:id", async (req, res): Promise<void> => {

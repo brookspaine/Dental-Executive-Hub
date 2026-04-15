@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, sql, desc, count } from "drizzle-orm";
+import { eq, and, sql, desc, count } from "drizzle-orm";
 import { db, organizationsTable, directReportsTable, dailyTop3Table, activityTable } from "@workspace/db";
 import {
   GetDashboardSummaryResponse,
@@ -14,14 +14,15 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const today = new Date().toISOString().split("T")[0];
 
   const orgs = await db.select().from(organizationsTable);
+  const edgeOrgs = orgs.filter((o) => o.category !== "urgent_dental");
   const reports = await db.select().from(directReportsTable);
   const todayItems = await db
     .select()
     .from(dailyTop3Table)
     .where(eq(dailyTop3Table.date, today));
 
-  const totalOrganizations = orgs.length;
-  const activeOrganizations = orgs.filter((o) => o.status === "active").length;
+  const totalOrganizations = edgeOrgs.length;
+  const activeOrganizations = edgeOrgs.filter((o) => o.status === "active").length;
   const totalDirectReports = reports.length;
   const totalPatients = orgs.reduce((sum, o) => sum + (o.patientCount ?? 0), 0);
   const totalMonthlyRevenue = orgs.reduce((sum, o) => sum + (o.monthlyRevenue ?? 0), 0);
@@ -47,7 +48,7 @@ router.get("/dashboard/org-performance", async (_req, res): Promise<void> => {
   const orgs = await db
     .select()
     .from(organizationsTable)
-    .where(eq(organizationsTable.status, "active"));
+    .where(and(eq(organizationsTable.status, "active"), eq(organizationsTable.category, "edge")));
 
   const performance = orgs.map((org) => ({
     organizationId: org.id,
