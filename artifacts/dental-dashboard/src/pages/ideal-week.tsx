@@ -413,25 +413,23 @@ function MorningRitualSection() {
     journalResponses.find((r) => r.promptKey === promptKey)?.response || "";
 
   return (
-    <Card className="border-t-4 border-t-amber-400">
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2 text-amber-700">
-            <Sun className="h-4 w-4" />
-            Morning Ritual
-          </CardTitle>
-          <Badge
-            variant={
-              completedCount === MORNING_RITUAL_ITEMS.length
-                ? "default"
-                : "secondary"
-            }
-            className="text-xs"
-          >
-            {completedCount}/{MORNING_RITUAL_ITEMS.length}
-          </Badge>
+    <Card className="border-t-0">
+      <div className="bg-amber-400 rounded-t-lg px-6 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2 text-amber-900 font-semibold">
+          <Sun className="h-4 w-4" />
+          Morning Ritual
         </div>
-      </CardHeader>
+        <Badge
+          variant={
+            completedCount === MORNING_RITUAL_ITEMS.length
+              ? "default"
+              : "secondary"
+          }
+          className="text-xs"
+        >
+          {completedCount}/{MORNING_RITUAL_ITEMS.length}
+        </Badge>
+      </div>
       <CardContent className="space-y-1">
         {MORNING_RITUAL_ITEMS.map((item) => {
           const checked = isItemCompleted(item.key);
