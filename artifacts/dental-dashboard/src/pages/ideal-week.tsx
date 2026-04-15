@@ -62,6 +62,7 @@ import {
   BookOpen,
   ChevronDown,
   CalendarDays,
+  Copy,
 } from "lucide-react";
 import {
   categoryColors,
@@ -833,6 +834,61 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   const [dragState, setDragState] = useState<DragState | null>(null);
   const columnsRef = useRef<HTMLDivElement>(null);
 
+  type ClipboardBlock = { label: string; duration: number; category: string };
+  type ContextMenu = { x: number; y: number; day: string; hour: number; block?: ScheduleBlockType };
+  const [clipboard, setClipboard] = useState<ClipboardBlock | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenu | null>(null);
+
+  useEffect(() => {
+    if (!contextMenu) return;
+    const close = () => setContextMenu(null);
+    document.addEventListener("click", close);
+    document.addEventListener("contextmenu", close);
+    return () => {
+      document.removeEventListener("click", close);
+      document.removeEventListener("contextmenu", close);
+    };
+  }, [contextMenu]);
+
+  function handleContextMenu(e: React.MouseEvent, day: string, block?: ScheduleBlockType) {
+    e.preventDefault();
+    e.stopPropagation();
+    const colEl = (e.currentTarget as HTMLElement).closest("[data-day-column]") as HTMLElement;
+    if (!colEl) return;
+    const colRect = colEl.getBoundingClientRect();
+    const hour = clampHour(snapToHalf(FIRST_HOUR + (e.clientY - colRect.top) / HOUR_HEIGHT));
+    setContextMenu({ x: e.clientX, y: e.clientY, day, hour, block });
+  }
+
+  function handleCopy() {
+    if (!contextMenu?.block) return;
+    const b = contextMenu.block;
+    setClipboard({ label: b.label, duration: b.duration, category: b.category });
+    setContextMenu(null);
+  }
+
+  function handleDuplicate() {
+    if (!contextMenu?.block) return;
+    const b = contextMenu.block;
+    const inv = () => queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+    createBlock.mutate({ data: { day: b.day, start: b.start, duration: b.duration, label: b.label, category: b.category } }, { onSuccess: inv });
+    setContextMenu(null);
+  }
+
+  function handlePaste() {
+    if (!clipboard || !contextMenu) return;
+    const inv = () => queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+    createBlock.mutate({ data: { day: contextMenu.day, start: contextMenu.hour, duration: clipboard.duration, label: clipboard.label, category: clipboard.category } }, { onSuccess: inv });
+    setContextMenu(null);
+  }
+
+  function handleContextDelete() {
+    if (!contextMenu?.block) return;
+    const inv = () => queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+    deleteBlock.mutate({ id: contextMenu.block.id }, { onSuccess: inv });
+    setContextMenu(null);
+  }
+
   useEffect(() => {
     if (!dragState) return;
     const handleMouseMove = (e: MouseEvent) => {
@@ -1145,6 +1201,10 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                   if ((e.target as HTMLElement).closest("[data-block]")) return;
                                   startCreateDrag(e, day);
                                 }}
+                                onContextMenu={(e) => {
+                                  if ((e.target as HTMLElement).closest("[data-block]")) return;
+                                  handleContextMenu(e, day);
+                                }}
                               >
                                 {Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR).map(hour => (
                                   <div key={hour}>
@@ -1202,6 +1262,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                         if ((e.target as HTMLElement).classList.contains("cursor-s-resize")) return;
                                         startMoveDrag(e, block);
                                       }}
+                                      onContextMenu={(e) => handleContextMenu(e, day, block)}
                                     >
                                       <div className="px-1.5 py-0.5 text-[11px] font-semibold leading-tight truncate">
                                         {block.label}
@@ -1406,6 +1467,71 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {contextMenu && (
+        <div
+          className="fixed z-50 min-w-[160px] rounded-lg border bg-popover p-1 shadow-lg animate-in fade-in-0 zoom-in-95"
+          style={{ left: contextMenu.x, top: contextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {contextMenu.block ? (
+            <>
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                onClick={handleCopy}
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy
+              </button>
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                onClick={handleDuplicate}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Duplicate
+              </button>
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                onClick={() => { openEditDialog(contextMenu.block!); setContextMenu(null); }}
+              >
+                <Pencil className="h-3.5 w-3.5" />
+                Edit
+              </button>
+              <div className="my-1 h-px bg-border" />
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-destructive/10 text-destructive transition-colors text-left"
+                onClick={handleContextDelete}
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Delete
+              </button>
+            </>
+          ) : (
+            <>
+              {clipboard ? (
+                <button
+                  className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                  onClick={handlePaste}
+                >
+                  <ClipboardCheck className="h-3.5 w-3.5" />
+                  Paste "{clipboard.label}"
+                </button>
+              ) : (
+                <div className="px-2.5 py-1.5 text-sm text-muted-foreground">
+                  No block copied
+                </div>
+              )}
+              <button
+                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-sm hover:bg-accent transition-colors text-left"
+                onClick={() => { openCreateDialog(contextMenu.day, contextMenu.hour); setContextMenu(null); }}
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New block here
+              </button>
+            </>
+          )}
+        </div>
+      )}
     </>
   );
 }
