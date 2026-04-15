@@ -423,8 +423,9 @@ function EditableRitualItem({
 }) {
   const queryClient = useQueryClient();
   const base = import.meta.env.BASE_URL || "/";
-  const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(item.label);
+  const [value, setValue] = useState(item.label);
+  const [dirty, setDirty] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const updateItem = useMutation({
     mutationFn: async (label: string) => {
@@ -436,99 +437,46 @@ function EditableRitualItem({
       return res.json();
     },
     onSuccess: () => {
+      setDirty(false);
       queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
-      setEditing(false);
     },
   });
 
-  const deleteItem = useMutation({
-    mutationFn: async () => {
-      await fetch(`${base}api/ideal-week/ritual-items/${item.id}`, { method: "DELETE" });
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] }),
-  });
+  const handleChange = (newVal: string) => {
+    setValue(newVal);
+    setDirty(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateItem.mutate(newVal);
+    }, 800);
+  };
+
+  const handleBlur = () => {
+    if (dirty) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      updateItem.mutate(value);
+    }
+  };
 
   const today = formatDate(new Date());
-  const labelText = item.label;
-  const urlMatch = labelText.match(/(https?:\/\/\S+)/);
-  const textPart = urlMatch ? labelText.replace(urlMatch[0], "").trim() : labelText;
-
   const showJournalPrompts =
     journalPrompts &&
     journalResponses &&
-    (labelText.toLowerCase().includes("journal questions") ||
-      labelText.toLowerCase().includes("evening ritual reflection"));
-
-  if (editing) {
-    return (
-      <div className="flex items-start gap-2 p-2">
-        <span className="text-muted-foreground mt-1.5">•</span>
-        <textarea
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm resize-y min-h-[36px]"
-          rows={2}
-          autoFocus
-        />
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0"
-          onClick={() => updateItem.mutate(editValue)}
-        >
-          <Check className="h-3.5 w-3.5 text-green-600" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-7 w-7 shrink-0"
-          onClick={() => { setEditing(false); setEditValue(item.label); }}
-        >
-          <X className="h-3.5 w-3.5 text-muted-foreground" />
-        </Button>
-      </div>
-    );
-  }
+    (item.label.toLowerCase().includes("journal questions") ||
+      item.label.toLowerCase().includes("evening ritual reflection"));
 
   return (
     <div>
-      <div className="flex items-start gap-3 p-2 rounded-md group hover:bg-muted/30">
-        <span className="text-muted-foreground mt-0.5">•</span>
-        <span className="text-sm font-medium whitespace-pre-line flex-1">
-          {textPart}
-          {urlMatch && (
-            <>
-              {"\n"}
-              <a
-                href={urlMatch[0]}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-xs text-primary underline hover:text-primary/80"
-              >
-                {urlMatch[0]}
-              </a>
-            </>
-          )}
-        </span>
-        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => { setEditValue(item.label); setEditing(true); }}
-          >
-            <Pencil className="h-3 w-3 text-muted-foreground" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={() => deleteItem.mutate()}
-          >
-            <Trash2 className="h-3 w-3 text-destructive" />
-          </Button>
-        </div>
+      <div className="flex items-start gap-3 p-1 rounded-md">
+        <span className="text-muted-foreground mt-1.5">•</span>
+        <div
+          contentEditable
+          suppressContentEditableWarning
+          className="text-sm font-medium flex-1 outline-none focus:bg-muted/30 rounded px-1 py-0.5 cursor-text min-h-[24px] whitespace-pre-wrap"
+          onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+          onBlur={handleBlur}
+          dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-xs text-primary underline">$1</a>') }}
+        />
       </div>
       {showJournalPrompts && (
         <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
@@ -563,28 +511,10 @@ function EditableRitualSection({
   textColor: string;
   journalPrompts?: { key: string; label: string }[];
 }) {
-  const queryClient = useQueryClient();
-  const base = import.meta.env.BASE_URL || "/";
   const { data: items = [] } = useRitualItems(category);
-  const [newItem, setNewItem] = useState("");
 
   const today = formatDate(new Date());
   const { data: journalResponses = [] } = useJournalResponses(today);
-
-  const addItem = useMutation({
-    mutationFn: async (label: string) => {
-      const res = await fetch(`${base}api/ideal-week/ritual-items`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ category, label, sortOrder: items.length }),
-      });
-      return res.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
-      setNewItem("");
-    },
-  });
 
   return (
     <Card className="border-t-0">
@@ -604,26 +534,6 @@ function EditableRitualSection({
             journalResponses={journalResponses as any}
           />
         ))}
-        <div className="flex items-center gap-2 pt-2">
-          <Input
-            value={newItem}
-            onChange={(e) => setNewItem(e.target.value)}
-            placeholder="Add item..."
-            className="text-sm h-8"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && newItem.trim()) addItem.mutate(newItem.trim());
-            }}
-          />
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            disabled={!newItem.trim()}
-            onClick={() => addItem.mutate(newItem.trim())}
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </div>
       </CardContent>
     </Card>
   );
