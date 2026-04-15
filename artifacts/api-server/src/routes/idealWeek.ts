@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, and } from "drizzle-orm";
+import { eq, and, gte, lte } from "drizzle-orm";
 import { db, idealWeekRitualsTable, idealWeekCompletionsTable } from "@workspace/db";
 import {
   ListIdealWeekRitualsResponse,
@@ -49,15 +49,29 @@ router.patch("/ideal-week/rituals/:id", async (req, res): Promise<void> => {
 
 router.get("/ideal-week/completions", async (req, res): Promise<void> => {
   const date = req.query.date as string | undefined;
+  const endDate = req.query.endDate as string | undefined;
   if (!date) {
     res.status(400).json({ error: "date query parameter is required" });
     return;
   }
 
-  const completions = await db
-    .select()
-    .from(idealWeekCompletionsTable)
-    .where(eq(idealWeekCompletionsTable.date, date));
+  let completions;
+  if (endDate) {
+    completions = await db
+      .select()
+      .from(idealWeekCompletionsTable)
+      .where(
+        and(
+          gte(idealWeekCompletionsTable.date, date),
+          lte(idealWeekCompletionsTable.date, endDate)
+        )
+      );
+  } else {
+    completions = await db
+      .select()
+      .from(idealWeekCompletionsTable)
+      .where(eq(idealWeekCompletionsTable.date, date));
+  }
 
   res.json(ListIdealWeekCompletionsResponse.parse(completions));
 });
