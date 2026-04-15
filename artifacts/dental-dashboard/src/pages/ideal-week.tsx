@@ -419,16 +419,6 @@ function MorningRitualSection() {
           <Sun className="h-4 w-4" />
           Morning Ritual
         </div>
-        <Badge
-          variant={
-            completedCount === MORNING_RITUAL_ITEMS.length
-              ? "default"
-              : "secondary"
-          }
-          className="text-xs"
-        >
-          {completedCount}/{MORNING_RITUAL_ITEMS.length}
-        </Badge>
       </div>
       <CardContent className="space-y-1">
         {MORNING_RITUAL_ITEMS.map((item) => {
