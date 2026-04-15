@@ -646,13 +646,15 @@ router.patch("/ideal-week/reading-list/:id", async (req, res): Promise<void> => 
     res.status(400).json({ error: "invalid id" });
     return;
   }
-  const { title } = req.body;
-  if (!title || typeof title !== "string") {
-    res.status(400).json({ error: "title is required" });
+  const updates: Partial<{ title: string; completed: boolean }> = {};
+  if (typeof req.body.title === "string") updates.title = req.body.title;
+  if (typeof req.body.completed === "boolean") updates.completed = req.body.completed;
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "nothing to update" });
     return;
   }
   const [item] = await db.update(readingListTable)
-    .set({ title })
+    .set(updates)
     .where(eq(readingListTable.id, id))
     .returning();
   res.json(item);

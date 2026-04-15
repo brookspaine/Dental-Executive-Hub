@@ -584,7 +584,7 @@ const START_TIME_OPTIONS = Array.from({ length: 30 }, (_, i) => {
   return { value: String(t), label: `${h}:${m} ${ampm}` };
 });
 
-type ReadingItem = { id: number; title: string; sortOrder: number };
+type ReadingItem = { id: number; title: string; completed: boolean; sortOrder: number };
 
 function useReadingList() {
   const base = import.meta.env.BASE_URL || "/";
@@ -604,12 +604,12 @@ function ReadingListItem({ item }: { item: ReadingItem }) {
   const [dirty, setDirty] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const updateItem = useMutation({
-    mutationFn: async (title: string) => {
+  const patchItem = useMutation({
+    mutationFn: async (body: Partial<{ title: string; completed: boolean }>) => {
       const res = await fetch(`${base}api/ideal-week/reading-list/${item.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify(body),
       });
       return res.json();
     },
@@ -633,31 +633,35 @@ function ReadingListItem({ item }: { item: ReadingItem }) {
     setDirty(true);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      updateItem.mutate(newVal);
+      patchItem.mutate({ title: newVal });
     }, 800);
   };
 
   const handleBlur = () => {
     if (dirty) {
       if (debounceRef.current) clearTimeout(debounceRef.current);
-      updateItem.mutate(value);
+      patchItem.mutate({ title: value });
     }
   };
 
   return (
-    <li className="group flex items-start gap-1.5 text-sm text-foreground/80">
-      <span className="text-muted-foreground mt-1.5 text-xs">•</span>
+    <li className="group flex items-center gap-1.5 text-sm">
+      <Checkbox
+        checked={item.completed}
+        onCheckedChange={(checked) => patchItem.mutate({ completed: !!checked })}
+        className="h-3.5 w-3.5 shrink-0"
+      />
       <div
         contentEditable
         suppressContentEditableWarning
-        className="flex-1 outline-none focus:bg-muted/30 rounded px-0.5 py-0.5 cursor-text min-h-[20px] whitespace-pre-wrap"
+        className={`flex-1 outline-none focus:bg-muted/30 rounded px-0.5 py-0.5 cursor-text min-h-[20px] whitespace-pre-wrap ${item.completed ? "line-through text-muted-foreground" : "text-foreground/80"}`}
         onInput={(e) => handleChange(e.currentTarget.textContent || "")}
         onBlur={handleBlur}
         dangerouslySetInnerHTML={{ __html: item.title }}
       />
       <button
         onClick={() => deleteItem.mutate()}
-        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-destructive mt-0.5"
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-destructive"
       >
         <X className="h-3 w-3" />
       </button>
