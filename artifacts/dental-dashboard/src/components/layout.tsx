@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
-  { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
   { href: "/direct-reports", label: "Direct Reports", icon: Users },
