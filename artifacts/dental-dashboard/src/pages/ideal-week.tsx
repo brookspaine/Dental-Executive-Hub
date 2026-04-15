@@ -604,7 +604,7 @@ const QUARTERLY_REVIEW_ITEMS = [
   "Read Epic Year",
   "Review Vision Board and Goals",
   "Change Habits to focus on",
-  "Review Book Takeaways from Books Read that Quarter",
+  "Review Book Takeaways from Books Read that Quarter\nhttps://docs.google.com/document/d/1W7XKQzw5akO3_Tyis5NsK5gEcvSh0Bkp0I1KKnJtjr8/edit?usp=sharing",
 ];
 
 function QuarterlyReviewSection() {
@@ -617,12 +617,29 @@ function QuarterlyReviewSection() {
         </div>
       </div>
       <CardContent className="space-y-1">
-        {QUARTERLY_REVIEW_ITEMS.map((item, i) => (
-          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span className="text-sm font-medium">{item}</span>
-          </div>
-        ))}
+        {QUARTERLY_REVIEW_ITEMS.map((item, i) => {
+          const parts = item.split("\n");
+          return (
+            <div key={i} className="flex items-start gap-3 p-2 rounded-md">
+              <span className="text-muted-foreground mt-0.5">•</span>
+              <div>
+                <span className="text-sm font-medium">{parts[0]}</span>
+                {parts[1] && (
+                  <div>
+                    <a
+                      href={parts[1]}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs text-primary underline hover:text-primary/80"
+                    >
+                      {parts[1]}
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
