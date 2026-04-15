@@ -1,4 +1,5 @@
 import { Router, type IRouter } from "express";
+import { ReplitConnectors } from "@replit/connectors-sdk";
 import { eq, and, gte, lte } from "drizzle-orm";
 import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable, readingListTable } from "@workspace/db";
 import type { ScheduleBlock } from "@workspace/db";
@@ -668,6 +669,83 @@ router.delete("/ideal-week/reading-list/:id", async (req, res): Promise<void> =>
   }
   await db.delete(readingListTable).where(eq(readingListTable.id, id));
   res.json({ success: true });
+});
+
+// Google Calendar integration via Replit Connectors
+router.get("/ideal-week/calendar-events", async (req, res): Promise<void> => {
+  try {
+    const connectors = new ReplitConnectors();
+    const timeMin = (req.query.timeMin as string) || new Date().toISOString();
+    const timeMax = (req.query.timeMax as string) || new Date(Date.now() + 7 * 86400000).toISOString();
+
+    const listRes = await connectors.proxy("google-calendar", "/calendar/v3/users/me/calendarList", {
+      method: "GET",
+    });
+
+    if (!listRes.ok) {
+      const errText = await listRes.text();
+      console.error("Calendar list error:", listRes.status, errText.slice(0, 200));
+      res.status(502).json({ error: `Google Calendar returned ${listRes.status}` });
+      return;
+    }
+
+    const calListData = await listRes.json() as { items?: { id: string; summary: string; backgroundColor?: string }[] };
+    const calendars = calListData.items || [];
+
+    const allEvents: {
+      id: string;
+      summary: string;
+      start: string;
+      end: string;
+      calendarName: string;
+      calendarColor: string;
+    }[] = [];
+
+    for (const cal of calendars) {
+      try {
+        const params = new URLSearchParams({
+          timeMin,
+          timeMax,
+          singleEvents: "true",
+          orderBy: "startTime",
+          maxResults: "100",
+        });
+        const eventsRes = await connectors.proxy(
+          "google-calendar",
+          `/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?${params.toString()}`,
+          { method: "GET" }
+        );
+        if (!eventsRes.ok) continue;
+        const eventsData = await eventsRes.json() as {
+          items?: {
+            id: string;
+            summary?: string;
+            start?: { dateTime?: string; date?: string };
+            end?: { dateTime?: string; date?: string };
+          }[];
+        };
+        for (const ev of eventsData.items || []) {
+          if (!ev.start) continue;
+          allEvents.push({
+            id: ev.id,
+            summary: ev.summary || "(No title)",
+            start: ev.start.dateTime || ev.start.date || "",
+            end: ev.end?.dateTime || ev.end?.date || "",
+            calendarName: cal.summary,
+            calendarColor: cal.backgroundColor || "#039be5",
+          });
+        }
+      } catch {
+        // skip calendars that fail
+      }
+    }
+
+    allEvents.sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime());
+    res.json({ calendars: calendars.map(c => ({ id: c.id, name: c.summary, color: c.backgroundColor })), events: allEvents });
+  } catch (err: any) {
+    console.error("Calendar events error:", err);
+    res.status(500).json({ error: err.message || "Failed to fetch calendar events" });
+  }
 });
 
 export default router;

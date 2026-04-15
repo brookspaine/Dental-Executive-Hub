@@ -61,6 +61,7 @@ import {
   Stethoscope,
   BookOpen,
   ChevronDown,
+  CalendarDays,
 } from "lucide-react";
 import {
   categoryColors,
@@ -583,6 +584,147 @@ const START_TIME_OPTIONS = Array.from({ length: 30 }, (_, i) => {
   const ampm = t < 12 ? "AM" : "PM";
   return { value: String(t), label: `${h}:${m} ${ampm}` };
 });
+
+type CalendarEvent = {
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+  calendarName: string;
+  calendarColor: string;
+};
+
+type CalendarData = {
+  calendars: { id: string; name: string; color: string }[];
+  events: CalendarEvent[];
+};
+
+function useCalendarEvents(timeMin: string, timeMax: string) {
+  const base = (import.meta.env.BASE_URL || "/").replace(/\/+$/, "");
+  return useQuery({
+    queryKey: ["calendar-events", timeMin, timeMax],
+    queryFn: async () => {
+      const params = new URLSearchParams({ timeMin, timeMax });
+      const res = await fetch(`${base}/api/ideal-week/calendar-events?${params}`);
+      if (!res.ok) throw new Error(`Calendar fetch failed: ${res.status}`);
+      return res.json() as Promise<CalendarData>;
+    },
+    staleTime: 60000,
+  });
+}
+
+function GoogleCalendarEvents({ weekStart }: { weekStart: Date }) {
+  const [open, setOpen] = useState(true);
+
+  const timeMin = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, [weekStart]);
+  const timeMax = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  }, [weekStart]);
+
+  const { data, isLoading, isError } = useCalendarEvents(timeMin, timeMax);
+  const events = data?.events || [];
+  const calendars = data?.calendars || [];
+
+  const eventsByDay = useMemo(() => {
+    const map: Record<string, CalendarEvent[]> = {};
+    for (const day of DAYS) map[day] = [];
+    for (const ev of events) {
+      const isAllDay = !ev.start.includes("T");
+      const d = isAllDay ? new Date(ev.start + "T12:00:00") : new Date(ev.start);
+      const dayIdx = (d.getDay() + 6) % 7;
+      const dayName = DAYS[dayIdx];
+      if (dayName && map[dayName]) {
+        map[dayName].push(ev);
+      }
+    }
+    return map;
+  }, [events]);
+
+  return (
+    <Card>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors rounded-t-lg"
+      >
+        <div className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold">Google Calendar</span>
+          {!isLoading && (
+            <span className="text-xs text-muted-foreground">
+              ({events.length} events from {calendars.length} calendars)
+            </span>
+          )}
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <CardContent className="pt-0 pb-3 px-4">
+          {isLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-full" />
+              <Skeleton className="h-6 w-full" />
+            </div>
+          ) : isError ? (
+            <p className="text-sm text-destructive">Failed to load calendar events. Check your Google Calendar connection.</p>
+          ) : events.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No events this week.</p>
+          ) : (
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-1.5 mb-1">
+                {calendars.map(cal => (
+                  <span
+                    key={cal.id}
+                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
+                    style={{ backgroundColor: cal.color || "#039be5" }}
+                  >
+                    {cal.name}
+                  </span>
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-1">
+                {DAYS.map(day => (
+                  <div key={day}>
+                    <div className="text-[10px] font-semibold text-muted-foreground text-center mb-1">{day}</div>
+                    <div className="space-y-0.5">
+                      {(eventsByDay[day] || []).map(ev => {
+                        const isAllDay = !ev.start.includes("T");
+                        const startDate = isAllDay ? new Date(ev.start + "T12:00:00") : new Date(ev.start);
+                        const timeStr = isAllDay
+                          ? "All day"
+                          : startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+                        return (
+                          <div
+                            key={ev.id}
+                            className="rounded px-1 py-0.5 text-[9px] leading-tight text-white truncate"
+                            style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                            title={`${ev.summary} (${ev.calendarName}) - ${timeStr}`}
+                          >
+                            <div className="font-medium truncate">{ev.summary}</div>
+                            <div className="opacity-80">{timeStr}</div>
+                          </div>
+                        );
+                      })}
+                      {(eventsByDay[day] || []).length === 0 && (
+                        <div className="text-[9px] text-muted-foreground text-center py-1">-</div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
 
 type ReadingItem = { id: number; title: string; completed: boolean; sortOrder: number };
 
@@ -1195,6 +1337,8 @@ export function IdealWeek() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 items-start">
         <div className="space-y-4">
           <WeeklyScheduleTemplate />
+
+          <GoogleCalendarEvents weekStart={weekStart} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Big3Section
