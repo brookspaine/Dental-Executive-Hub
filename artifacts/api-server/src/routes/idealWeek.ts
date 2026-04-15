@@ -1,6 +1,7 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable } from "@workspace/db";
+import { asc } from "drizzle-orm";
 import {
   ListIdealWeekRitualsResponse,
   UpdateIdealWeekRitualParams,
@@ -271,6 +272,114 @@ router.post("/ideal-week/journal", async (req, res): Promise<void> => {
       .returning();
   }
   res.json(result);
+});
+
+const DEFAULT_RITUAL_ITEMS: Record<string, string[]> = {
+  morning: [
+    "Daily Devotional",
+    "Morning Journal Questions",
+    "Get it out on paper (process thoughts, decisions, think, etc)",
+    "Mindful Breathing/Meditation (Calm App)",
+    "Read (15 min) – personal growth and develop wisdom",
+  ],
+  startup: [
+    "Daily Brainwashing Sheet or Words of Wisdom",
+    "Review Weekly Goals and Yearly Goals",
+    "Set Big 3",
+    "Block Deep Work session(s)",
+    "Time Journal catch-up",
+    "If I decide it's important → Reply to Emails\n(be timely, reply quickly, don't do other's jobs for them)",
+  ],
+  shutdown: [
+    "Clear Inbox and capture open loops",
+    "Time Journal",
+    "Evening Ritual Reflection",
+    "Disconnect and Intentionally Switch to Family Time",
+  ],
+  weekly_review: [
+    "Review schedule and energy last week and compare to intentions",
+    "Total up time journal activities and put into spreadsheet",
+    "Read Epic Year",
+    "AMS",
+    "Review Vision Board & Read Goals",
+  ],
+  monthly_review: [
+    "Monthly Personal Assessment",
+    "Personal Finances/Wealth Review\n(pay CC, transfer $ to savings, Investments: HSA, brokerage)",
+    "Review Vision Board & Read Goals",
+  ],
+  quarterly_review: [
+    "Quarterly AMS",
+    "Read Epic Year",
+    "Review Vision Board and Goals",
+    "Change Habits to focus on",
+    "Review Book Takeaways from Books Read that Quarter\nhttps://docs.google.com/document/d/1W7XKQzw5akO3_Tyis5NsK5gEcvSh0Bkp0I1KKnJtjr8/edit?usp=sharing",
+  ],
+};
+
+router.get("/ideal-week/ritual-items", async (req, res): Promise<void> => {
+  const category = req.query.category as string;
+  if (!category) {
+    res.status(400).json({ error: "category query param required" });
+    return;
+  }
+  let items = await db
+    .select()
+    .from(ritualItemsTable)
+    .where(eq(ritualItemsTable.category, category))
+    .orderBy(asc(ritualItemsTable.sortOrder));
+
+  if (items.length === 0 && DEFAULT_RITUAL_ITEMS[category]) {
+    const defaults = DEFAULT_RITUAL_ITEMS[category];
+    const inserted = await db
+      .insert(ritualItemsTable)
+      .values(defaults.map((label, i) => ({ category, label, sortOrder: i })))
+      .returning();
+    items = inserted.sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  res.json(items);
+});
+
+router.post("/ideal-week/ritual-items", async (req, res): Promise<void> => {
+  const { category, label, sortOrder } = req.body;
+  if (!category || !label) {
+    res.status(400).json({ error: "category and label required" });
+    return;
+  }
+  const [item] = await db
+    .insert(ritualItemsTable)
+    .values({ category, label, sortOrder: sortOrder ?? 0 })
+    .returning();
+  res.json(item);
+});
+
+router.patch("/ideal-week/ritual-items/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  const updates: Record<string, any> = {};
+  if (req.body.label !== undefined) updates.label = req.body.label;
+  if (req.body.sortOrder !== undefined) updates.sortOrder = req.body.sortOrder;
+
+  const [item] = await db
+    .update(ritualItemsTable)
+    .set(updates)
+    .where(eq(ritualItemsTable.id, id))
+    .returning();
+  res.json(item);
+});
+
+router.delete("/ideal-week/ritual-items/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  await db.delete(ritualItemsTable).where(eq(ritualItemsTable.id, id));
+  res.json({ success: true });
 });
 
 export default router;

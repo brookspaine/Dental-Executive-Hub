@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef } from "react";
+import type { LucideIcon } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useListIdealWeekRituals,
@@ -29,6 +30,9 @@ import {
   ClipboardCheck,
   Calendar,
   BarChart3,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import {
   schedule,
@@ -121,6 +125,14 @@ const JOURNAL_PROMPTS = [
   { key: "grateful", label: "Something I am Grateful for this morning:" },
   { key: "stressors", label: "Current Stressors or Frogs:" },
   { key: "easy", label: "What would this fix look like if it were easy?:" },
+];
+
+const EVENING_PROMPTS = [
+  { key: "evening_handled_well", label: "A situation or task I handled well today:" },
+  { key: "evening_coach", label: "If I was my own high performance coach, I'd tell myself today:" },
+  { key: "evening_mice_antelopes", label: "Did I spend today chasing field mice or hunting antelopes?" },
+  { key: "evening_time_energy", label: "How could I have managed my time and energy better today?" },
+  { key: "evening_learned", label: "Something I realized or learned today is..." },
 ];
 
 type MorningRitualCompletion = {
@@ -387,259 +399,231 @@ function JournalPromptField({
   );
 }
 
-function MorningRitualSection() {
-  const queryClient = useQueryClient();
-  const today = formatDate(new Date());
-  const { data: completions = [] } = useMorningRitual(today);
-  const { data: journalResponses = [] } = useJournalResponses(today);
+function useRitualItems(category: string) {
   const base = import.meta.env.BASE_URL || "/";
+  return useQuery({
+    queryKey: ["ritual-items", category],
+    queryFn: async () => {
+      const res = await fetch(`${base}api/ideal-week/ritual-items?category=${category}`);
+      return res.json() as Promise<{ id: number; category: string; label: string; sortOrder: number }[]>;
+    },
+  });
+}
 
-  const toggleMorningItem = useMutation({
-    mutationFn: async (data: { itemKey: string; date: string; completed: boolean }) => {
-      const res = await fetch(`${base}api/ideal-week/morning-ritual/toggle`, {
-        method: "POST",
+function EditableRitualItem({
+  item,
+  category,
+  journalPrompts,
+  journalResponses,
+}: {
+  item: { id: number; label: string };
+  category: string;
+  journalPrompts?: { key: string; label: string }[];
+  journalResponses?: { promptKey: string; response: string }[];
+}) {
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(item.label);
+
+  const updateItem = useMutation({
+    mutationFn: async (label: string) => {
+      const res = await fetch(`${base}api/ideal-week/ritual-items/${item.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ label }),
       });
       return res.json();
     },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["morning-ritual", today] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+      setEditing(false);
+    },
   });
 
-  const isItemCompleted = (key: string) =>
-    completions.some((c) => c.itemKey === key && c.completed);
+  const deleteItem = useMutation({
+    mutationFn: async () => {
+      await fetch(`${base}api/ideal-week/ritual-items/${item.id}`, { method: "DELETE" });
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] }),
+  });
 
-  const completedCount = MORNING_RITUAL_ITEMS.filter((i) =>
-    isItemCompleted(i.key)
-  ).length;
+  const today = formatDate(new Date());
+  const labelText = item.label;
+  const urlMatch = labelText.match(/(https?:\/\/\S+)/);
+  const textPart = urlMatch ? labelText.replace(urlMatch[0], "").trim() : labelText;
 
-  const getJournalResponse = (promptKey: string) =>
-    journalResponses.find((r) => r.promptKey === promptKey)?.response || "";
+  const showJournalPrompts =
+    journalPrompts &&
+    journalResponses &&
+    (labelText.toLowerCase().includes("journal questions") ||
+      labelText.toLowerCase().includes("evening ritual reflection"));
+
+  if (editing) {
+    return (
+      <div className="flex items-start gap-2 p-2">
+        <span className="text-muted-foreground mt-1.5">•</span>
+        <textarea
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm resize-y min-h-[36px]"
+          rows={2}
+          autoFocus
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => updateItem.mutate(editValue)}
+        >
+          <Check className="h-3.5 w-3.5 text-green-600" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0"
+          onClick={() => { setEditing(false); setEditValue(item.label); }}
+        >
+          <X className="h-3.5 w-3.5 text-muted-foreground" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <Card className="border-t-0">
-      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#f7e26d]">
-        <div className="flex items-center gap-2 text-amber-900 font-semibold">
-          <Sun className="h-4 w-4" />
-          Morning Ritual
+    <div>
+      <div className="flex items-start gap-3 p-2 rounded-md group hover:bg-muted/30">
+        <span className="text-muted-foreground mt-0.5">•</span>
+        <span className="text-sm font-medium whitespace-pre-line flex-1">
+          {textPart}
+          {urlMatch && (
+            <>
+              {"\n"}
+              <a
+                href={urlMatch[0]}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-primary underline hover:text-primary/80"
+              >
+                {urlMatch[0]}
+              </a>
+            </>
+          )}
+        </span>
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => { setEditValue(item.label); setEditing(true); }}
+          >
+            <Pencil className="h-3 w-3 text-muted-foreground" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={() => deleteItem.mutate()}
+          >
+            <Trash2 className="h-3 w-3 text-destructive" />
+          </Button>
         </div>
       </div>
-      <CardContent className="space-y-1">
-        {MORNING_RITUAL_ITEMS.map((item) => {
-          const checked = isItemCompleted(item.key);
-          return (
-            <div key={item.key}>
-              <div className="flex items-center gap-3 p-2 rounded-md">
-                <span className="text-muted-foreground">•</span>
-                <span className="text-sm font-medium">
-                  {item.label}
-                </span>
-              </div>
-              {item.key === "journal" && (
-                <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
-                  {JOURNAL_PROMPTS.map((prompt) => (
-                    <JournalPromptField
-                      key={prompt.key}
-                      prompt={prompt}
-                      date={today}
-                      savedResponse={getJournalResponse(prompt.key)}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </CardContent>
-    </Card>
+      {showJournalPrompts && (
+        <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
+          {journalPrompts!.map((prompt) => (
+            <JournalPromptField
+              key={prompt.key}
+              prompt={prompt}
+              date={today}
+              savedResponse={
+                journalResponses!.find((r) => r.promptKey === prompt.key)?.response || ""
+              }
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
-const STARTUP_RITUAL_ITEMS = [
-  "Daily Brainwashing Sheet or Words of Wisdom",
-  "Review Weekly Goals and Yearly Goals",
-  "Set Big 3",
-  "Block Deep Work session(s)",
-  "Time Journal catch-up",
-  "If I decide it's important → Reply to Emails\n(be timely, reply quickly, don't do other's jobs for them)",
-];
+function EditableRitualSection({
+  category,
+  title,
+  icon: Icon,
+  bannerColor,
+  textColor,
+  journalPrompts,
+}: {
+  category: string;
+  title: string;
+  icon: LucideIcon;
+  bannerColor: string;
+  textColor: string;
+  journalPrompts?: { key: string; label: string }[];
+}) {
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+  const { data: items = [] } = useRitualItems(category);
+  const [newItem, setNewItem] = useState("");
 
-function StartupRitualSection() {
-  return (
-    <Card className="border-t-0">
-      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#93c47d]">
-        <div className="flex items-center gap-2 text-green-900 font-semibold">
-          <Rocket className="h-4 w-4" />
-          Startup Ritual
-        </div>
-      </div>
-      <CardContent className="space-y-1">
-        {STARTUP_RITUAL_ITEMS.map((item, i) => (
-          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span className="text-sm font-medium whitespace-pre-line">
-              {item}
-            </span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-const SHUTDOWN_RITUAL_ITEMS = [
-  { label: "Clear Inbox and capture open loops", key: "clear_inbox" },
-  { label: "Time Journal", key: "time_journal" },
-  { label: "Evening Ritual Reflection", key: "evening_reflection" },
-  { label: "Disconnect and Intentionally Switch to Family Time", key: "disconnect" },
-];
-
-const EVENING_PROMPTS = [
-  { key: "evening_handled_well", label: "A situation or task I handled well today:" },
-  { key: "evening_coach", label: "If I was my own high performance coach, I'd tell myself today:" },
-  { key: "evening_mice_antelopes", label: "Did I spend today chasing field mice or hunting antelopes?" },
-  { key: "evening_time_energy", label: "How could I have managed my time and energy better today?" },
-  { key: "evening_learned", label: "Something I realized or learned today is..." },
-];
-
-function ShutdownRitualSection() {
   const today = formatDate(new Date());
   const { data: journalResponses = [] } = useJournalResponses(today);
-  const getResponse = (promptKey: string) =>
-    journalResponses.find((r) => r.promptKey === promptKey)?.response || "";
+
+  const addItem = useMutation({
+    mutationFn: async (label: string) => {
+      const res = await fetch(`${base}api/ideal-week/ritual-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, label, sortOrder: items.length }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+      setNewItem("");
+    },
+  });
 
   return (
     <Card className="border-t-0">
-      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#a4c2f4]">
-        <div className="flex items-center gap-2 text-blue-900 font-semibold">
-          <Moon className="h-4 w-4" />
-          Shutdown Ritual
+      <div className={`rounded-t-lg px-6 py-3 flex items-center justify-between ${bannerColor}`}>
+        <div className={`flex items-center gap-2 font-semibold ${textColor}`}>
+          <Icon className="h-4 w-4" />
+          {title}
         </div>
       </div>
       <CardContent className="space-y-1">
-        {SHUTDOWN_RITUAL_ITEMS.map((item) => (
-          <div key={item.key}>
-            <div className="flex items-start gap-3 p-2 rounded-md">
-              <span className="text-muted-foreground mt-0.5">•</span>
-              <span className="text-sm font-medium">{item.label}</span>
-            </div>
-            {item.key === "evening_reflection" && (
-              <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
-                {EVENING_PROMPTS.map((prompt) => (
-                  <JournalPromptField
-                    key={prompt.key}
-                    prompt={prompt}
-                    date={today}
-                    savedResponse={getResponse(prompt.key)}
-                  />
-                ))}
-              </div>
-            )}
-          </div>
+        {items.map((item) => (
+          <EditableRitualItem
+            key={item.id}
+            item={item}
+            category={category}
+            journalPrompts={journalPrompts}
+            journalResponses={journalResponses as any}
+          />
         ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-const WEEKLY_REVIEW_ITEMS = [
-  "Review schedule and energy last week and compare to intentions",
-  "Total up time journal activities and put into spreadsheet",
-  "Read Epic Year",
-  "AMS",
-  "Review Vision Board & Read Goals",
-];
-
-function WeeklyReviewSection() {
-  return (
-    <Card className="border-t-0">
-      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#b4a7d6]">
-        <div className="flex items-center gap-2 text-purple-900 font-semibold">
-          <ClipboardCheck className="h-4 w-4" />
-          Weekly Review
+        <div className="flex items-center gap-2 pt-2">
+          <Input
+            value={newItem}
+            onChange={(e) => setNewItem(e.target.value)}
+            placeholder="Add item..."
+            className="text-sm h-8"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newItem.trim()) addItem.mutate(newItem.trim());
+            }}
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            disabled={!newItem.trim()}
+            onClick={() => addItem.mutate(newItem.trim())}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
         </div>
-      </div>
-      <CardContent className="space-y-1">
-        {WEEKLY_REVIEW_ITEMS.map((item, i) => (
-          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span className="text-sm font-medium">{item}</span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-const MONTHLY_REVIEW_ITEMS = [
-  "Monthly Personal Assessment",
-  "Personal Finances/Wealth Review\n(pay CC, transfer $ to savings, Investments: HSA, brokerage)",
-  "Review Vision Board & Read Goals",
-];
-
-function MonthlyReviewSection() {
-  return (
-    <Card className="border-t-0">
-      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#ea9999]">
-        <div className="flex items-center gap-2 text-red-900 font-semibold">
-          <Calendar className="h-4 w-4" />
-          Monthly Review
-        </div>
-      </div>
-      <CardContent className="space-y-1">
-        {MONTHLY_REVIEW_ITEMS.map((item, i) => (
-          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
-            <span className="text-muted-foreground mt-0.5">•</span>
-            <span className="text-sm font-medium whitespace-pre-line">{item}</span>
-          </div>
-        ))}
-      </CardContent>
-    </Card>
-  );
-}
-
-const QUARTERLY_REVIEW_ITEMS = [
-  "Quarterly AMS",
-  "Read Epic Year",
-  "Review Vision Board and Goals",
-  "Change Habits to focus on",
-  "Review Book Takeaways from Books Read that Quarter\nhttps://docs.google.com/document/d/1W7XKQzw5akO3_Tyis5NsK5gEcvSh0Bkp0I1KKnJtjr8/edit?usp=sharing",
-];
-
-function QuarterlyReviewSection() {
-  return (
-    <Card className="border-t-0">
-      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#f9cb9c]">
-        <div className="flex items-center gap-2 text-orange-900 font-semibold">
-          <BarChart3 className="h-4 w-4" />
-          Quarterly Review
-        </div>
-      </div>
-      <CardContent className="space-y-1">
-        {QUARTERLY_REVIEW_ITEMS.map((item, i) => {
-          const parts = item.split("\n");
-          return (
-            <div key={i} className="flex items-start gap-3 p-2 rounded-md">
-              <span className="text-muted-foreground mt-0.5">•</span>
-              <div>
-                <span className="text-sm font-medium">{parts[0]}</span>
-                {parts[1] && (
-                  <div>
-                    <a
-                      href={parts[1]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-xs text-primary underline hover:text-primary/80"
-                    >
-                      {parts[1]}
-                    </a>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </CardContent>
     </Card>
   );
@@ -840,17 +824,55 @@ export function IdealWeek() {
         />
       </div>
 
-      <MorningRitualSection />
+      <EditableRitualSection
+        category="morning"
+        title="Morning Ritual"
+        icon={Sun}
+        bannerColor="bg-[#f7e26d]"
+        textColor="text-amber-900"
+        journalPrompts={JOURNAL_PROMPTS}
+      />
 
-      <StartupRitualSection />
+      <EditableRitualSection
+        category="startup"
+        title="Startup Ritual"
+        icon={Rocket}
+        bannerColor="bg-[#93c47d]"
+        textColor="text-green-900"
+      />
 
-      <ShutdownRitualSection />
+      <EditableRitualSection
+        category="shutdown"
+        title="Shutdown Ritual"
+        icon={Moon}
+        bannerColor="bg-[#a4c2f4]"
+        textColor="text-blue-900"
+        journalPrompts={EVENING_PROMPTS}
+      />
 
-      <WeeklyReviewSection />
+      <EditableRitualSection
+        category="weekly_review"
+        title="Weekly Review"
+        icon={ClipboardCheck}
+        bannerColor="bg-[#b4a7d6]"
+        textColor="text-purple-900"
+      />
 
-      <MonthlyReviewSection />
+      <EditableRitualSection
+        category="monthly_review"
+        title="Monthly Review"
+        icon={Calendar}
+        bannerColor="bg-[#ea9999]"
+        textColor="text-red-900"
+      />
 
-      <QuarterlyReviewSection />
+      <EditableRitualSection
+        category="quarterly_review"
+        title="Quarterly Review"
+        icon={BarChart3}
+        bannerColor="bg-[#f9cb9c]"
+        textColor="text-orange-900"
+      />
 
       <Card>
         <CardContent className="p-4">
