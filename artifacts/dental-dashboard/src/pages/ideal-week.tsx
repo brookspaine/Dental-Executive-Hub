@@ -103,6 +103,77 @@ function useWeeklyTop3(weekStart: string) {
   });
 }
 
+function EditableItem({
+  item,
+  onToggle,
+  onDelete,
+  onRename,
+}: {
+  item: { id: number; title: string; completed: boolean };
+  onToggle: (id: number, completed: boolean) => void;
+  onDelete: (id: number) => void;
+  onRename: (id: number, title: string) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(item.title);
+  const editRef = useRef<HTMLInputElement>(null);
+
+  const startEdit = () => {
+    setEditValue(item.title);
+    setEditing(true);
+    setTimeout(() => editRef.current?.focus(), 0);
+  };
+
+  const commitEdit = () => {
+    const trimmed = editValue.trim();
+    if (trimmed && trimmed !== item.title) {
+      onRename(item.id, trimmed);
+    }
+    setEditing(false);
+  };
+
+  return (
+    <div className="flex items-center gap-3 group p-2 rounded-md hover:bg-muted/50 transition-colors">
+      <Checkbox
+        checked={item.completed}
+        onCheckedChange={(checked) => onToggle(item.id, checked === true)}
+      />
+      {editing ? (
+        <Input
+          ref={editRef}
+          value={editValue}
+          onChange={(e) => setEditValue(e.target.value)}
+          onBlur={commitEdit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commitEdit();
+            if (e.key === "Escape") setEditing(false);
+          }}
+          className="h-7 text-sm flex-1"
+        />
+      ) : (
+        <span
+          onClick={startEdit}
+          className={`flex-1 text-sm cursor-pointer rounded px-1 -mx-1 hover:bg-muted transition-colors ${
+            item.completed
+              ? "line-through text-muted-foreground"
+              : "font-medium"
+          }`}
+        >
+          {item.title}
+        </span>
+      )}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+        onClick={() => onDelete(item.id)}
+      >
+        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+      </Button>
+    </div>
+  );
+}
+
 function Big3Section({
   title,
   icon: Icon,
@@ -112,6 +183,7 @@ function Big3Section({
   onAdd,
   onToggle,
   onDelete,
+  onRename,
   canAdd,
   addPlaceholder,
 }: {
@@ -123,6 +195,7 @@ function Big3Section({
   onAdd: (title: string) => void;
   onToggle: (id: number, completed: boolean) => void;
   onDelete: (id: number) => void;
+  onRename: (id: number, title: string) => void;
   canAdd: boolean;
   addPlaceholder: string;
 }) {
@@ -154,34 +227,13 @@ function Big3Section({
       </CardHeader>
       <CardContent className="space-y-2">
         {items.map((item) => (
-          <div
+          <EditableItem
             key={item.id}
-            className="flex items-center gap-3 group p-2 rounded-md hover:bg-muted/50 transition-colors"
-          >
-            <Checkbox
-              checked={item.completed}
-              onCheckedChange={(checked) =>
-                onToggle(item.id, checked === true)
-              }
-            />
-            <span
-              className={`flex-1 text-sm ${
-                item.completed
-                  ? "line-through text-muted-foreground"
-                  : "font-medium"
-              }`}
-            >
-              {item.title}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-              onClick={() => onDelete(item.id)}
-            >
-              <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-            </Button>
-          </div>
+            item={item}
+            onToggle={onToggle}
+            onDelete={onDelete}
+            onRename={onRename}
+          />
         ))}
         {canAdd && (
           <div className="flex items-center gap-2 pt-1">
@@ -384,6 +436,9 @@ export function IdealWeek() {
             updateDaily.mutate({ id, data: { completed } })
           }
           onDelete={(id) => deleteDaily.mutate({ id })}
+          onRename={(id, title) =>
+            updateDaily.mutate({ id, data: { title } })
+          }
         />
         <Big3Section
           title="This Week's Big 3"
@@ -402,6 +457,7 @@ export function IdealWeek() {
           }
           onToggle={(id, completed) => updateWeekly.mutate({ id, completed })}
           onDelete={(id) => deleteWeekly.mutate(id)}
+          onRename={(id, title) => updateWeekly.mutate({ id, title })}
         />
       </div>
 
