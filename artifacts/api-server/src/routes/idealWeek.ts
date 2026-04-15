@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable } from "@workspace/db";
 import {
   ListIdealWeekRitualsResponse,
   UpdateIdealWeekRitualParams,
@@ -183,6 +183,50 @@ router.delete("/ideal-week/weekly-top3/:id", async (req, res): Promise<void> => 
     return;
   }
   res.sendStatus(204);
+});
+
+router.get("/ideal-week/morning-ritual", async (req, res): Promise<void> => {
+  const date = req.query.date as string | undefined;
+  if (!date) {
+    res.status(400).json({ error: "date query parameter is required" });
+    return;
+  }
+  const completions = await db
+    .select()
+    .from(morningRitualCompletionsTable)
+    .where(eq(morningRitualCompletionsTable.date, date));
+  res.json(completions);
+});
+
+router.post("/ideal-week/morning-ritual/toggle", async (req, res): Promise<void> => {
+  const { itemKey, date, completed } = req.body;
+  if (!itemKey || !date || typeof completed !== "boolean") {
+    res.status(400).json({ error: "itemKey, date, and completed are required" });
+    return;
+  }
+  const existing = await db
+    .select()
+    .from(morningRitualCompletionsTable)
+    .where(
+      and(
+        eq(morningRitualCompletionsTable.itemKey, itemKey),
+        eq(morningRitualCompletionsTable.date, date)
+      )
+    );
+  let result;
+  if (existing.length > 0) {
+    [result] = await db
+      .update(morningRitualCompletionsTable)
+      .set({ completed })
+      .where(eq(morningRitualCompletionsTable.id, existing[0].id))
+      .returning();
+  } else {
+    [result] = await db
+      .insert(morningRitualCompletionsTable)
+      .values({ itemKey, date, completed })
+      .returning();
+  }
+  res.json(result);
 });
 
 export default router;

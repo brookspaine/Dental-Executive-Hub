@@ -23,6 +23,7 @@ import {
   Trash2,
   Star,
   Target,
+  Sun,
 } from "lucide-react";
 import {
   schedule,
@@ -97,6 +98,33 @@ function useWeeklyTop3(weekStart: string) {
       const res = await fetch(
         `${base}api/ideal-week/weekly-top3?weekStart=${weekStart}`
       );
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+const MORNING_RITUAL_ITEMS = [
+  { key: "devotional", label: "Daily Devotional" },
+  { key: "journal", label: "Morning Journal Questions" },
+  { key: "process", label: "Get it out on paper (process thoughts, decisions, think, etc)" },
+  { key: "meditation", label: "Mindful Breathing/Meditation (Calm App)" },
+  { key: "read", label: "Read (15 min) - personal growth and develop wisdom" },
+];
+
+type MorningRitualCompletion = {
+  id: number;
+  itemKey: string;
+  date: string;
+  completed: boolean;
+};
+
+function useMorningRitual(date: string) {
+  return useQuery<MorningRitualCompletion[]>({
+    queryKey: ["morning-ritual", date],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/ideal-week/morning-ritual?date=${date}`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -261,6 +289,87 @@ function Big3Section({
             No items yet
           </p>
         )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function MorningRitualSection() {
+  const queryClient = useQueryClient();
+  const today = formatDate(new Date());
+  const { data: completions = [] } = useMorningRitual(today);
+  const base = import.meta.env.BASE_URL || "/";
+
+  const toggleMorningItem = useMutation({
+    mutationFn: async (data: { itemKey: string; date: string; completed: boolean }) => {
+      const res = await fetch(`${base}api/ideal-week/morning-ritual/toggle`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      return res.json();
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["morning-ritual", today] }),
+  });
+
+  const isItemCompleted = (key: string) =>
+    completions.some((c) => c.itemKey === key && c.completed);
+
+  const completedCount = MORNING_RITUAL_ITEMS.filter((i) =>
+    isItemCompleted(i.key)
+  ).length;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sun className="h-4 w-4" />
+            Morning Ritual
+          </CardTitle>
+          <Badge
+            variant={
+              completedCount === MORNING_RITUAL_ITEMS.length
+                ? "default"
+                : "secondary"
+            }
+            className="text-xs"
+          >
+            {completedCount}/{MORNING_RITUAL_ITEMS.length}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-1">
+        {MORNING_RITUAL_ITEMS.map((item) => {
+          const checked = isItemCompleted(item.key);
+          return (
+            <div
+              key={item.key}
+              className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
+            >
+              <Checkbox
+                checked={checked}
+                onCheckedChange={() =>
+                  toggleMorningItem.mutate({
+                    itemKey: item.key,
+                    date: today,
+                    completed: !checked,
+                  })
+                }
+              />
+              <span
+                className={`text-sm ${
+                  checked
+                    ? "line-through text-muted-foreground"
+                    : "font-medium"
+                }`}
+              >
+                {item.label}
+              </span>
+            </div>
+          );
+        })}
       </CardContent>
     </Card>
   );
@@ -460,6 +569,8 @@ export function IdealWeek() {
           onRename={(id, title) => updateWeekly.mutate({ id, title })}
         />
       </div>
+
+      <MorningRitualSection />
 
       <Card>
         <CardContent className="p-4">
