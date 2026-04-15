@@ -33,6 +33,11 @@ import {
   Pencil,
   Check,
   X,
+  Anchor,
+  Brain,
+  Zap,
+  Heart,
+  Stethoscope,
 } from "lucide-react";
 import {
   schedule,
@@ -782,6 +787,46 @@ export function IdealWeek() {
         icon={BarChart3}
         bannerColor="bg-[#f9cb9c]"
         textColor="text-orange-900"
+      />
+
+      <EditableRitualSection
+        category="anchor_meetings"
+        title="Anchor Meetings"
+        icon={Anchor}
+        bannerColor="bg-[#c9daf8]"
+        textColor="text-blue-900"
+      />
+
+      <EditableRitualSection
+        category="deepwork"
+        title="Deepwork"
+        icon={Brain}
+        bannerColor="bg-[#d5a6bd]"
+        textColor="text-pink-900"
+      />
+
+      <EditableRitualSection
+        category="execution_block"
+        title="Execution Block"
+        icon={Zap}
+        bannerColor="bg-[#ffe599]"
+        textColor="text-yellow-900"
+      />
+
+      <EditableRitualSection
+        category="family_friends"
+        title="Family/Friends"
+        icon={Heart}
+        bannerColor="bg-[#b6d7a8]"
+        textColor="text-green-900"
+      />
+
+      <EditableRitualSection
+        category="patient_care"
+        title="Patient Care"
+        icon={Stethoscope}
+        bannerColor="bg-[#a2c4c9]"
+        textColor="text-teal-900"
       />
 
       <Card>

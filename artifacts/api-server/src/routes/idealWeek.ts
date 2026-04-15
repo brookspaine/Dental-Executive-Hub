@@ -315,6 +315,27 @@ const DEFAULT_RITUAL_ITEMS: Record<string, string[]> = {
     "Change Habits to focus on",
     "Review Book Takeaways from Books Read that Quarter\nhttps://docs.google.com/document/d/1W7XKQzw5akO3_Tyis5NsK5gEcvSh0Bkp0I1KKnJtjr8/edit?usp=sharing",
   ],
+  anchor_meetings: [
+    "Recurring Meetings, typically the who's that execute your core businesses",
+  ],
+  deepwork: [
+    "Get the big stuff done",
+    "Don't get distracted by what you \"feel\" like doing",
+  ],
+  execution_block: [
+    "Who, not how",
+    "GSD (The right shit done)",
+  ],
+  family_friends: [
+    "phone away",
+    "intentional energy",
+    "focus on Mariah and Callen",
+  ],
+  patient_care: [
+    "BBB - Be brief, be brilliant, be done",
+    "Patience in endo",
+    "People see compassion and care",
+  ],
 };
 
 router.get("/ideal-week/ritual-items", async (req, res): Promise<void> => {
