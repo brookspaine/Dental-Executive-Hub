@@ -112,7 +112,7 @@ export function Dashboard() {
           bg: "bg-blue-50",
         },
         {
-          label: "Organizations",
+          label: "EDGE",
           value: `${summary.activeOrganizations}/${summary.totalOrganizations}`,
           icon: Building2,
           color: "text-violet-600",
@@ -251,7 +251,7 @@ export function Dashboard() {
         {/* Org Performance Chart */}
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Organization Performance</CardTitle>
+            <CardTitle className="text-base">EDGE Performance</CardTitle>
           </CardHeader>
           <CardContent>
             {orgPerf && orgPerf.length > 0 ? (
@@ -291,7 +291,7 @@ export function Dashboard() {
               </div>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
-                No organization data yet
+                No EDGE data yet
               </p>
             )}
           </CardContent>

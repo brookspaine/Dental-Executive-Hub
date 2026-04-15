@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/organizations", label: "Organizations", icon: Building2 },
+  { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/direct-reports", label: "Direct Reports", icon: Users },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
 ];

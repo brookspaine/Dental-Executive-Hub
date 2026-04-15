@@ -134,7 +134,7 @@ export function Organizations() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Organizations</h2>
+          <h2 className="text-2xl font-bold tracking-tight">EDGE</h2>
           <p className="text-muted-foreground text-sm mt-1">
             Manage your dental practice locations
           </p>
@@ -152,12 +152,12 @@ export function Organizations() {
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
-              Add Organization
+              Add EDGE Location
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit Organization" : "Add Organization"}</DialogTitle>
+              <DialogTitle>{editingId ? "Edit EDGE Location" : "Add EDGE Location"}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
@@ -256,7 +256,7 @@ export function Organizations() {
                 </Select>
               </div>
               <Button onClick={handleSubmit} className="mt-2">
-                {editingId ? "Update" : "Create"} Organization
+                {editingId ? "Update" : "Create"} EDGE Location
               </Button>
             </div>
           </DialogContent>
@@ -275,7 +275,7 @@ export function Organizations() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Organization</TableHead>
+                  <TableHead>EDGE Location</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead className="text-right">Providers</TableHead>
@@ -353,7 +353,7 @@ export function Organizations() {
           ) : (
             <div className="p-12 text-center">
               <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No organizations yet</p>
+              <p className="text-sm text-muted-foreground">No EDGE locations yet</p>
               <p className="text-xs text-muted-foreground mt-1">
                 Add your first dental practice to get started
               </p>
