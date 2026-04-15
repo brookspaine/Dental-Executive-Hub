@@ -933,16 +933,14 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                 </span>
               );
             })}
-            {(calData?.calendars || []).map(cal => (
+            {(calData?.calendars || []).length > 0 && (
               <span
-                key={cal.id}
-                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white inline-flex items-center gap-1"
-                style={{ backgroundColor: cal.color || "#039be5" }}
+                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ${categoryColors["calendar"].bg} ${categoryColors["calendar"].text}`}
               >
                 <CalendarDays className="h-2.5 w-2.5" />
-                {cal.name}
+                Google Calendar
               </span>
-            ))}
+            )}
           </div>
 
           {isLoading ? (
@@ -977,8 +975,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                               {allDayEvs.map(ev => (
                                 <div
                                   key={ev.id}
-                                  className="rounded px-1 py-px text-[8px] leading-tight text-white truncate"
-                                  style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                  className={`rounded px-1 py-px text-[9px] leading-tight font-medium truncate border ${categoryColors["calendar"].bg} ${categoryColors["calendar"].text} ${categoryColors["calendar"].border}`}
                                   title={`${ev.summary} (${ev.calendarName})`}
                                 >
                                   {ev.summary}
@@ -1006,6 +1003,8 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                         const c = block ? categoryColors[block.category] : null;
                         const hourCalEvents = calEventsByDayHour[`${day}-${hour}`] || [];
 
+                        const cc = categoryColors["calendar"];
+
                         if (block && !isBlockStart) {
                           return (
                             <div
@@ -1018,8 +1017,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                   {hourCalEvents.map(ev => (
                                     <div
                                       key={ev.id}
-                                      className="rounded px-1 py-px text-[8px] leading-tight text-white truncate max-w-full"
-                                      style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                      className={`rounded px-1 py-px text-[10px] leading-tight font-medium truncate max-w-full ${cc.bg} ${cc.text} border ${cc.border}`}
                                       title={`${ev.summary} (${ev.calendarName})`}
                                     >
                                       {ev.summary}
@@ -1046,8 +1044,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                   {hourCalEvents.map(ev => (
                                     <div
                                       key={ev.id}
-                                      className="w-2 h-2 rounded-full border border-white"
-                                      style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                      className={`rounded-full w-2.5 h-2.5 border ${cc.border} ${cc.bg}`}
                                       title={`${ev.summary} (${ev.calendarName})`}
                                     />
                                   ))}
@@ -1061,19 +1058,13 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                           return (
                             <div
                               key={day}
-                              className="h-8 border border-dashed border-muted bg-background cursor-pointer hover:bg-muted/30 transition-colors flex flex-col items-center justify-center gap-px p-px"
+                              className={`h-8 border rounded text-[10px] font-medium flex items-center justify-center cursor-pointer hover:opacity-80 ${cc.bg} ${cc.text} ${cc.border}`}
                               onClick={() => openCreateDialog(day, hour)}
+                              title={hourCalEvents.map(ev => `${ev.summary} (${ev.calendarName})`).join(", ")}
                             >
-                              {hourCalEvents.map(ev => (
-                                <div
-                                  key={ev.id}
-                                  className="rounded px-1 py-px text-[8px] leading-tight text-white truncate max-w-full w-full text-center"
-                                  style={{ backgroundColor: ev.calendarColor || "#039be5" }}
-                                  title={`${ev.summary} (${ev.calendarName})`}
-                                >
-                                  {ev.summary}
-                                </div>
-                              ))}
+                              <span className="truncate px-0.5 text-center leading-tight">
+                                {hourCalEvents.map(ev => ev.summary).join(", ")}
+                              </span>
                             </div>
                           );
                         }

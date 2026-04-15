@@ -17,6 +17,7 @@ export const categoryColors: Record<string, { bg: string; text: string; border: 
   review: { bg: "bg-yellow-100", text: "text-yellow-800", border: "border-yellow-300" },
   meeting: { bg: "bg-gray-200", text: "text-gray-800", border: "border-gray-300" },
   workout: { bg: "bg-emerald-100", text: "text-emerald-800", border: "border-emerald-300" },
+  calendar: { bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-300" },
 };
 
 export const categoryLabels: Record<string, string> = {
