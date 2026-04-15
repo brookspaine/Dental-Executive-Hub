@@ -366,8 +366,8 @@ function JournalPromptField({
   };
 
   return (
-    <div className="space-y-1">
-      <label className="text-xs font-medium text-muted-foreground">
+    <div className="flex items-start gap-3">
+      <label className="text-xs font-medium text-muted-foreground whitespace-nowrap pt-2 min-w-[200px]">
         {prompt.label}
       </label>
       <textarea
@@ -375,8 +375,8 @@ function JournalPromptField({
         onChange={(e) => handleChange(e.target.value)}
         onBlur={handleBlur}
         placeholder="Type your response..."
-        rows={2}
-        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[60px]"
+        rows={1}
+        className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[36px]"
       />
     </div>
   );
