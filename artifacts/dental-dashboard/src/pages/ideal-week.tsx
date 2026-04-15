@@ -962,6 +962,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   }
 
   function startMoveDrag(e: React.MouseEvent, block: ScheduleBlockType) {
+    if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
     const colEl = (e.currentTarget as HTMLElement).closest("[data-day-column]") as HTMLElement;
@@ -974,6 +975,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   }
 
   function startResizeDrag(e: React.MouseEvent, block: ScheduleBlockType) {
+    if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
     const colEl = (e.currentTarget as HTMLElement).closest("[data-day-column]") as HTMLElement;
