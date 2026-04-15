@@ -3,20 +3,32 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Dental CEO Dashboard API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: dailyTop3
+    description: Daily Top 3 priorities
+  - name: organizations
+    description: Organization management
+  - name: directReports
+    description: Direct reports management
+  - name: announcements
+    description: Announcements management
+  - name: dashboard
+    description: Dashboard summary data
+  - name: activity
+    description: Recent activity feed
+
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,347 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /daily-top3:
+    get:
+      operationId: listDailyTop3
+      tags: [dailyTop3]
+      summary: List today's top 3 priorities
+      responses:
+        "200":
+          description: List of daily priorities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DailyTop3Item"
+    post:
+      operationId: createDailyTop3
+      tags: [dailyTop3]
+      summary: Create a daily priority
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDailyTop3Body"
+      responses:
+        "201":
+          description: Created priority
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTop3Item"
+
+  /daily-top3/{id}:
+    patch:
+      operationId: updateDailyTop3
+      tags: [dailyTop3]
+      summary: Update a daily priority
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDailyTop3Body"
+      responses:
+        "200":
+          description: Updated priority
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DailyTop3Item"
+    delete:
+      operationId: deleteDailyTop3
+      tags: [dailyTop3]
+      summary: Delete a daily priority
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /organizations:
+    get:
+      operationId: listOrganizations
+      tags: [organizations]
+      summary: List all organizations
+      responses:
+        "200":
+          description: List of organizations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Organization"
+    post:
+      operationId: createOrganization
+      tags: [organizations]
+      summary: Create an organization
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrganizationBody"
+      responses:
+        "201":
+          description: Created organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+
+  /organizations/{id}:
+    get:
+      operationId: getOrganization
+      tags: [organizations]
+      summary: Get organization details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Organization details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+    patch:
+      operationId: updateOrganization
+      tags: [organizations]
+      summary: Update an organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateOrganizationBody"
+      responses:
+        "200":
+          description: Updated organization
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Organization"
+    delete:
+      operationId: deleteOrganization
+      tags: [organizations]
+      summary: Delete an organization
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /direct-reports:
+    get:
+      operationId: listDirectReports
+      tags: [directReports]
+      summary: List all direct reports
+      responses:
+        "200":
+          description: List of direct reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/DirectReport"
+    post:
+      operationId: createDirectReport
+      tags: [directReports]
+      summary: Create a direct report
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateDirectReportBody"
+      responses:
+        "201":
+          description: Created direct report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectReport"
+
+  /direct-reports/{id}:
+    get:
+      operationId: getDirectReport
+      tags: [directReports]
+      summary: Get direct report details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Direct report details
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectReport"
+    patch:
+      operationId: updateDirectReport
+      tags: [directReports]
+      summary: Update a direct report
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateDirectReportBody"
+      responses:
+        "200":
+          description: Updated direct report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DirectReport"
+    delete:
+      operationId: deleteDirectReport
+      tags: [directReports]
+      summary: Delete a direct report
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /announcements:
+    get:
+      operationId: listAnnouncements
+      tags: [announcements]
+      summary: List all announcements
+      responses:
+        "200":
+          description: List of announcements
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Announcement"
+    post:
+      operationId: createAnnouncement
+      tags: [announcements]
+      summary: Create an announcement
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAnnouncementBody"
+      responses:
+        "201":
+          description: Created announcement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Announcement"
+
+  /announcements/{id}:
+    delete:
+      operationId: deleteAnnouncement
+      tags: [announcements]
+      summary: Delete an announcement
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [dashboard]
+      summary: Get dashboard KPI summary
+      responses:
+        "200":
+          description: Dashboard summary data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
+  /dashboard/org-performance:
+    get:
+      operationId: getOrgPerformance
+      tags: [dashboard]
+      summary: Get organization performance breakdown
+      responses:
+        "200":
+          description: Performance data by organization
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgPerformance"
+
+  /activity/recent:
+    get:
+      operationId: getRecentActivity
+      tags: [activity]
+      summary: Get recent activity feed
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+      responses:
+        "200":
+          description: Recent activity items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActivityItem"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +387,348 @@ components:
       required:
         - status
 
+    DailyTop3Item:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        completed:
+          type: boolean
+        priority:
+          type: integer
+        date:
+          type: string
+          format: date
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - completed
+        - priority
+        - date
+        - createdAt
+
+    CreateDailyTop3Body:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        priority:
+          type: integer
+      required:
+        - title
+        - priority
+
+    UpdateDailyTop3Body:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        completed:
+          type: boolean
+        priority:
+          type: integer
+
+    Organization:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        providerCount:
+          type: integer
+        patientCount:
+          type: integer
+        monthlyRevenue:
+          type: number
+        status:
+          type: string
+          enum: [active, inactive]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - address
+        - city
+        - state
+        - status
+        - createdAt
+
+    CreateOrganizationBody:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        providerCount:
+          type: integer
+        patientCount:
+          type: integer
+        monthlyRevenue:
+          type: number
+        status:
+          type: string
+          enum: [active, inactive]
+      required:
+        - name
+        - address
+        - city
+        - state
+
+    UpdateOrganizationBody:
+      type: object
+      properties:
+        name:
+          type: string
+        address:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        phone:
+          type: string
+        email:
+          type: string
+        providerCount:
+          type: integer
+        patientCount:
+          type: integer
+        monthlyRevenue:
+          type: number
+        status:
+          type: string
+          enum: [active, inactive]
+
+    DirectReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        role:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        organizationId:
+          type: integer
+        organizationName:
+          type: string
+        status:
+          type: string
+          enum: [active, on_leave, inactive]
+        hireDate:
+          type: string
+          format: date
+        performanceRating:
+          type: number
+        avatarUrl:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - name
+        - role
+        - email
+        - status
+        - createdAt
+
+    CreateDirectReportBody:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        organizationId:
+          type: integer
+        status:
+          type: string
+          enum: [active, on_leave, inactive]
+        hireDate:
+          type: string
+          format: date
+        performanceRating:
+          type: number
+        avatarUrl:
+          type: string
+      required:
+        - name
+        - role
+        - email
+
+    UpdateDirectReportBody:
+      type: object
+      properties:
+        name:
+          type: string
+        role:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        organizationId:
+          type: integer
+        status:
+          type: string
+          enum: [active, on_leave, inactive]
+        hireDate:
+          type: string
+          format: date
+        performanceRating:
+          type: number
+        avatarUrl:
+          type: string
+
+    Announcement:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+          enum: [info, warning, success, urgent]
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - content
+        - type
+        - createdAt
+
+    CreateAnnouncementBody:
+      type: object
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        type:
+          type: string
+          enum: [info, warning, success, urgent]
+      required:
+        - title
+        - content
+        - type
+
+    DashboardSummary:
+      type: object
+      properties:
+        totalOrganizations:
+          type: integer
+        totalDirectReports:
+          type: integer
+        totalPatients:
+          type: integer
+        totalMonthlyRevenue:
+          type: number
+        dailyTop3Completed:
+          type: integer
+        dailyTop3Total:
+          type: integer
+        activeOrganizations:
+          type: integer
+        revenueChangePercent:
+          type: number
+        patientChangePercent:
+          type: number
+      required:
+        - totalOrganizations
+        - totalDirectReports
+        - totalPatients
+        - totalMonthlyRevenue
+        - dailyTop3Completed
+        - dailyTop3Total
+        - activeOrganizations
+
+    OrgPerformance:
+      type: object
+      properties:
+        organizationId:
+          type: integer
+        organizationName:
+          type: string
+        monthlyRevenue:
+          type: number
+        patientCount:
+          type: integer
+        providerCount:
+          type: integer
+        productionGoalPercent:
+          type: number
+      required:
+        - organizationId
+        - organizationName
+        - monthlyRevenue
+        - patientCount
+        - providerCount
+        - productionGoalPercent
+
+    ActivityItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+          enum: [task_completed, report_added, org_updated, announcement, milestone]
+        message:
+          type: string
+        entityName:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - type
+        - message
+        - createdAt
