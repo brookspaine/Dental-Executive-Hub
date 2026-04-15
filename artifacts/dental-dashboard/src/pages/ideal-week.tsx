@@ -584,46 +584,110 @@ const START_TIME_OPTIONS = Array.from({ length: 30 }, (_, i) => {
   return { value: String(t), label: `${h}:${m} ${ampm}` };
 });
 
-const READING_LIST = [
-  "How to Win Friends and Influence People",
-  "Shoe Dog",
-  "No Ego",
-  "Living Your Best Year Ever",
-  "The Hard Thing About Hard Things - Ben Horowitz",
-  "What You Do Is Who You Are - Ben Horowitz",
-  "The One Page Marketing Plan - Allan Nib",
-  "Who's Got Your Back?",
-  "Tribes - We Need You to Lead Us",
-  "Thinking Fast and Slow - Daniel Kahneman",
-  "Shaka - How to Be Free",
-  "Shaka - Righting My Wrongs",
-  "The Weirdest People in the World",
-  "Man's Search for Meaning - Viktor Frankl",
-  "John Maxwell - 5 Levels of Leadership",
-  "Outliers - Malcolm Gladwell",
-  "Desire to Win/Succeed - Malcolm Gladwell",
-  "Ben Horowitz Books/Insights",
-  "Inner Excellence",
-  "Building an Elite Organization",
-  "The Richest Man in Babylon",
-  "Deepwork",
-  "The Obstacle Is the Way",
-  "Drive - Daniel Pink",
-  "Art of Learning",
-  "Contagious",
-  "Mind Gym",
-  "Positive Intelligence",
-  "The Infinite Game - Simon Sinek",
-  "Thou Shall Prosper",
-  "No Bullshit Leadership",
-  "Crucial Accountability and Crucial Conversations",
-  "The Compound Effect - Darren Hardy",
-  "Empire Building - Adam Coffee",
-  "Noise - Daniel Kahneman",
-];
+type ReadingItem = { id: number; title: string; sortOrder: number };
+
+function useReadingList() {
+  const base = import.meta.env.BASE_URL || "/";
+  return useQuery({
+    queryKey: ["reading-list"],
+    queryFn: async () => {
+      const res = await fetch(`${base}api/ideal-week/reading-list`);
+      return res.json() as Promise<ReadingItem[]>;
+    },
+  });
+}
+
+function ReadingListItem({ item }: { item: ReadingItem }) {
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+  const [value, setValue] = useState(item.title);
+  const [dirty, setDirty] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const updateItem = useMutation({
+    mutationFn: async (title: string) => {
+      const res = await fetch(`${base}api/ideal-week/reading-list/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["reading-list"] });
+    },
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: async () => {
+      await fetch(`${base}api/ideal-week/reading-list/${item.id}`, { method: "DELETE" });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reading-list"] });
+    },
+  });
+
+  const handleChange = (newVal: string) => {
+    setValue(newVal);
+    setDirty(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateItem.mutate(newVal);
+    }, 800);
+  };
+
+  const handleBlur = () => {
+    if (dirty) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      updateItem.mutate(value);
+    }
+  };
+
+  return (
+    <li className="group flex items-start gap-1.5 text-sm text-foreground/80">
+      <span className="text-muted-foreground mt-1.5 text-xs">•</span>
+      <div
+        contentEditable
+        suppressContentEditableWarning
+        className="flex-1 outline-none focus:bg-muted/30 rounded px-0.5 py-0.5 cursor-text min-h-[20px] whitespace-pre-wrap"
+        onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+        onBlur={handleBlur}
+        dangerouslySetInnerHTML={{ __html: item.title }}
+      />
+      <button
+        onClick={() => deleteItem.mutate()}
+        className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-destructive mt-0.5"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </li>
+  );
+}
 
 function ReadingList() {
   const [open, setOpen] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const { data: items = [] } = useReadingList();
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+
+  const addItem = useMutation({
+    mutationFn: async (title: string) => {
+      const res = await fetch(`${base}api/ideal-week/reading-list`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reading-list"] });
+      setNewTitle("");
+      setAdding(false);
+    },
+  });
 
   return (
     <Card>
@@ -634,20 +698,43 @@ function ReadingList() {
         <div className="flex items-center gap-2">
           <BookOpen className="h-4 w-4 text-primary" />
           <span className="text-sm font-semibold">Reading List</span>
-          <span className="text-xs text-muted-foreground">({READING_LIST.length} books)</span>
+          <span className="text-xs text-muted-foreground">({items.length} books)</span>
         </div>
         <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
       {open && (
         <CardContent className="pt-0 pb-3 px-4">
           <ul className="space-y-1">
-            {READING_LIST.map((book, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-foreground/80">
-                <span className="text-muted-foreground mt-0.5 text-xs">•</span>
-                <span>{book}</span>
-              </li>
+            {items.map((item) => (
+              <ReadingListItem key={item.id} item={item} />
             ))}
           </ul>
+          {adding ? (
+            <div className="flex items-center gap-2 mt-2">
+              <Input
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                placeholder="Book title..."
+                className="text-sm h-8"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && newTitle.trim()) addItem.mutate(newTitle.trim());
+                  if (e.key === "Escape") { setAdding(false); setNewTitle(""); }
+                }}
+              />
+              <Button size="sm" className="h-8" onClick={() => newTitle.trim() && addItem.mutate(newTitle.trim())}>
+                <Plus className="h-3 w-3" />
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setAdding(true)}
+              className="mt-2 text-xs text-muted-foreground hover:text-primary flex items-center gap-1 transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Add book
+            </button>
+          )}
         </CardContent>
       )}
     </Card>

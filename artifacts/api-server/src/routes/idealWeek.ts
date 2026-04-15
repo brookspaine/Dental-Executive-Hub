@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable, readingListTable } from "@workspace/db";
 import type { ScheduleBlock } from "@workspace/db";
 import { asc } from "drizzle-orm";
 import {
@@ -574,6 +574,97 @@ router.delete("/ideal-week/ritual-items/:id", async (req, res): Promise<void> =>
     return;
   }
   await db.delete(ritualItemsTable).where(eq(ritualItemsTable.id, id));
+  res.json({ success: true });
+});
+
+const DEFAULT_READING_LIST = [
+  "How to Win Friends and Influence People",
+  "Shoe Dog",
+  "No Ego",
+  "Living Your Best Year Ever",
+  "The Hard Thing About Hard Things - Ben Horowitz",
+  "What You Do Is Who You Are - Ben Horowitz",
+  "The One Page Marketing Plan - Allan Nib",
+  "Who's Got Your Back?",
+  "Tribes - We Need You to Lead Us",
+  "Thinking Fast and Slow - Daniel Kahneman",
+  "Shaka - How to Be Free",
+  "Shaka - Righting My Wrongs",
+  "The Weirdest People in the World",
+  "Man's Search for Meaning - Viktor Frankl",
+  "John Maxwell - 5 Levels of Leadership",
+  "Outliers - Malcolm Gladwell",
+  "Desire to Win/Succeed - Malcolm Gladwell",
+  "Ben Horowitz Books/Insights",
+  "Inner Excellence",
+  "Building an Elite Organization",
+  "The Richest Man in Babylon",
+  "Deepwork",
+  "The Obstacle Is the Way",
+  "Drive - Daniel Pink",
+  "Art of Learning",
+  "Contagious",
+  "Mind Gym",
+  "Positive Intelligence",
+  "The Infinite Game - Simon Sinek",
+  "Thou Shall Prosper",
+  "No Bullshit Leadership",
+  "Crucial Accountability and Crucial Conversations",
+  "The Compound Effect - Darren Hardy",
+  "Empire Building - Adam Coffee",
+  "Noise - Daniel Kahneman",
+];
+
+router.get("/ideal-week/reading-list", async (_req, res): Promise<void> => {
+  let items = await db.select().from(readingListTable).orderBy(asc(readingListTable.sortOrder));
+  if (items.length === 0) {
+    try {
+      const rows = DEFAULT_READING_LIST.map((title, i) => ({ title, sortOrder: i }));
+      items = await db.insert(readingListTable).values(rows).returning();
+    } catch {
+      items = await db.select().from(readingListTable).orderBy(asc(readingListTable.sortOrder));
+    }
+  }
+  res.json(items);
+});
+
+router.post("/ideal-week/reading-list", async (req, res): Promise<void> => {
+  const { title } = req.body;
+  if (!title || typeof title !== "string") {
+    res.status(400).json({ error: "title is required" });
+    return;
+  }
+  const maxOrder = await db.select().from(readingListTable).orderBy(asc(readingListTable.sortOrder));
+  const sortOrder = maxOrder.length > 0 ? Math.max(...maxOrder.map(r => r.sortOrder)) + 1 : 0;
+  const [item] = await db.insert(readingListTable).values({ title, sortOrder }).returning();
+  res.json(item);
+});
+
+router.patch("/ideal-week/reading-list/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  const { title } = req.body;
+  if (!title || typeof title !== "string") {
+    res.status(400).json({ error: "title is required" });
+    return;
+  }
+  const [item] = await db.update(readingListTable)
+    .set({ title })
+    .where(eq(readingListTable.id, id))
+    .returning();
+  res.json(item);
+});
+
+router.delete("/ideal-week/reading-list/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  await db.delete(readingListTable).where(eq(readingListTable.id, id));
   res.json({ success: true });
 });
 
