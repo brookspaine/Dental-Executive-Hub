@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import type { LucideIcon } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -102,6 +102,32 @@ function isToday(d: Date): boolean {
   const today = new Date();
   return formatDate(d) === formatDate(today);
 }
+
+function isDayToday(day: string, weekStart: Date): boolean {
+  const dayIndex = DAYS.indexOf(day as typeof DAYS[number]);
+  if (dayIndex < 0) return false;
+  const d = new Date(weekStart);
+  d.setDate(d.getDate() + dayIndex);
+  return isToday(d);
+}
+
+function formatTimeRange(start: number, end: number): string {
+  const fmt = (t: number) => {
+    const h = Math.floor(t) % 12 || 12;
+    const m = t % 1 >= 0.5 ? "30" : "00";
+    const ampm = t < 12 ? "AM" : "PM";
+    return `${h}:${m}${ampm}`;
+  };
+  return `${fmt(start)}–${fmt(end)}`;
+}
+
+const HOUR_HEIGHT = 60;
+const FIRST_HOUR = 6;
+const LAST_HOUR = 21;
+const GRID_HEIGHT = (LAST_HOUR - FIRST_HOUR) * HOUR_HEIGHT;
+
+const snapToHalf = (h: number) => Math.round(h * 2) / 2;
+const clampHour = (h: number) => Math.max(FIRST_HOUR, Math.min(LAST_HOUR, h));
 
 function useWeekCompletions(startDate: string, endDate: string) {
   return useQuery({
@@ -575,6 +601,10 @@ const DURATION_OPTIONS = [
   { value: "3", label: "3 hours" },
   { value: "3.5", label: "3.5 hours" },
   { value: "4", label: "4 hours" },
+  { value: "4.5", label: "4.5 hours" },
+  { value: "5", label: "5 hours" },
+  { value: "5.5", label: "5.5 hours" },
+  { value: "6", label: "6 hours" },
 ];
 
 const START_TIME_OPTIONS = Array.from({ length: 30 }, (_, i) => {
@@ -789,6 +819,115 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   const [formLabel, setFormLabel] = useState("");
   const [formCategory, setFormCategory] = useState<string>("deepwork");
 
+  type DragState = {
+    type: "create" | "resize" | "move";
+    day: string;
+    startHour: number;
+    currentHour: number;
+    currentDay: string;
+    blockId?: number;
+    offsetHour?: number;
+    columnsRect: DOMRect;
+    columnBodyTop: number;
+  };
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const columnsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!dragState) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const colWidth = dragState.columnsRect.width / 7;
+      const dayIndex = Math.max(0, Math.min(6, Math.floor((e.clientX - dragState.columnsRect.left) / colWidth)));
+      const currentDay = DAYS[dayIndex];
+      const currentHour = clampHour(snapToHalf(FIRST_HOUR + (e.clientY - dragState.columnBodyTop) / HOUR_HEIGHT));
+      setDragState(prev => prev ? { ...prev, currentHour, currentDay } : null);
+    };
+    const handleMouseUp = () => {
+      setDragState(prev => {
+        if (!prev) return null;
+        if (prev.type === "create") {
+          const minH = Math.min(prev.startHour, prev.currentHour);
+          const maxH = Math.max(prev.startHour, prev.currentHour);
+          const duration = maxH - minH;
+          if (duration < 0.5) {
+            openCreateDialog(prev.day, prev.startHour);
+          } else {
+            setFormDay(prev.currentDay);
+            setFormStart(String(minH));
+            setFormDuration(String(duration));
+            setFormLabel("");
+            setFormCategory("deepwork");
+            setEditingBlock(null);
+            setDialogOpen(true);
+          }
+        } else if (prev.type === "resize" && prev.blockId) {
+          const block = blocks.find(b => b.id === prev.blockId);
+          if (block) {
+            const newDuration = Math.max(0.5, snapToHalf(prev.currentHour - block.start));
+            if (newDuration !== block.duration) {
+              const inv = () => queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+              updateBlock.mutate({ id: block.id, data: { duration: newDuration } }, { onSuccess: inv });
+            }
+          }
+        } else if (prev.type === "move" && prev.blockId) {
+          const block = blocks.find(b => b.id === prev.blockId);
+          if (block) {
+            const newStart = snapToHalf(prev.currentHour - (prev.offsetHour || 0));
+            const clampedStart = clampHour(newStart);
+            const maxStart = Math.max(FIRST_HOUR, LAST_HOUR - block.duration);
+            const finalStart = Math.min(clampedStart, maxStart);
+            if (finalStart !== block.start || prev.currentDay !== block.day) {
+              const inv = () => queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+              updateBlock.mutate({ id: block.id, data: { day: prev.currentDay, start: finalStart } }, { onSuccess: inv });
+            } else {
+              openEditDialog(block);
+            }
+          }
+        }
+        return null;
+      });
+    };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [dragState, blocks, queryClient, updateBlock]);
+
+  function startCreateDrag(e: React.MouseEvent, day: string) {
+    if (e.button !== 0) return;
+    const colEl = e.currentTarget as HTMLElement;
+    const colRect = colEl.getBoundingClientRect();
+    const columnsRect = columnsRef.current?.getBoundingClientRect() || colRect;
+    const hour = clampHour(snapToHalf(FIRST_HOUR + (e.clientY - colRect.top) / HOUR_HEIGHT));
+    setDragState({ type: "create", day, startHour: hour, currentHour: hour, currentDay: day, columnsRect, columnBodyTop: colRect.top });
+    e.preventDefault();
+  }
+
+  function startMoveDrag(e: React.MouseEvent, block: ScheduleBlockType) {
+    e.stopPropagation();
+    e.preventDefault();
+    const colEl = (e.currentTarget as HTMLElement).closest("[data-day-column]") as HTMLElement;
+    if (!colEl) return;
+    const colRect = colEl.getBoundingClientRect();
+    const columnsRect = columnsRef.current?.getBoundingClientRect() || colRect;
+    const clickHour = clampHour(snapToHalf(FIRST_HOUR + (e.clientY - colRect.top) / HOUR_HEIGHT));
+    const offsetHour = clickHour - block.start;
+    setDragState({ type: "move", day: block.day, startHour: block.start, currentHour: clickHour, currentDay: block.day, blockId: block.id, offsetHour, columnsRect, columnBodyTop: colRect.top });
+  }
+
+  function startResizeDrag(e: React.MouseEvent, block: ScheduleBlockType) {
+    e.stopPropagation();
+    e.preventDefault();
+    const colEl = (e.currentTarget as HTMLElement).closest("[data-day-column]") as HTMLElement;
+    if (!colEl) return;
+    const colRect = colEl.getBoundingClientRect();
+    const columnsRect = columnsRef.current?.getBoundingClientRect() || colRect;
+    const hour = clampHour(snapToHalf(FIRST_HOUR + (e.clientY - colRect.top) / HOUR_HEIGHT));
+    setDragState({ type: "resize", day: block.day, startHour: block.start, currentHour: hour, currentDay: block.day, blockId: block.id, columnsRect, columnBodyTop: colRect.top });
+  }
+
   const calTimeMin = useMemo(() => {
     const d = new Date(weekStart);
     d.setHours(0, 0, 0, 0);
@@ -951,135 +1090,216 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
           ) : (
             <div className="overflow-x-auto">
               <div className="min-w-[700px]">
-                <div className="grid grid-cols-[45px_repeat(7,1fr)] gap-0.5">
-                  <div className="h-6" />
-                  {DAYS.map((day) => (
-                    <div
-                      key={day}
-                      className="h-6 flex items-center justify-center text-[10px] font-semibold text-muted-foreground bg-muted/50 rounded-t"
-                    >
-                      {day}
-                    </div>
-                  ))}
+                {(() => {
+                  const hasAnyAllDay = DAYS.some(day => (calEventsByDayHour[`${day}-allday`] || []).length > 0);
+                  const cc = categoryColors["calendar"];
+                  return (
+                    <>
+                      {hasAnyAllDay && (
+                        <div className="grid grid-cols-[50px_repeat(7,1fr)] gap-0.5 mb-0.5">
+                          <div />
+                          {DAYS.map(day => {
+                            const allDayEvs = calEventsByDayHour[`${day}-allday`] || [];
+                            return (
+                              <div key={day} className="min-h-[20px] flex flex-col gap-px p-px">
+                                {allDayEvs.map(ev => (
+                                  <div
+                                    key={ev.id}
+                                    className={`rounded px-1 py-px text-[9px] leading-tight font-medium truncate border ${cc.bg} ${cc.text} ${cc.border}`}
+                                    title={`${ev.summary} (${ev.calendarName})`}
+                                  >
+                                    {ev.summary}
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      <div className={`flex ${dragState ? "select-none" : ""}`}>
+                        <div className="w-[50px] flex-shrink-0 pt-7">
+                          <div className="relative" style={{ height: GRID_HEIGHT }}>
+                            {TIME_SLOTS.map(hour => (
+                              <div
+                                key={hour}
+                                className="absolute right-1.5 text-[10px] text-muted-foreground leading-none"
+                                style={{ top: (hour - FIRST_HOUR) * HOUR_HEIGHT - 5 }}
+                              >
+                                {formatHour(hour)}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
 
-                  {(() => {
-                    const hasAnyAllDay = DAYS.some(day => (calEventsByDayHour[`${day}-allday`] || []).length > 0);
-                    if (!hasAnyAllDay) return null;
-                    return (
-                      <div className="contents">
-                        <div className="h-auto flex items-start justify-end pr-1 text-[9px] text-muted-foreground pt-0.5 pb-0.5" />
-                        {DAYS.map((day) => {
-                          const allDayEvs = calEventsByDayHour[`${day}-allday`] || [];
-                          return (
-                            <div key={day} className="min-h-[20px] flex flex-col gap-px p-px">
-                              {allDayEvs.map(ev => (
+                        <div ref={columnsRef} className="flex flex-1">
+                          {DAYS.map(day => (
+                            <div key={day} className="flex-1 min-w-0">
+                              <div className="h-7 flex items-center justify-center text-[11px] font-semibold text-muted-foreground bg-muted/50 rounded-t border-l">
+                                {day}
+                              </div>
+                              <div
+                                data-day-column={day}
+                                className="relative border-l border-b cursor-crosshair"
+                                style={{ height: GRID_HEIGHT }}
+                                onMouseDown={(e) => {
+                                  if ((e.target as HTMLElement).closest("[data-block]")) return;
+                                  startCreateDrag(e, day);
+                                }}
+                              >
+                                {Array.from({ length: LAST_HOUR - FIRST_HOUR }, (_, i) => i + FIRST_HOUR).map(hour => (
+                                  <div key={hour}>
+                                    <div
+                                      className="absolute w-full border-t border-muted/60 pointer-events-none"
+                                      style={{ top: (hour - FIRST_HOUR) * HOUR_HEIGHT }}
+                                    />
+                                    <div
+                                      className="absolute w-full border-t border-dashed border-muted/30 pointer-events-none"
+                                      style={{ top: (hour - FIRST_HOUR) * HOUR_HEIGHT + HOUR_HEIGHT / 2 }}
+                                    />
+                                  </div>
+                                ))}
                                 <div
-                                  key={ev.id}
-                                  className={`rounded px-1 py-px text-[9px] leading-tight font-medium truncate border ${categoryColors["calendar"].bg} ${categoryColors["calendar"].text} ${categoryColors["calendar"].border}`}
-                                  title={`${ev.summary} (${ev.calendarName})`}
-                                >
-                                  {ev.summary}
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })()}
+                                  className="absolute w-full border-t border-muted/60 pointer-events-none"
+                                  style={{ top: GRID_HEIGHT }}
+                                />
 
-                  {TIME_SLOTS.map((hour) => (
-                    <div key={hour} className="contents">
-                      <div className="h-8 flex items-start justify-end pr-1 text-[10px] text-muted-foreground pt-0.5">
-                        {formatHour(hour)}
-                      </div>
-                      {DAYS.map((day) => {
-                        const dayBlocks = scheduleByDay[day] || [];
-                        const block = dayBlocks.find(
-                          (b) => hour >= b.start && hour < b.start + b.duration
-                        );
-                        const isBlockStart =
-                          block && hour === Math.floor(block.start);
-                        const c = block ? categoryColors[block.category] : null;
-                        const hourCalEvents = calEventsByDayHour[`${day}-${hour}`] || [];
+                                {(scheduleByDay[day] || []).map(block => {
+                                  const c = categoryColors[block.category];
+                                  let blockStart = block.start;
+                                  let blockDuration = block.duration;
 
-                        const cc = categoryColors["calendar"];
+                                  if (dragState?.type === "resize" && dragState.blockId === block.id) {
+                                    blockDuration = Math.max(0.5, snapToHalf(dragState.currentHour - block.start));
+                                  }
+                                  if (dragState?.type === "move" && dragState.blockId === block.id) {
+                                    blockStart = snapToHalf(dragState.currentHour - (dragState.offsetHour || 0));
+                                    blockStart = clampHour(blockStart);
+                                  }
+                                  const isMovingThisBlock = dragState?.type === "move" && dragState.blockId === block.id;
+                                  const showInThisColumn = isMovingThisBlock ? dragState.currentDay === day : true;
+                                  if (!showInThisColumn) return null;
 
-                        if (block && !isBlockStart) {
-                          return (
-                            <div
-                              key={day}
-                              className={`h-8 border-x cursor-pointer relative ${c?.bg} ${c?.border}`}
-                              onClick={() => openEditDialog(block)}
-                            >
-                              {hourCalEvents.length > 0 && (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  {hourCalEvents.map(ev => (
+                                  const top = (blockStart - FIRST_HOUR) * HOUR_HEIGHT;
+                                  const height = Math.max(blockDuration * HOUR_HEIGHT, HOUR_HEIGHT * 0.5);
+
+                                  const hasOverlappingCalEvent = calEvents.some(ev => {
+                                    if (!ev.start.includes("T")) return false;
+                                    const evD = new Date(ev.start);
+                                    const evDayIdx = (evD.getDay() + 6) % 7;
+                                    if (DAYS[evDayIdx] !== day) return false;
+                                    const evStart = evD.getHours() + evD.getMinutes() / 60;
+                                    const evEnd = new Date(ev.end).getHours() + new Date(ev.end).getMinutes() / 60;
+                                    return evStart < blockStart + blockDuration && evEnd > blockStart;
+                                  });
+
+                                  return (
+                                    <div
+                                      key={block.id}
+                                      data-block
+                                      className={`absolute rounded-md border cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow overflow-hidden z-10 ${c.bg} ${c.text} ${c.border} ${isMovingThisBlock ? "opacity-80 shadow-lg ring-2 ring-primary/30" : ""}`}
+                                      style={{ top, height, left: "2px", right: hasOverlappingCalEvent ? "50%" : "2px" }}
+                                      onMouseDown={(e) => {
+                                        if ((e.target as HTMLElement).classList.contains("cursor-s-resize")) return;
+                                        startMoveDrag(e, block);
+                                      }}
+                                    >
+                                      <div className="px-1.5 py-0.5 text-[11px] font-semibold leading-tight truncate">
+                                        {block.label}
+                                      </div>
+                                      {height >= HOUR_HEIGHT * 0.75 && (
+                                        <div className="px-1.5 text-[9px] opacity-70">
+                                          {formatTimeRange(blockStart, blockStart + blockDuration)}
+                                        </div>
+                                      )}
+                                      <div
+                                        className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize"
+                                        onMouseDown={(e) => startResizeDrag(e, block)}
+                                      />
+                                    </div>
+                                  );
+                                })}
+
+                                {calEvents.filter(ev => {
+                                  if (!ev.start.includes("T")) return false;
+                                  const d = new Date(ev.start);
+                                  const dayIdx = (d.getDay() + 6) % 7;
+                                  return DAYS[dayIdx] === day;
+                                }).map(ev => {
+                                  const dayBlocks = scheduleByDay[day] || [];
+                                  const d = new Date(ev.start);
+                                  const endD = new Date(ev.end);
+                                  const startH = d.getHours() + d.getMinutes() / 60;
+                                  const endH = endD.getHours() + endD.getMinutes() / 60;
+                                  const top = (startH - FIRST_HOUR) * HOUR_HEIGHT;
+                                  const height = Math.max((endH - startH) * HOUR_HEIGHT, HOUR_HEIGHT * 0.4);
+                                  if (startH >= LAST_HOUR || endH <= FIRST_HOUR) return null;
+                                  const overlapsBlock = dayBlocks.some(b => startH < b.start + b.duration && endH > b.start);
+                                  return (
                                     <div
                                       key={ev.id}
-                                      className={`rounded px-1 py-px text-[10px] leading-tight font-medium truncate max-w-full ${cc.bg} ${cc.text} border ${cc.border}`}
+                                      className={`absolute rounded-md border overflow-hidden z-[15] ${cc.bg} ${cc.text} ${cc.border}`}
+                                      style={{
+                                        top: Math.max(top, 0),
+                                        height,
+                                        left: overlapsBlock ? "50%" : "2px",
+                                        right: "2px",
+                                      }}
                                       title={`${ev.summary} (${ev.calendarName})`}
                                     >
-                                      {ev.summary}
+                                      <div className="px-1 py-0.5 text-[10px] font-medium leading-tight truncate">
+                                        {ev.summary}
+                                      </div>
+                                      {height >= HOUR_HEIGHT * 0.75 && (
+                                        <div className="px-1 text-[8px] opacity-70">
+                                          {formatTimeRange(startH, endH)}
+                                        </div>
+                                      )}
                                     </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
+                                  );
+                                })}
 
-                        if (block && isBlockStart) {
-                          return (
-                            <div
-                              key={day}
-                              className={`h-8 border rounded-t text-[10px] font-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 relative ${c?.bg} ${c?.text} ${c?.border}`}
-                              onClick={() => openEditDialog(block)}
-                            >
-                              <span className="truncate px-0.5 text-center leading-tight">
-                                {block.label}
-                              </span>
-                              {hourCalEvents.length > 0 && (
-                                <div className="absolute -top-0.5 -right-0.5 flex gap-px">
-                                  {hourCalEvents.map(ev => (
+                                {dragState?.type === "create" && dragState.day === day && (() => {
+                                  const minH = Math.min(dragState.startHour, dragState.currentHour);
+                                  const maxH = Math.max(dragState.startHour, dragState.currentHour);
+                                  const dur = maxH - minH;
+                                  if (dur < 0.25) return null;
+                                  return (
                                     <div
-                                      key={ev.id}
-                                      className={`rounded-full w-2.5 h-2.5 border ${cc.border} ${cc.bg}`}
-                                      title={`${ev.summary} (${ev.calendarName})`}
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          );
-                        }
+                                      className="absolute left-0.5 right-0.5 rounded-md border-2 border-dashed border-primary/50 bg-primary/10 z-20 pointer-events-none"
+                                      style={{
+                                        top: (minH - FIRST_HOUR) * HOUR_HEIGHT,
+                                        height: dur * HOUR_HEIGHT,
+                                      }}
+                                    >
+                                      <div className="px-1.5 py-0.5 text-[10px] font-medium text-primary/70">
+                                        {formatTimeRange(minH, maxH)}
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
 
-                        if (hourCalEvents.length > 0) {
-                          return (
-                            <div
-                              key={day}
-                              className={`h-8 border rounded text-[10px] font-medium flex items-center justify-center cursor-pointer hover:opacity-80 ${cc.bg} ${cc.text} ${cc.border}`}
-                              onClick={() => openCreateDialog(day, hour)}
-                              title={hourCalEvents.map(ev => `${ev.summary} (${ev.calendarName})`).join(", ")}
-                            >
-                              <span className="truncate px-0.5 text-center leading-tight">
-                                {hourCalEvents.map(ev => ev.summary).join(", ")}
-                              </span>
+                                {isDayToday(day, weekStart) && (() => {
+                                  const now = new Date();
+                                  const currentH = now.getHours() + now.getMinutes() / 60;
+                                  if (currentH < FIRST_HOUR || currentH > LAST_HOUR) return null;
+                                  return (
+                                    <div
+                                      className="absolute left-0 right-0 z-30 pointer-events-none"
+                                      style={{ top: (currentH - FIRST_HOUR) * HOUR_HEIGHT }}
+                                    >
+                                      <div className="w-2.5 h-2.5 rounded-full bg-red-500 absolute -left-[5px] -top-[5px]" />
+                                      <div className="h-[2px] bg-red-500 w-full" />
+                                    </div>
+                                  );
+                                })()}
+                              </div>
                             </div>
-                          );
-                        }
-
-                        return (
-                          <div
-                            key={day}
-                            className="h-8 border border-dashed border-muted bg-background cursor-pointer hover:bg-muted/30 transition-colors"
-                            onClick={() => openCreateDialog(day, hour)}
-                          />
-                        );
-                      })}
-                    </div>
-                  ))}
-                </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             </div>
           )}
