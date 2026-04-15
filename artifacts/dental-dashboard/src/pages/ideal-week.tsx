@@ -59,6 +59,8 @@ import {
   Zap,
   Heart,
   Stethoscope,
+  BookOpen,
+  ChevronDown,
 } from "lucide-react";
 import {
   categoryColors,
@@ -581,6 +583,76 @@ const START_TIME_OPTIONS = Array.from({ length: 30 }, (_, i) => {
   const ampm = t < 12 ? "AM" : "PM";
   return { value: String(t), label: `${h}:${m} ${ampm}` };
 });
+
+const READING_LIST = [
+  "How to Win Friends and Influence People",
+  "Shoe Dog",
+  "No Ego",
+  "Living Your Best Year Ever",
+  "The Hard Thing About Hard Things - Ben Horowitz",
+  "What You Do Is Who You Are - Ben Horowitz",
+  "The One Page Marketing Plan - Allan Nib",
+  "Who's Got Your Back?",
+  "Tribes - We Need You to Lead Us",
+  "Thinking Fast and Slow - Daniel Kahneman",
+  "Shaka - How to Be Free",
+  "Shaka - Righting My Wrongs",
+  "The Weirdest People in the World",
+  "Man's Search for Meaning - Viktor Frankl",
+  "John Maxwell - 5 Levels of Leadership",
+  "Outliers - Malcolm Gladwell",
+  "Desire to Win/Succeed - Malcolm Gladwell",
+  "Ben Horowitz Books/Insights",
+  "Inner Excellence",
+  "Building an Elite Organization",
+  "The Richest Man in Babylon",
+  "Deepwork",
+  "The Obstacle Is the Way",
+  "Drive - Daniel Pink",
+  "Art of Learning",
+  "Contagious",
+  "Mind Gym",
+  "Positive Intelligence",
+  "The Infinite Game - Simon Sinek",
+  "Thou Shall Prosper",
+  "No Bullshit Leadership",
+  "Crucial Accountability and Crucial Conversations",
+  "The Compound Effect - Darren Hardy",
+  "Empire Building - Adam Coffee",
+  "Noise - Daniel Kahneman",
+];
+
+function ReadingList() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <Card>
+      <button
+        onClick={() => setOpen(!open)}
+        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors rounded-t-lg"
+      >
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold">Reading List</span>
+          <span className="text-xs text-muted-foreground">({READING_LIST.length} books)</span>
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && (
+        <CardContent className="pt-0 pb-3 px-4">
+          <ul className="space-y-1">
+            {READING_LIST.map((book, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm text-foreground/80">
+                <span className="text-muted-foreground mt-0.5 text-xs">•</span>
+                <span>{book}</span>
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
 
 function WeeklyScheduleTemplate() {
   const queryClient = useQueryClient();
@@ -1182,6 +1254,8 @@ export function IdealWeek() {
               )}
             </CardContent>
           </Card>
+
+          <ReadingList />
         </div>
 
         <div className="space-y-2 lg:sticky lg:top-4 min-w-0 overflow-hidden">
