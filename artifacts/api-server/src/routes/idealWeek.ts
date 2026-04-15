@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, gte, lte } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable } from "@workspace/db";
 import {
   ListIdealWeekRitualsResponse,
   UpdateIdealWeekRitualParams,
@@ -224,6 +224,50 @@ router.post("/ideal-week/morning-ritual/toggle", async (req, res): Promise<void>
     [result] = await db
       .insert(morningRitualCompletionsTable)
       .values({ itemKey, date, completed })
+      .returning();
+  }
+  res.json(result);
+});
+
+router.get("/ideal-week/journal", async (req, res): Promise<void> => {
+  const date = req.query.date as string | undefined;
+  if (!date) {
+    res.status(400).json({ error: "date query parameter is required" });
+    return;
+  }
+  const responses = await db
+    .select()
+    .from(journalResponsesTable)
+    .where(eq(journalResponsesTable.date, date));
+  res.json(responses);
+});
+
+router.post("/ideal-week/journal", async (req, res): Promise<void> => {
+  const { promptKey, date, response } = req.body;
+  if (!promptKey || !date || typeof response !== "string") {
+    res.status(400).json({ error: "promptKey, date, and response are required" });
+    return;
+  }
+  const existing = await db
+    .select()
+    .from(journalResponsesTable)
+    .where(
+      and(
+        eq(journalResponsesTable.promptKey, promptKey),
+        eq(journalResponsesTable.date, date)
+      )
+    );
+  let result;
+  if (existing.length > 0) {
+    [result] = await db
+      .update(journalResponsesTable)
+      .set({ response })
+      .where(eq(journalResponsesTable.id, existing[0].id))
+      .returning();
+  } else {
+    [result] = await db
+      .insert(journalResponsesTable)
+      .values({ promptKey, date, response })
       .returning();
   }
   res.json(result);

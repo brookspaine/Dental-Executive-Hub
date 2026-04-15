@@ -112,11 +112,24 @@ const MORNING_RITUAL_ITEMS = [
   { key: "read", label: "Read (15 min) - personal growth and develop wisdom" },
 ];
 
+const JOURNAL_PROMPTS = [
+  { key: "grateful", label: "Something I am Grateful for this morning:" },
+  { key: "stressors", label: "Current Stressors or Frogs:" },
+  { key: "easy", label: "What would this fix look like if it were easy?:" },
+];
+
 type MorningRitualCompletion = {
   id: number;
   itemKey: string;
   date: string;
   completed: boolean;
+};
+
+type JournalResponse = {
+  id: number;
+  promptKey: string;
+  date: string;
+  response: string;
 };
 
 function useMorningRitual(date: string) {
@@ -125,6 +138,18 @@ function useMorningRitual(date: string) {
     queryFn: async () => {
       const base = import.meta.env.BASE_URL || "/";
       const res = await fetch(`${base}api/ideal-week/morning-ritual?date=${date}`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+function useJournalResponses(date: string) {
+  return useQuery<JournalResponse[]>({
+    queryKey: ["journal-responses", date],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/ideal-week/journal?date=${date}`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -294,10 +319,74 @@ function Big3Section({
   );
 }
 
+function JournalPromptField({
+  prompt,
+  date,
+  savedResponse,
+}: {
+  prompt: { key: string; label: string };
+  date: string;
+  savedResponse: string;
+}) {
+  const queryClient = useQueryClient();
+  const [value, setValue] = useState(savedResponse);
+  const [dirty, setDirty] = useState(false);
+  const base = import.meta.env.BASE_URL || "/";
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const saveResponse = useMutation({
+    mutationFn: async (response: string) => {
+      const res = await fetch(`${base}api/ideal-week/journal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ promptKey: prompt.key, date, response }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["journal-responses", date] });
+    },
+  });
+
+  const handleChange = (newVal: string) => {
+    setValue(newVal);
+    setDirty(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      saveResponse.mutate(newVal);
+    }, 800);
+  };
+
+  const handleBlur = () => {
+    if (dirty) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      saveResponse.mutate(value);
+    }
+  };
+
+  return (
+    <div className="space-y-1">
+      <label className="text-xs font-medium text-muted-foreground">
+        {prompt.label}
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
+        onBlur={handleBlur}
+        placeholder="Type your response..."
+        rows={2}
+        className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[60px]"
+      />
+    </div>
+  );
+}
+
 function MorningRitualSection() {
   const queryClient = useQueryClient();
   const today = formatDate(new Date());
   const { data: completions = [] } = useMorningRitual(today);
+  const { data: journalResponses = [] } = useJournalResponses(today);
   const base = import.meta.env.BASE_URL || "/";
 
   const toggleMorningItem = useMutation({
@@ -319,6 +408,9 @@ function MorningRitualSection() {
   const completedCount = MORNING_RITUAL_ITEMS.filter((i) =>
     isItemCompleted(i.key)
   ).length;
+
+  const getJournalResponse = (promptKey: string) =>
+    journalResponses.find((r) => r.promptKey === promptKey)?.response || "";
 
   return (
     <Card>
@@ -344,29 +436,40 @@ function MorningRitualSection() {
         {MORNING_RITUAL_ITEMS.map((item) => {
           const checked = isItemCompleted(item.key);
           return (
-            <div
-              key={item.key}
-              className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors"
-            >
-              <Checkbox
-                checked={checked}
-                onCheckedChange={() =>
-                  toggleMorningItem.mutate({
-                    itemKey: item.key,
-                    date: today,
-                    completed: !checked,
-                  })
-                }
-              />
-              <span
-                className={`text-sm ${
-                  checked
-                    ? "line-through text-muted-foreground"
-                    : "font-medium"
-                }`}
-              >
-                {item.label}
-              </span>
+            <div key={item.key}>
+              <div className="flex items-center gap-3 p-2 rounded-md hover:bg-muted/50 transition-colors">
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() =>
+                    toggleMorningItem.mutate({
+                      itemKey: item.key,
+                      date: today,
+                      completed: !checked,
+                    })
+                  }
+                />
+                <span
+                  className={`text-sm ${
+                    checked
+                      ? "line-through text-muted-foreground"
+                      : "font-medium"
+                  }`}
+                >
+                  {item.label}
+                </span>
+              </div>
+              {item.key === "journal" && (
+                <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
+                  {JOURNAL_PROMPTS.map((prompt) => (
+                    <JournalPromptField
+                      key={prompt.key}
+                      prompt={prompt}
+                      date={today}
+                      savedResponse={getJournalResponse(prompt.key)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

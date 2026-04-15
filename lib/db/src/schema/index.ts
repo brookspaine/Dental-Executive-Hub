@@ -6,3 +6,4 @@ export * from "./announcements";
 export * from "./activity";
 export * from "./idealWeek";
 export * from "./morningRitual";
+export * from "./journalResponses";
