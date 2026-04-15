@@ -613,119 +613,6 @@ function useCalendarEvents(timeMin: string, timeMax: string) {
   });
 }
 
-function GoogleCalendarEvents({ weekStart }: { weekStart: Date }) {
-  const [open, setOpen] = useState(true);
-
-  const timeMin = useMemo(() => {
-    const d = new Date(weekStart);
-    d.setHours(0, 0, 0, 0);
-    return d.toISOString();
-  }, [weekStart]);
-  const timeMax = useMemo(() => {
-    const d = new Date(weekStart);
-    d.setDate(d.getDate() + 6);
-    d.setHours(23, 59, 59, 999);
-    return d.toISOString();
-  }, [weekStart]);
-
-  const { data, isLoading, isError } = useCalendarEvents(timeMin, timeMax);
-  const events = data?.events || [];
-  const calendars = data?.calendars || [];
-
-  const eventsByDay = useMemo(() => {
-    const map: Record<string, CalendarEvent[]> = {};
-    for (const day of DAYS) map[day] = [];
-    for (const ev of events) {
-      const isAllDay = !ev.start.includes("T");
-      const d = isAllDay ? new Date(ev.start + "T12:00:00") : new Date(ev.start);
-      const dayIdx = (d.getDay() + 6) % 7;
-      const dayName = DAYS[dayIdx];
-      if (dayName && map[dayName]) {
-        map[dayName].push(ev);
-      }
-    }
-    return map;
-  }, [events]);
-
-  return (
-    <Card>
-      <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-4 py-3 hover:bg-muted/30 transition-colors rounded-t-lg"
-      >
-        <div className="flex items-center gap-2">
-          <CalendarDays className="h-4 w-4 text-primary" />
-          <span className="text-sm font-semibold">Google Calendar</span>
-          {!isLoading && (
-            <span className="text-xs text-muted-foreground">
-              ({events.length} events from {calendars.length} calendars)
-            </span>
-          )}
-        </div>
-        <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-      {open && (
-        <CardContent className="pt-0 pb-3 px-4">
-          {isLoading ? (
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-full" />
-              <Skeleton className="h-6 w-full" />
-            </div>
-          ) : isError ? (
-            <p className="text-sm text-destructive">Failed to load calendar events. Check your Google Calendar connection.</p>
-          ) : events.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No events this week.</p>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-1.5 mb-1">
-                {calendars.map(cal => (
-                  <span
-                    key={cal.id}
-                    className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white"
-                    style={{ backgroundColor: cal.color || "#039be5" }}
-                  >
-                    {cal.name}
-                  </span>
-                ))}
-              </div>
-              <div className="grid grid-cols-7 gap-1">
-                {DAYS.map(day => (
-                  <div key={day}>
-                    <div className="text-[10px] font-semibold text-muted-foreground text-center mb-1">{day}</div>
-                    <div className="space-y-0.5">
-                      {(eventsByDay[day] || []).map(ev => {
-                        const isAllDay = !ev.start.includes("T");
-                        const startDate = isAllDay ? new Date(ev.start + "T12:00:00") : new Date(ev.start);
-                        const timeStr = isAllDay
-                          ? "All day"
-                          : startDate.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-                        return (
-                          <div
-                            key={ev.id}
-                            className="rounded px-1 py-0.5 text-[9px] leading-tight text-white truncate"
-                            style={{ backgroundColor: ev.calendarColor || "#039be5" }}
-                            title={`${ev.summary} (${ev.calendarName}) - ${timeStr}`}
-                          >
-                            <div className="font-medium truncate">{ev.summary}</div>
-                            <div className="opacity-80">{timeStr}</div>
-                          </div>
-                        );
-                      })}
-                      {(eventsByDay[day] || []).length === 0 && (
-                        <div className="text-[9px] text-muted-foreground text-center py-1">-</div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </CardContent>
-      )}
-    </Card>
-  );
-}
-
 type ReadingItem = { id: number; title: string; completed: boolean; sortOrder: number };
 
 function useReadingList() {
@@ -887,7 +774,7 @@ function ReadingList() {
   );
 }
 
-function WeeklyScheduleTemplate() {
+function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   const queryClient = useQueryClient();
   const { data: blocks = [], isLoading } = useListScheduleBlocks();
   const createBlock = useCreateScheduleBlock();
@@ -901,6 +788,50 @@ function WeeklyScheduleTemplate() {
   const [formDuration, setFormDuration] = useState<string>("1");
   const [formLabel, setFormLabel] = useState("");
   const [formCategory, setFormCategory] = useState<string>("deepwork");
+
+  const calTimeMin = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setHours(0, 0, 0, 0);
+    return d.toISOString();
+  }, [weekStart]);
+  const calTimeMax = useMemo(() => {
+    const d = new Date(weekStart);
+    d.setDate(d.getDate() + 6);
+    d.setHours(23, 59, 59, 999);
+    return d.toISOString();
+  }, [weekStart]);
+  const { data: calData } = useCalendarEvents(calTimeMin, calTimeMax);
+  const calEvents = calData?.events || [];
+
+  const calEventsByDayHour = useMemo(() => {
+    const map: Record<string, CalendarEvent[]> = {};
+    for (const day of DAYS) {
+      for (const hour of TIME_SLOTS) {
+        map[`${day}-${hour}`] = [];
+      }
+      map[`${day}-allday`] = [];
+    }
+    for (const ev of calEvents) {
+      const isAllDay = !ev.start.includes("T");
+      if (isAllDay) {
+        const d = new Date(ev.start + "T12:00:00");
+        const dayIdx = (d.getDay() + 6) % 7;
+        const dayName = DAYS[dayIdx];
+        if (dayName && map[`${dayName}-allday`]) {
+          map[`${dayName}-allday`].push(ev);
+        }
+      } else {
+        const d = new Date(ev.start);
+        const dayIdx = (d.getDay() + 6) % 7;
+        const dayName = DAYS[dayIdx];
+        const hour = d.getHours();
+        if (dayName && map[`${dayName}-${hour}`]) {
+          map[`${dayName}-${hour}`].push(ev);
+        }
+      }
+    }
+    return map;
+  }, [calEvents]);
 
   const scheduleByDay = useMemo(() => {
     const map: Record<string, ScheduleBlockType[]> = {};
@@ -1002,6 +933,16 @@ function WeeklyScheduleTemplate() {
                 </span>
               );
             })}
+            {(calData?.calendars || []).map(cal => (
+              <span
+                key={cal.id}
+                className="text-[10px] px-1.5 py-0.5 rounded-full font-medium text-white inline-flex items-center gap-1"
+                style={{ backgroundColor: cal.color || "#039be5" }}
+              >
+                <CalendarDays className="h-2.5 w-2.5" />
+                {cal.name}
+              </span>
+            ))}
           </div>
 
           {isLoading ? (
@@ -1023,6 +964,33 @@ function WeeklyScheduleTemplate() {
                     </div>
                   ))}
 
+                  {(() => {
+                    const hasAnyAllDay = DAYS.some(day => (calEventsByDayHour[`${day}-allday`] || []).length > 0);
+                    if (!hasAnyAllDay) return null;
+                    return (
+                      <div className="contents">
+                        <div className="h-auto flex items-start justify-end pr-1 text-[9px] text-muted-foreground pt-0.5 pb-0.5" />
+                        {DAYS.map((day) => {
+                          const allDayEvs = calEventsByDayHour[`${day}-allday`] || [];
+                          return (
+                            <div key={day} className="min-h-[20px] flex flex-col gap-px p-px">
+                              {allDayEvs.map(ev => (
+                                <div
+                                  key={ev.id}
+                                  className="rounded px-1 py-px text-[8px] leading-tight text-white truncate"
+                                  style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                  title={`${ev.summary} (${ev.calendarName})`}
+                                >
+                                  {ev.summary}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
+
                   {TIME_SLOTS.map((hour) => (
                     <div key={hour} className="contents">
                       <div className="h-8 flex items-start justify-end pr-1 text-[10px] text-muted-foreground pt-0.5">
@@ -1036,14 +1004,30 @@ function WeeklyScheduleTemplate() {
                         const isBlockStart =
                           block && hour === Math.floor(block.start);
                         const c = block ? categoryColors[block.category] : null;
+                        const hourCalEvents = calEventsByDayHour[`${day}-${hour}`] || [];
 
                         if (block && !isBlockStart) {
                           return (
                             <div
                               key={day}
-                              className={`h-8 border-x cursor-pointer ${c?.bg} ${c?.border}`}
+                              className={`h-8 border-x cursor-pointer relative ${c?.bg} ${c?.border}`}
                               onClick={() => openEditDialog(block)}
-                            />
+                            >
+                              {hourCalEvents.length > 0 && (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  {hourCalEvents.map(ev => (
+                                    <div
+                                      key={ev.id}
+                                      className="rounded px-1 py-px text-[8px] leading-tight text-white truncate max-w-full"
+                                      style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                      title={`${ev.summary} (${ev.calendarName})`}
+                                    >
+                                      {ev.summary}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
                           );
                         }
 
@@ -1051,12 +1035,45 @@ function WeeklyScheduleTemplate() {
                           return (
                             <div
                               key={day}
-                              className={`h-8 border rounded-t text-[10px] font-medium flex items-center justify-center cursor-pointer hover:opacity-80 ${c?.bg} ${c?.text} ${c?.border}`}
+                              className={`h-8 border rounded-t text-[10px] font-medium flex flex-col items-center justify-center cursor-pointer hover:opacity-80 relative ${c?.bg} ${c?.text} ${c?.border}`}
                               onClick={() => openEditDialog(block)}
                             >
                               <span className="truncate px-0.5 text-center leading-tight">
                                 {block.label}
                               </span>
+                              {hourCalEvents.length > 0 && (
+                                <div className="absolute -top-0.5 -right-0.5 flex gap-px">
+                                  {hourCalEvents.map(ev => (
+                                    <div
+                                      key={ev.id}
+                                      className="w-2 h-2 rounded-full border border-white"
+                                      style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                      title={`${ev.summary} (${ev.calendarName})`}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+
+                        if (hourCalEvents.length > 0) {
+                          return (
+                            <div
+                              key={day}
+                              className="h-8 border border-dashed border-muted bg-background cursor-pointer hover:bg-muted/30 transition-colors flex flex-col items-center justify-center gap-px p-px"
+                              onClick={() => openCreateDialog(day, hour)}
+                            >
+                              {hourCalEvents.map(ev => (
+                                <div
+                                  key={ev.id}
+                                  className="rounded px-1 py-px text-[8px] leading-tight text-white truncate max-w-full w-full text-center"
+                                  style={{ backgroundColor: ev.calendarColor || "#039be5" }}
+                                  title={`${ev.summary} (${ev.calendarName})`}
+                                >
+                                  {ev.summary}
+                                </div>
+                              ))}
                             </div>
                           );
                         }
@@ -1336,9 +1353,7 @@ export function IdealWeek() {
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 items-start">
         <div className="space-y-4">
-          <WeeklyScheduleTemplate />
-
-          <GoogleCalendarEvents weekStart={weekStart} />
+          <WeeklyScheduleTemplate weekStart={weekStart} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Big3Section
