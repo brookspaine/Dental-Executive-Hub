@@ -407,8 +407,8 @@ function JournalPromptField({
   };
 
   return (
-    <div className="flex items-start gap-3">
-      <label className="text-xs font-medium text-muted-foreground whitespace-nowrap pt-2 min-w-[200px]">
+    <div className="space-y-0.5">
+      <label className="text-[10px] font-medium text-muted-foreground leading-tight block">
         {prompt.label}
       </label>
       <textarea
@@ -417,7 +417,7 @@ function JournalPromptField({
         onBlur={handleBlur}
         placeholder="Type your response..."
         rows={1}
-        className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-y min-h-[36px]"
+        className="w-full rounded border border-input bg-background px-2 py-1 text-[11px] ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-y min-h-[24px]"
       />
     </div>
   );
@@ -491,19 +491,19 @@ function EditableRitualItem({
 
   return (
     <div>
-      <div className="flex items-start gap-3 p-1 rounded-md">
-        <span className="text-muted-foreground mt-1.5">•</span>
+      <div className="flex items-start gap-1.5 px-1 py-0.5 rounded-md">
+        <span className="text-muted-foreground text-[10px] mt-0.5">•</span>
         <div
           contentEditable
           suppressContentEditableWarning
-          className="text-sm font-medium flex-1 outline-none focus:bg-muted/30 rounded px-1 py-0.5 cursor-text min-h-[24px] whitespace-pre-wrap"
+          className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] whitespace-pre-wrap"
           onInput={(e) => handleChange(e.currentTarget.textContent || "")}
           onBlur={handleBlur}
-          dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-xs text-primary underline">$1</a>') }}
+          dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>') }}
         />
       </div>
       {showJournalPrompts && (
-        <div className="ml-9 mt-1 mb-2 space-y-3 border-l-2 border-muted pl-4">
+        <div className="ml-5 mt-0.5 mb-1 space-y-2 border-l-2 border-muted pl-3">
           {journalPrompts!.map((prompt) => (
             <JournalPromptField
               key={prompt.key}
@@ -542,13 +542,13 @@ function EditableRitualSection({
 
   return (
     <Card className="border-t-0">
-      <div className={`rounded-t-lg px-6 py-3 flex items-center justify-between ${bannerColor}`}>
-        <div className={`flex items-center gap-2 font-semibold ${textColor}`}>
-          <Icon className="h-4 w-4" />
+      <div className={`rounded-t-lg px-3 py-1.5 flex items-center justify-between ${bannerColor}`}>
+        <div className={`flex items-center gap-1.5 text-xs font-semibold ${textColor}`}>
+          <Icon className="h-3 w-3" />
           {title}
         </div>
       </div>
-      <CardContent className="space-y-1">
+      <CardContent className="px-3 py-1.5 space-y-0">
         {items.map((item) => (
           <EditableRitualItem
             key={item.id}
@@ -1029,247 +1029,243 @@ export function IdealWeek() {
         </CardContent>
       </Card>
 
-      <WeeklyScheduleTemplate />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 items-start">
+        <div className="space-y-4">
+          <WeeklyScheduleTemplate />
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Big3Section
-          title="Today's Big 3"
-          icon={Star}
-          items={dailyTop3}
-          completedCount={dailyCompleted}
-          totalCount={dailyTop3.length}
-          canAdd={dailyTop3.length < 3}
-          addPlaceholder="Add today's priority..."
-          onAdd={(title) =>
-            createDaily.mutate({
-              data: { title, priority: dailyTop3.length + 1 },
-            })
-          }
-          onToggle={(id, completed) =>
-            updateDaily.mutate({ id, data: { completed } })
-          }
-          onDelete={(id) => deleteDaily.mutate({ id })}
-          onRename={(id, title) =>
-            updateDaily.mutate({ id, data: { title } })
-          }
-        />
-        <Big3Section
-          title="This Week's Big 3"
-          icon={Target}
-          items={weeklyTop3}
-          completedCount={weeklyCompleted}
-          totalCount={weeklyTop3.length}
-          canAdd={weeklyTop3.length < 3}
-          addPlaceholder="Add weekly priority..."
-          onAdd={(title) =>
-            createWeekly.mutate({
-              title,
-              priority: weeklyTop3.length + 1,
-              weekStart: startStr,
-            })
-          }
-          onToggle={(id, completed) => updateWeekly.mutate({ id, completed })}
-          onDelete={(id) => deleteWeekly.mutate(id)}
-          onRename={(id, title) => updateWeekly.mutate({ id, title })}
-        />
-      </div>
-
-      <EditableRitualSection
-        category="morning"
-        title="Morning Ritual"
-        icon={Sun}
-        bannerColor="bg-[#f7e26d]"
-        textColor="text-amber-900"
-        journalPrompts={JOURNAL_PROMPTS}
-      />
-
-      <EditableRitualSection
-        category="startup"
-        title="Startup Ritual"
-        icon={Rocket}
-        bannerColor="bg-[#93c47d]"
-        textColor="text-green-900"
-      />
-
-      <EditableRitualSection
-        category="shutdown"
-        title="Shutdown Ritual"
-        icon={Moon}
-        bannerColor="bg-[#a4c2f4]"
-        textColor="text-blue-900"
-        journalPrompts={EVENING_PROMPTS}
-      />
-
-      <EditableRitualSection
-        category="weekly_review"
-        title="Weekly Review"
-        icon={ClipboardCheck}
-        bannerColor="bg-[#b4a7d6]"
-        textColor="text-purple-900"
-      />
-
-      <EditableRitualSection
-        category="monthly_review"
-        title="Monthly Review"
-        icon={Calendar}
-        bannerColor="bg-[#ea9999]"
-        textColor="text-red-900"
-      />
-
-      <EditableRitualSection
-        category="quarterly_review"
-        title="Quarterly Review"
-        icon={BarChart3}
-        bannerColor="bg-[#f9cb9c]"
-        textColor="text-orange-900"
-      />
-
-      <EditableRitualSection
-        category="anchor_meetings"
-        title="Anchor Meetings"
-        icon={Anchor}
-        bannerColor="bg-[#c9daf8]"
-        textColor="text-blue-900"
-      />
-
-      <EditableRitualSection
-        category="deepwork"
-        title="Deepwork"
-        icon={Brain}
-        bannerColor="bg-[#d5a6bd]"
-        textColor="text-pink-900"
-      />
-
-      <EditableRitualSection
-        category="execution_block"
-        title="Execution Block"
-        icon={Zap}
-        bannerColor="bg-[#ffe599]"
-        textColor="text-yellow-900"
-      />
-
-      <EditableRitualSection
-        category="family_friends"
-        title="Family/Friends"
-        icon={Heart}
-        bannerColor="bg-[#b6d7a8]"
-        textColor="text-green-900"
-      />
-
-      <EditableRitualSection
-        category="patient_care"
-        title="Patient Care"
-        icon={Stethoscope}
-        bannerColor="bg-[#a2c4c9]"
-        textColor="text-teal-900"
-      />
-
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Weekly Score</span>
-            <span className="text-sm text-muted-foreground">
-              {totalChecks}/{totalPossible} ({weeklyPercent}%)
-            </span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Big3Section
+              title="Today's Big 3"
+              icon={Star}
+              items={dailyTop3}
+              completedCount={dailyCompleted}
+              totalCount={dailyTop3.length}
+              canAdd={dailyTop3.length < 3}
+              addPlaceholder="Add today's priority..."
+              onAdd={(title) =>
+                createDaily.mutate({
+                  data: { title, priority: dailyTop3.length + 1 },
+                })
+              }
+              onToggle={(id, completed) =>
+                updateDaily.mutate({ id, data: { completed } })
+              }
+              onDelete={(id) => deleteDaily.mutate({ id })}
+              onRename={(id, title) =>
+                updateDaily.mutate({ id, data: { title } })
+              }
+            />
+            <Big3Section
+              title="This Week's Big 3"
+              icon={Target}
+              items={weeklyTop3}
+              completedCount={weeklyCompleted}
+              totalCount={weeklyTop3.length}
+              canAdd={weeklyTop3.length < 3}
+              addPlaceholder="Add weekly priority..."
+              onAdd={(title) =>
+                createWeekly.mutate({
+                  title,
+                  priority: weeklyTop3.length + 1,
+                  weekStart: startStr,
+                })
+              }
+              onToggle={(id, completed) => updateWeekly.mutate({ id, completed })}
+              onDelete={(id) => deleteWeekly.mutate(id)}
+              onRename={(id, title) => updateWeekly.mutate({ id, title })}
+            />
           </div>
-          <Progress value={weeklyPercent} className="h-2.5" />
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base">Weekly Scorecard</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {isLoading ? (
-            <div className="p-4 space-y-3">
-              {Array.from({ length: 8 }).map((_, i) => (
-                <Skeleton key={i} className="h-10 w-full" />
-              ))}
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left p-3 font-semibold text-muted-foreground min-w-[200px]">
-                      Habit
-                    </th>
-                    {weekDates.map((d, i) => (
-                      <th
-                        key={i}
-                        className={`p-2 text-center font-semibold min-w-[52px] ${
-                          isToday(d)
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground"
-                        }`}
-                      >
-                        <div className="text-xs">{DAYS[i]}</div>
-                        <div className="text-xs font-normal">{d.getDate()}</div>
-                      </th>
-                    ))}
-                    <th className="p-2 text-center font-semibold text-muted-foreground min-w-[52px]">
-                      Score
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rituals?.map((ritual, idx) => {
-                    const score = getScoreForRitual(ritual.id);
-                    return (
-                      <tr
-                        key={ritual.id}
-                        className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
-                          idx % 2 === 0 ? "" : "bg-muted/10"
-                        }`}
-                      >
-                        <td className="p-3 font-medium text-sm">
-                          {ritual.name}
-                        </td>
-                        {weekDates.map((d, i) => {
-                          const dateStr = formatDate(d);
-                          const checked = isCompleted(ritual.id, dateStr);
-                          return (
-                            <td
-                              key={i}
-                              className={`p-2 text-center ${
-                                isToday(d) ? "bg-primary/5" : ""
-                              }`}
-                            >
-                              <Checkbox
-                                checked={checked}
-                                onCheckedChange={() =>
-                                  handleToggle(ritual.id, dateStr)
-                                }
-                                className="h-4.5 w-4.5 mx-auto"
-                              />
-                            </td>
-                          );
-                        })}
-                        <td className="p-2 text-center">
-                          <span
-                            className={`text-xs font-bold ${
-                              score === 7
-                                ? "text-emerald-600"
-                                : score >= 5
-                                  ? "text-blue-600"
-                                  : score >= 3
-                                    ? "text-amber-600"
-                                    : "text-muted-foreground"
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium">Weekly Score</span>
+                <span className="text-sm text-muted-foreground">
+                  {totalChecks}/{totalPossible} ({weeklyPercent}%)
+                </span>
+              </div>
+              <Progress value={weeklyPercent} className="h-2.5" />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Weekly Scorecard</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {isLoading ? (
+                <div className="p-4 space-y-3">
+                  {Array.from({ length: 8 }).map((_, i) => (
+                    <Skeleton key={i} className="h-10 w-full" />
+                  ))}
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-semibold text-muted-foreground min-w-[200px]">
+                          Habit
+                        </th>
+                        {weekDates.map((d, i) => (
+                          <th
+                            key={i}
+                            className={`p-2 text-center font-semibold min-w-[52px] ${
+                              isToday(d)
+                                ? "bg-primary/10 text-primary"
+                                : "text-muted-foreground"
                             }`}
                           >
-                            {score}/7
-                          </span>
-                        </td>
+                            <div className="text-xs">{DAYS[i]}</div>
+                            <div className="text-xs font-normal">{d.getDate()}</div>
+                          </th>
+                        ))}
+                        <th className="p-2 text-center font-semibold text-muted-foreground min-w-[52px]">
+                          Score
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </thead>
+                    <tbody>
+                      {rituals?.map((ritual, idx) => {
+                        const score = getScoreForRitual(ritual.id);
+                        return (
+                          <tr
+                            key={ritual.id}
+                            className={`border-b last:border-0 hover:bg-muted/30 transition-colors ${
+                              idx % 2 === 0 ? "" : "bg-muted/10"
+                            }`}
+                          >
+                            <td className="p-3 font-medium text-sm">
+                              {ritual.name}
+                            </td>
+                            {weekDates.map((d, i) => {
+                              const dateStr = formatDate(d);
+                              const checked = isCompleted(ritual.id, dateStr);
+                              return (
+                                <td
+                                  key={i}
+                                  className={`p-2 text-center ${
+                                    isToday(d) ? "bg-primary/5" : ""
+                                  }`}
+                                >
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={() =>
+                                      handleToggle(ritual.id, dateStr)
+                                    }
+                                    className="h-4.5 w-4.5 mx-auto"
+                                  />
+                                </td>
+                              );
+                            })}
+                            <td className="p-2 text-center">
+                              <span
+                                className={`text-xs font-bold ${
+                                  score === 7
+                                    ? "text-emerald-600"
+                                    : score >= 5
+                                      ? "text-blue-600"
+                                      : score >= 3
+                                        ? "text-amber-600"
+                                        : "text-muted-foreground"
+                                }`}
+                              >
+                                {score}/7
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <div className="space-y-2 lg:sticky lg:top-4 min-w-0 overflow-hidden">
+          <EditableRitualSection
+            category="morning"
+            title="Morning Ritual"
+            icon={Sun}
+            bannerColor="bg-[#f7e26d]"
+            textColor="text-amber-900"
+            journalPrompts={JOURNAL_PROMPTS}
+          />
+          <EditableRitualSection
+            category="startup"
+            title="Startup Ritual"
+            icon={Rocket}
+            bannerColor="bg-[#93c47d]"
+            textColor="text-green-900"
+          />
+          <EditableRitualSection
+            category="shutdown"
+            title="Shutdown Ritual"
+            icon={Moon}
+            bannerColor="bg-[#a4c2f4]"
+            textColor="text-blue-900"
+            journalPrompts={EVENING_PROMPTS}
+          />
+          <EditableRitualSection
+            category="weekly_review"
+            title="Weekly Review"
+            icon={ClipboardCheck}
+            bannerColor="bg-[#b4a7d6]"
+            textColor="text-purple-900"
+          />
+          <EditableRitualSection
+            category="monthly_review"
+            title="Monthly Review"
+            icon={Calendar}
+            bannerColor="bg-[#ea9999]"
+            textColor="text-red-900"
+          />
+          <EditableRitualSection
+            category="quarterly_review"
+            title="Quarterly Review"
+            icon={BarChart3}
+            bannerColor="bg-[#f9cb9c]"
+            textColor="text-orange-900"
+          />
+          <EditableRitualSection
+            category="anchor_meetings"
+            title="Anchor Meetings"
+            icon={Anchor}
+            bannerColor="bg-[#c9daf8]"
+            textColor="text-blue-900"
+          />
+          <EditableRitualSection
+            category="deepwork"
+            title="Deepwork"
+            icon={Brain}
+            bannerColor="bg-[#d5a6bd]"
+            textColor="text-pink-900"
+          />
+          <EditableRitualSection
+            category="execution_block"
+            title="Execution Block"
+            icon={Zap}
+            bannerColor="bg-[#ffe599]"
+            textColor="text-yellow-900"
+          />
+          <EditableRitualSection
+            category="family_friends"
+            title="Family/Friends"
+            icon={Heart}
+            bannerColor="bg-[#b6d7a8]"
+            textColor="text-green-900"
+          />
+          <EditableRitualSection
+            category="patient_care"
+            title="Patient Care"
+            icon={Stethoscope}
+            bannerColor="bg-[#a2c4c9]"
+            textColor="text-teal-900"
+          />
+        </div>
+      </div>
 
     </div>
   );
