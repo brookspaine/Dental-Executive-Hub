@@ -28,6 +28,7 @@ import {
   Moon,
   ClipboardCheck,
   Calendar,
+  BarChart3,
 } from "lucide-react";
 import {
   schedule,
@@ -598,6 +599,35 @@ function MonthlyReviewSection() {
   );
 }
 
+const QUARTERLY_REVIEW_ITEMS = [
+  "Quarterly AMS",
+  "Read Epic Year",
+  "Review Vision Board and Goals",
+  "Change Habits to focus on",
+  "Review Book Takeaways from Books Read that Quarter",
+];
+
+function QuarterlyReviewSection() {
+  return (
+    <Card className="border-t-0">
+      <div className="rounded-t-lg px-6 py-3 flex items-center justify-between bg-[#f9cb9c]">
+        <div className="flex items-center gap-2 text-orange-900 font-semibold">
+          <BarChart3 className="h-4 w-4" />
+          Quarterly Review
+        </div>
+      </div>
+      <CardContent className="space-y-1">
+        {QUARTERLY_REVIEW_ITEMS.map((item, i) => (
+          <div key={i} className="flex items-start gap-3 p-2 rounded-md">
+            <span className="text-muted-foreground mt-0.5">•</span>
+            <span className="text-sm font-medium">{item}</span>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
 export function IdealWeek() {
   const queryClient = useQueryClient();
   const [weekStart, setWeekStart] = useState(() => getMonday(new Date()));
@@ -802,6 +832,8 @@ export function IdealWeek() {
       <WeeklyReviewSection />
 
       <MonthlyReviewSection />
+
+      <QuarterlyReviewSection />
 
       <Card>
         <CardContent className="p-4">
