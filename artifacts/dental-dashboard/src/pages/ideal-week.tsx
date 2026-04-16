@@ -821,7 +821,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   const [formCategory, setFormCategory] = useState<string>("deepwork");
 
   type DragState = {
-    type: "create" | "resize" | "move";
+    type: "create" | "resize" | "resize-top" | "move";
     day: string;
     startHour: number;
     currentHour: number;
@@ -925,6 +925,18 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
               updateBlock.mutate({ id: block.id, data: { duration: newDuration } }, { onSuccess: inv });
             }
           }
+        } else if (prev.type === "resize-top" && prev.blockId) {
+          const block = blocks.find(b => b.id === prev.blockId);
+          if (block) {
+            const blockEnd = block.start + block.duration;
+            const newStart = Math.min(snapToHalf(prev.currentHour), blockEnd - 0.5);
+            const clampedStart = clampHour(newStart);
+            const newDuration = Math.max(0.5, snapToHalf(blockEnd - clampedStart));
+            if (clampedStart !== block.start || newDuration !== block.duration) {
+              const inv = () => queryClient.invalidateQueries({ queryKey: getListScheduleBlocksQueryKey() });
+              updateBlock.mutate({ id: block.id, data: { start: clampedStart, duration: newDuration } }, { onSuccess: inv });
+            }
+          }
         } else if (prev.type === "move" && prev.blockId) {
           const block = blocks.find(b => b.id === prev.blockId);
           if (block) {
@@ -974,7 +986,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
     setDragState({ type: "move", day: block.day, startHour: block.start, currentHour: clickHour, currentDay: block.day, blockId: block.id, offsetHour, columnsRect, columnBodyTop: colRect.top });
   }
 
-  function startResizeDrag(e: React.MouseEvent, block: ScheduleBlockType) {
+  function startResizeDrag(e: React.MouseEvent, block: ScheduleBlockType, edge: "bottom" | "top" = "bottom") {
     if (e.button !== 0) return;
     e.stopPropagation();
     e.preventDefault();
@@ -983,7 +995,8 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
     const colRect = colEl.getBoundingClientRect();
     const columnsRect = columnsRef.current?.getBoundingClientRect() || colRect;
     const hour = clampHour(snapToHalf(FIRST_HOUR + (e.clientY - colRect.top) / HOUR_HEIGHT));
-    setDragState({ type: "resize", day: block.day, startHour: block.start, currentHour: hour, currentDay: block.day, blockId: block.id, columnsRect, columnBodyTop: colRect.top });
+    const type = edge === "top" ? "resize-top" : "resize";
+    setDragState({ type, day: block.day, startHour: block.start, currentHour: hour, currentDay: block.day, blockId: block.id, columnsRect, columnBodyTop: colRect.top });
   }
 
   const calTimeMin = useMemo(() => {
@@ -1233,6 +1246,12 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                   if (dragState?.type === "resize" && dragState.blockId === block.id) {
                                     blockDuration = Math.max(0.5, snapToHalf(dragState.currentHour - block.start));
                                   }
+                                  if (dragState?.type === "resize-top" && dragState.blockId === block.id) {
+                                    const blockEnd = block.start + block.duration;
+                                    const newStart = Math.min(snapToHalf(dragState.currentHour), blockEnd - 0.5);
+                                    blockStart = clampHour(newStart);
+                                    blockDuration = Math.max(0.5, snapToHalf(blockEnd - blockStart));
+                                  }
                                   if (dragState?.type === "move" && dragState.blockId === block.id) {
                                     blockStart = snapToHalf(dragState.currentHour - (dragState.offsetHour || 0));
                                     blockStart = clampHour(blockStart);
@@ -1263,14 +1282,24 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                       onMouseMove={(e) => {
                                         const rect = e.currentTarget.getBoundingClientRect();
                                         const distFromBottom = rect.bottom - e.clientY;
-                                        e.currentTarget.style.cursor = distFromBottom <= 8 ? "s-resize" : "grab";
+                                        const distFromTop = e.clientY - rect.top;
+                                        if (distFromBottom <= 8) {
+                                          e.currentTarget.style.cursor = "s-resize";
+                                        } else if (distFromTop <= 8) {
+                                          e.currentTarget.style.cursor = "n-resize";
+                                        } else {
+                                          e.currentTarget.style.cursor = "grab";
+                                        }
                                       }}
                                       onMouseDown={(e) => {
                                         if (e.button !== 0) return;
                                         const rect = e.currentTarget.getBoundingClientRect();
                                         const distFromBottom = rect.bottom - e.clientY;
+                                        const distFromTop = e.clientY - rect.top;
                                         if (distFromBottom <= 8) {
-                                          startResizeDrag(e, block);
+                                          startResizeDrag(e, block, "bottom");
+                                        } else if (distFromTop <= 8) {
+                                          startResizeDrag(e, block, "top");
                                         } else {
                                           startMoveDrag(e, block);
                                         }
