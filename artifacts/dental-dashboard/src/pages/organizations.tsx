@@ -82,7 +82,7 @@ export function Organizations() {
   };
 
   const handleSubmit = () => {
-    if (!form.name || !form.address || !form.city || !form.state) return;
+    if (!form.name) return;
 
     if (editingId) {
       updateOrg.mutate(
