@@ -1587,9 +1587,16 @@ export function IdealWeek() {
   const toggleCompletion = useToggleIdealWeekCompletion();
 
   const { data: dailyTop3 = [] } = useListDailyTop3();
-  const createDaily = useCreateDailyTop3();
-  const updateDaily = useUpdateDailyTop3();
-  const deleteDaily = useDeleteDailyTop3();
+  const invalidateDaily = () => queryClient.invalidateQueries({ queryKey: ["/api/daily-top3"] });
+  const createDaily = useCreateDailyTop3({
+    mutation: { onSuccess: invalidateDaily },
+  });
+  const updateDaily = useUpdateDailyTop3({
+    mutation: { onSuccess: invalidateDaily },
+  });
+  const deleteDaily = useDeleteDailyTop3({
+    mutation: { onSuccess: invalidateDaily },
+  });
 
   const { data: weeklyTop3 = [] } = useWeeklyTop3(startStr);
 
