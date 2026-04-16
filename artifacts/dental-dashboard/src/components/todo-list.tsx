@@ -9,6 +9,7 @@ import {
   Circle,
   CircleDot,
   CheckCircle2,
+  Clock,
   MoreHorizontal,
 } from "lucide-react";
 import { format, isPast, isToday, isTomorrow, parseISO } from "date-fns";
@@ -36,7 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
-type Status = "todo" | "in_progress" | "done";
+type Status = "todo" | "in_progress" | "awaiting" | "done";
 type Priority = "low" | "medium" | "high" | "urgent";
 
 type Task = {
@@ -57,7 +58,8 @@ type Props = {
 const STATUS_META: Record<Status, { label: string; order: number }> = {
   todo: { label: "To Do", order: 0 },
   in_progress: { label: "In Progress", order: 1 },
-  done: { label: "Done", order: 2 },
+  awaiting: { label: "Awaiting For", order: 2 },
+  done: { label: "Done", order: 3 },
 };
 
 const PRIORITY_META: Record<
@@ -75,6 +77,8 @@ function StatusIcon({ status }: { status: Status }) {
     return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
   if (status === "in_progress")
     return <CircleDot className="h-4 w-4 text-blue-500" />;
+  if (status === "awaiting")
+    return <Clock className="h-4 w-4 text-purple-500" />;
   return <Circle className="h-4 w-4 text-muted-foreground" />;
 }
 
@@ -175,8 +179,10 @@ export function TodoList({
           t.status === "todo"
             ? "in_progress"
             : t.status === "in_progress"
-              ? "done"
-              : "todo";
+              ? "awaiting"
+              : t.status === "awaiting"
+                ? "done"
+                : "todo";
         return { ...t, status: next };
       }),
     );
@@ -379,6 +385,9 @@ function TaskRow({
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate({ status: "in_progress" })}>
               <CircleDot className="h-4 w-4 mr-2 text-blue-500" /> In Progress
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onUpdate({ status: "awaiting" })}>
+              <Clock className="h-4 w-4 mr-2 text-purple-500" /> Awaiting For
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => onUpdate({ status: "done" })}>
               <CheckCircle2 className="h-4 w-4 mr-2 text-emerald-600" /> Done
