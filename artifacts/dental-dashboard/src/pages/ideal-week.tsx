@@ -1690,7 +1690,7 @@ export function IdealWeek() {
   const weeklyCompleted = weeklyTop3.filter((i) => i.completed).length;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {document.getElementById("header-actions") && createPortal(
         <div className="flex items-center gap-1">
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}>
