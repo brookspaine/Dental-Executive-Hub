@@ -1261,7 +1261,8 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                       className={`absolute rounded-md border cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow overflow-hidden z-10 ${c.bg} ${c.text} ${c.border} ${isMovingThisBlock ? "opacity-80 shadow-lg ring-2 ring-primary/30" : ""}`}
                                       style={{ top, height, left: "2px", right: hasOverlappingCalEvent ? "50%" : "2px" }}
                                       onMouseDown={(e) => {
-                                        if ((e.target as HTMLElement).classList.contains("cursor-s-resize")) return;
+                                        const t = e.target as HTMLElement;
+                                        if (t.closest(".cursor-s-resize")) return;
                                         startMoveDrag(e, block);
                                       }}
                                       onContextMenu={(e) => handleContextMenu(e, day, block)}
@@ -1275,9 +1276,11 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                         </div>
                                       )}
                                       <div
-                                        className="absolute bottom-0 left-0 right-0 h-2 cursor-s-resize"
+                                        className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize group/resize flex items-center justify-center"
                                         onMouseDown={(e) => startResizeDrag(e, block)}
-                                      />
+                                      >
+                                        <div className="w-8 h-1 rounded-full bg-current opacity-0 group-hover/resize:opacity-40 transition-opacity" />
+                                      </div>
                                     </div>
                                   );
                                 })}
