@@ -17,7 +17,11 @@ router.get("/daily-top3", async (_req, res): Promise<void> => {
     .select()
     .from(dailyTop3Table)
     .orderBy(dailyTop3Table.priority);
-  res.json(ListDailyTop3Response.parse(items));
+  const mapped = items.map((i) => ({
+    ...i,
+    description: i.description ?? undefined,
+  }));
+  res.json(ListDailyTop3Response.parse(mapped));
 });
 
 router.post("/daily-top3", async (req, res): Promise<void> => {
