@@ -302,7 +302,7 @@ export function Organizations() {
 
       <OrgSection
         title=""
-        nameLabel="Location"
+        nameLabel="EDGE Locations"
         emptyText="No EDGE locations yet"
         isLoading={isLoading}
         orgs={orgs}
