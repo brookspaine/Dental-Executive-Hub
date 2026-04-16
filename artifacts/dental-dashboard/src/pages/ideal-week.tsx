@@ -1,4 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { LucideIcon } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -1690,34 +1691,31 @@ export function IdealWeek() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardContent className="px-3 py-1.5">
-          <div className="flex items-center justify-between">
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}>
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </Button>
-            <div className="text-center">
-              <span className="text-xs font-semibold">
-                {isCurrentWeek(weekStart) ? "This Week" : weekLabel}
-              </span>
-              {isCurrentWeek(weekStart) && (
-                <span className="text-[10px] text-muted-foreground ml-1.5">{weekLabel}</span>
-              )}
-            </div>
-            <div className="flex gap-1">
-              {!isCurrentWeek(weekStart) && (
-                <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={goToThisWeek}>
-                  <RotateCcw className="h-3 w-3 mr-1" />
-                  Today
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextWeek}>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </Button>
-            </div>
+      {document.getElementById("header-actions") && createPortal(
+        <div className="flex items-center gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}>
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+          <div className="text-center whitespace-nowrap">
+            <span className="text-xs font-semibold">
+              {isCurrentWeek(weekStart) ? "This Week" : weekLabel}
+            </span>
+            {isCurrentWeek(weekStart) && (
+              <span className="text-[10px] text-muted-foreground ml-1.5">{weekLabel}</span>
+            )}
           </div>
-        </CardContent>
-      </Card>
+          {!isCurrentWeek(weekStart) && (
+            <Button variant="ghost" size="sm" className="h-6 text-xs px-2" onClick={goToThisWeek}>
+              <RotateCcw className="h-3 w-3 mr-1" />
+              Today
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextWeek}>
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
+        </div>,
+        document.getElementById("header-actions")!
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4 items-start">
         <div className="space-y-4">
