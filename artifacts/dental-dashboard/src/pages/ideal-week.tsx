@@ -1905,18 +1905,14 @@ export function IdealWeek() {
         <div className="space-y-4">
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
-          <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <span className="text-2xl leading-none text-primary/60 select-none">
-                &ldquo;
-              </span>
-              <p className="text-sm md:text-base italic text-center flex-1 text-foreground/90">
+          <Card className="bg-white border-primary/20">
+            <CardContent className="p-4 flex items-center justify-center">
+              <p className="text-sm md:text-base italic text-center text-foreground/90">
+                <span className="text-primary/60 select-none mr-1">&ldquo;</span>
                 What you think of yourself and what you believe is likely what
                 actually will happen.
+                <span className="text-primary/60 select-none ml-1">&rdquo;</span>
               </p>
-              <span className="text-2xl leading-none text-primary/60 select-none">
-                &rdquo;
-              </span>
             </CardContent>
           </Card>
 
