@@ -1905,6 +1905,21 @@ export function IdealWeek() {
         <div className="space-y-4">
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
+          <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+            <CardContent className="p-4 flex items-center gap-3">
+              <span className="text-2xl leading-none text-primary/60 select-none">
+                &ldquo;
+              </span>
+              <p className="text-sm md:text-base italic text-center flex-1 text-foreground/90">
+                What you think of yourself and what you believe is likely what
+                actually will happen.
+              </p>
+              <span className="text-2xl leading-none text-primary/60 select-none">
+                &rdquo;
+              </span>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Big3Section
               title="Today's Big 3"
