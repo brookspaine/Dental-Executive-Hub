@@ -1690,13 +1690,6 @@ export function IdealWeek() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold tracking-tight">Ideal Week</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          Weekly scorecard and schedule template
-        </p>
-      </div>
-
       <Card>
         <CardContent className="p-4">
           <div className="flex items-center justify-between">
