@@ -21,7 +21,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="p-6">
           <div className="flex items-center gap-2 font-bold text-xl text-primary tracking-tight">
             <Activity className="h-6 w-6" />
-            <span>ApexDental</span>
+            <span>Brooks Paine</span>
           </div>
         </div>
 
