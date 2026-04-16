@@ -844,6 +844,10 @@ function ReadingListItem({ item }: { item: ReadingItem }) {
   const [dirty, setDirty] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
+  useEffect(() => {
+    if (!dirty) setValue(item.title);
+  }, [item.title, dirty]);
+
   const patchItem = useMutation({
     mutationFn: async (body: Partial<{ title: string; completed: boolean }>) => {
       const res = await fetch(`${base}api/ideal-week/reading-list/${item.id}`, {
@@ -891,13 +895,12 @@ function ReadingListItem({ item }: { item: ReadingItem }) {
         onCheckedChange={(checked) => patchItem.mutate({ completed: !!checked })}
         className="h-3.5 w-3.5 shrink-0"
       />
-      <div
-        contentEditable
-        suppressContentEditableWarning
-        className={`flex-1 outline-none focus:bg-muted/30 rounded px-0.5 py-0.5 cursor-text min-h-[20px] whitespace-pre-wrap ${item.completed ? "line-through text-muted-foreground" : "text-foreground/80"}`}
-        onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
         onBlur={handleBlur}
-        dangerouslySetInnerHTML={{ __html: item.title }}
+        className={`flex-1 bg-transparent outline-none focus:bg-muted/30 rounded px-0.5 py-0.5 ${item.completed ? "line-through text-muted-foreground" : "text-foreground/80"}`}
       />
       <button
         onClick={() => deleteItem.mutate()}
