@@ -123,7 +123,7 @@ function formatTimeRange(start: number, end: number): string {
   return `${fmt(start)}–${fmt(end)}`;
 }
 
-const HOUR_HEIGHT = 28;
+const HOUR_HEIGHT = 34;
 const FIRST_HOUR = 6;
 const LAST_HOUR = 21;
 const GRID_HEIGHT = (LAST_HOUR - FIRST_HOUR) * HOUR_HEIGHT;
@@ -1128,17 +1128,15 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
   return (
     <>
       <Card>
-        <CardHeader className="pb-1 pt-3 px-4">
-          <CardTitle className="text-sm">Ideal Week</CardTitle>
-        </CardHeader>
-        <CardContent className="p-3 pt-1">
-          <div className="flex flex-wrap gap-1.5 mb-2">
+        <CardContent className="px-3 py-2">
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="text-xs font-semibold mr-1">Ideal Week</span>
             {Object.entries(categoryLabels).map(([key, label]) => {
               const c = categoryColors[key];
               return (
                 <span
                   key={key}
-                  className={`text-[10px] px-1.5 py-0.5 rounded-full ${c.bg} ${c.text} font-medium`}
+                  className={`text-[9px] px-1.5 py-px rounded-full ${c.bg} ${c.text} font-medium leading-tight`}
                 >
                   {label}
                 </span>
@@ -1146,9 +1144,9 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
             })}
             {(calData?.calendars || []).length > 0 && (
               <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium inline-flex items-center gap-1 ${categoryColors["calendar"].bg} ${categoryColors["calendar"].text}`}
+                className={`text-[9px] px-1.5 py-px rounded-full font-medium leading-tight inline-flex items-center gap-0.5 ${categoryColors["calendar"].bg} ${categoryColors["calendar"].text}`}
               >
-                <CalendarDays className="h-2.5 w-2.5" />
+                <CalendarDays className="h-2 w-2" />
                 Google Calendar
               </span>
             )}
