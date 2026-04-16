@@ -122,7 +122,7 @@ function formatTimeRange(start: number, end: number): string {
   return `${fmt(start)}–${fmt(end)}`;
 }
 
-const HOUR_HEIGHT = 60;
+const HOUR_HEIGHT = 40;
 const FIRST_HOUR = 6;
 const LAST_HOUR = 21;
 const GRID_HEIGHT = (LAST_HOUR - FIRST_HOUR) * HOUR_HEIGHT;
