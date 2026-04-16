@@ -301,7 +301,7 @@ export function Organizations() {
       />
 
       <OrgSection
-        title="EDGE Locations"
+        title=""
         nameLabel="Location"
         emptyText="No EDGE locations yet"
         isLoading={isLoading}
@@ -336,10 +336,7 @@ function DsoSection({
   const locationCount = (edgeOrgs ?? []).length;
 
   return (
-    <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
-        EDGE DSO
-      </h3>
+    <div>
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
@@ -442,9 +439,11 @@ function OrgSection({
 }: OrgSectionProps) {
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
-        {title}
-      </h3>
+      {title && (
+        <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
+          {title}
+        </h3>
+      )}
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
