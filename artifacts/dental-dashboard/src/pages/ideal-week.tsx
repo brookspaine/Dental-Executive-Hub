@@ -1258,31 +1258,33 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                     <div
                                       key={block.id}
                                       data-block
-                                      className={`absolute rounded-md border cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow z-10 ${c.bg} ${c.text} ${c.border} ${isMovingThisBlock ? "opacity-80 shadow-lg ring-2 ring-primary/30" : ""}`}
+                                      className={`absolute rounded-md border hover:shadow-md transition-shadow z-10 ${c.bg} ${c.text} ${c.border} ${isMovingThisBlock ? "opacity-80 shadow-lg ring-2 ring-primary/30" : ""}`}
                                       style={{ top, height, left: "2px", right: hasOverlappingCalEvent ? "50%" : "2px" }}
+                                      onMouseMove={(e) => {
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const distFromBottom = rect.bottom - e.clientY;
+                                        e.currentTarget.style.cursor = distFromBottom <= 8 ? "s-resize" : "grab";
+                                      }}
                                       onMouseDown={(e) => {
-                                        const t = e.target as HTMLElement;
-                                        if (t.closest("[data-resize-handle]")) return;
-                                        startMoveDrag(e, block);
+                                        if (e.button !== 0) return;
+                                        const rect = e.currentTarget.getBoundingClientRect();
+                                        const distFromBottom = rect.bottom - e.clientY;
+                                        if (distFromBottom <= 8) {
+                                          startResizeDrag(e, block);
+                                        } else {
+                                          startMoveDrag(e, block);
+                                        }
                                       }}
                                       onContextMenu={(e) => handleContextMenu(e, day, block)}
                                     >
-                                      <div className="px-1.5 py-0.5 text-[11px] font-semibold leading-tight truncate overflow-hidden">
+                                      <div className="px-1.5 py-0.5 text-[11px] font-semibold leading-tight truncate">
                                         {block.label}
                                       </div>
                                       {height >= HOUR_HEIGHT * 0.75 && (
-                                        <div className="px-1.5 text-[9px] opacity-70 overflow-hidden">
+                                        <div className="px-1.5 text-[9px] opacity-70">
                                           {formatTimeRange(blockStart, blockStart + blockDuration)}
                                         </div>
                                       )}
-                                      <div
-                                        data-resize-handle
-                                        className="absolute left-0 right-0 cursor-s-resize group/resize flex items-center justify-center z-20"
-                                        style={{ bottom: "-6px", height: "14px" }}
-                                        onMouseDown={(e) => startResizeDrag(e, block)}
-                                      >
-                                        <div className="w-10 h-1.5 rounded-full bg-current opacity-0 group-hover/resize:opacity-40 transition-opacity" />
-                                      </div>
                                     </div>
                                   );
                                 })}
