@@ -10,6 +10,7 @@ import {
   CircleDot,
   CheckCircle2,
   Clock,
+  User as UserIcon,
   MoreHorizontal,
 } from "lucide-react";
 import { format, isPast, isToday, isTomorrow, parseISO } from "date-fns";
@@ -47,8 +48,16 @@ type Task = {
   status: Status;
   priority: Priority;
   dueDate?: string;
+  assignee?: string;
   createdAt: number;
 };
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 type Props = {
   storageKey: string;
@@ -128,6 +137,7 @@ export function TodoList({
               status: (t.status as Status) ?? (t.done ? "done" : "todo"),
               priority: (t.priority as Priority) ?? "medium",
               dueDate: t.dueDate,
+              assignee: t.assignee,
               createdAt: t.createdAt ?? Date.now(),
             }),
           );
@@ -348,6 +358,15 @@ function TaskRow({
           </div>
         </button>
 
+        {task.assignee && (
+          <span
+            title={`Assigned to ${task.assignee}`}
+            className="flex-shrink-0 inline-flex items-center justify-center h-5 min-w-[20px] px-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase"
+          >
+            {initials(task.assignee)}
+          </span>
+        )}
+
         {task.priority !== "medium" && (
           <Flag
             className={`h-3.5 w-3.5 flex-shrink-0 ${PRIORITY_META[task.priority].color}`}
@@ -417,6 +436,17 @@ function TaskRow({
             placeholder="Add a description…"
             className="text-sm min-h-[60px] resize-none"
           />
+          <div className="relative">
+            <UserIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={task.assignee ?? ""}
+              onChange={(e) =>
+                onUpdate({ assignee: e.target.value || undefined })
+              }
+              placeholder="Who is responsible?"
+              className="h-8 text-sm pl-7"
+            />
+          </div>
           <div className="flex flex-wrap gap-2">
             <Select
               value={task.priority}
