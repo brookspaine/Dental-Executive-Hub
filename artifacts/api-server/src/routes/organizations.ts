@@ -14,7 +14,25 @@ import {
 
 const router: IRouter = Router();
 
+async function ensureDefaultDso(): Promise<void> {
+  const existing = await db
+    .select()
+    .from(organizationsTable)
+    .where(eq(organizationsTable.category, "edge_dso"));
+  if (existing.length > 0) return;
+  await db.insert(organizationsTable).values({
+    name: "EDGE Dental Partners",
+    address: "",
+    city: "",
+    state: "",
+    category: "edge_dso",
+    status: "active",
+    monthlyRevenue: 0,
+  });
+}
+
 router.get("/organizations", async (_req, res): Promise<void> => {
+  await ensureDefaultDso();
   const orgs = await db
     .select()
     .from(organizationsTable)

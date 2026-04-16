@@ -292,13 +292,10 @@ export function Organizations() {
         </Dialog>
       </div>
 
-      <OrgSection
-        title="EDGE DSO"
-        nameLabel="EDGE DSO"
-        emptyText="No EDGE DSOs yet"
+      <DsoSection
         isLoading={isLoading}
-        orgs={dsoOrgs}
-        onRowClick={(id) => setLocation(`/organizations/${id}`)}
+        dsoOrgs={dsoOrgs}
+        edgeOrgs={orgs}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
@@ -313,6 +310,111 @@ export function Organizations() {
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
+    </div>
+  );
+}
+
+type DsoSectionProps = {
+  isLoading: boolean;
+  dsoOrgs: any[] | undefined;
+  edgeOrgs: any[] | undefined;
+  onEdit: (org: any) => void;
+  onDelete: (id: number) => void;
+};
+
+function DsoSection({
+  isLoading,
+  dsoOrgs,
+  edgeOrgs,
+  onEdit,
+  onDelete,
+}: DsoSectionProps) {
+  const totalRevenue = (edgeOrgs ?? []).reduce(
+    (sum, o) => sum + (o.monthlyRevenue ?? 0),
+    0
+  );
+  const locationCount = (edgeOrgs ?? []).length;
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
+        EDGE DSO
+      </h3>
+      <Card>
+        <CardContent className="p-0">
+          {isLoading ? (
+            <div className="p-6 space-y-3">
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : dsoOrgs && dsoOrgs.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>EDGE DSO</TableHead>
+                  <TableHead className="text-right">Total Revenue</TableHead>
+                  <TableHead className="text-right">EBITDA</TableHead>
+                  <TableHead className="text-right"># of Locations</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {dsoOrgs.map((org) => (
+                  <TableRow key={org.id} className="hover:bg-muted/50">
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-primary/10">
+                          <Building2 className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        {org.name}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${(totalRevenue / 1000).toFixed(0)}K
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${((org.monthlyRevenue ?? 0) / 1000).toFixed(0)}K
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      {locationCount}
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={org.status === "active" ? "default" : "secondary"}
+                      >
+                        {org.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onEdit(org)}
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                          aria-label="Edit DSO"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(org.id)}
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                          aria-label="Delete DSO"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="p-8 text-center">
+              <Building2 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">No EDGE DSOs yet</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
