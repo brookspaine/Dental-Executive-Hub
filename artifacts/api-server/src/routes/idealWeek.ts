@@ -511,6 +511,24 @@ const DEFAULT_RITUAL_ITEMS: Record<string, string[]> = {
     "Patience in endo",
     "People see compassion and care",
   ],
+  brainwashing: [
+    "Whatever anyone says or does, assume positive intent.",
+    "5 C's — Clarity, Commitment, Consistency, Consequences, Cut-Ties.",
+    "Empower others, not Enable. Drive accountability by asking questions.",
+    "Clear, Concise, Compelling (no \"I think, just, like\"), Charisma, Composure, Conversation — 6 C's of Communication.",
+    "1) Should we do this? 2) Delete 3) Optimize 4) Accelerate 5) Automate.",
+    "Doing imperfectly is better than not doing at all. Initiation → Consistency → Intensity.",
+    "Management Debt — if you don't say anything, don't expect them to do anything.",
+    "Seek first to understand. Be the last in the room to speak. Sit in the gap.",
+    "PCS — Problem, Consequence, Solution Leader.",
+    "\"Tough-minded on standards and tender-hearted with people.\"",
+    "Know your audience. Ask more questions, ask better questions.",
+    "Put yourself in the other person's shoes, then you'll know how to best influence them.",
+    "Have the team \"Make it Their Own,\" and when implementing, make it YOUR own (frameworks).",
+    "Gratitude = Abundance Minded.",
+    "Nothing about life is fair. Deal with it as it is.",
+    "BBB — efficiency and speed in procedures for freedom.",
+  ],
 };
 
 router.get("/ideal-week/ritual-items", async (req, res): Promise<void> => {

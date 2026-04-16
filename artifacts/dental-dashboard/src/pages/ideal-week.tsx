@@ -299,45 +299,182 @@ function EditableItem({
   );
 }
 
-const BRAINWASHING_ITEMS: string[] = [
-  "Whatever anyone says or does, assume positive intent.",
-  "5 C's — Clarity, Commitment, Consistency, Consequences, Cut-Ties.",
-  "Empower others, not Enable. Drive accountability by asking questions.",
-  "Clear, Concise, Compelling (no \"I think, just, like\"), Charisma, Composure, Conversation — 6 C's of Communication.",
-  "1) Should we do this? 2) Delete 3) Optimize 4) Accelerate 5) Automate.",
-  "Doing imperfectly is better than not doing at all. Initiation → Consistency → Intensity.",
-  "Management Debt — if you don't say anything, don't expect them to do anything.",
-  "Seek first to understand. Be the last in the room to speak. Sit in the gap.",
-  "PCS — Problem, Consequence, Solution Leader.",
-  "\"Tough-minded on standards and tender-hearted with people.\"",
-  "Know your audience. Ask more questions, ask better questions.",
-  "Put yourself in the other person's shoes, then you'll know how to best influence them.",
-  "Have the team \"Make it Their Own,\" and when implementing, make it YOUR own (frameworks).",
-  "Gratitude = Abundance Minded.",
-  "Nothing about life is fair. Deal with it as it is.",
-  "BBB — efficiency and speed in procedures for freedom.",
-];
-
 function DailyBrainwashing() {
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+  const category = "brainwashing";
+  const { data: items = [] } = useRitualItems(category);
+  const [adding, setAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+
+  const createItem = useMutation({
+    mutationFn: async (label: string) => {
+      const res = await fetch(`${base}api/ideal-week/ritual-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, label, sortOrder: items.length }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setNewLabel("");
+      setAdding(false);
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+    },
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`${base}api/ideal-week/ritual-items/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+    },
+  });
+
+  const handleAdd = () => {
+    const label = newLabel.trim();
+    if (!label) {
+      setAdding(false);
+      return;
+    }
+    createItem.mutate(label);
+  };
+
   return (
     <Card>
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
         <CardTitle className="flex items-center gap-2 text-base">
           <Brain className="h-4 w-4 text-primary" />
           Daily Brainwashing
         </CardTitle>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => setAdding(true)}
+        >
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Add
+        </Button>
       </CardHeader>
-      <CardContent className="pt-0">
-        <ul className="space-y-2">
-          {BRAINWASHING_ITEMS.map((item, idx) => (
-            <li key={idx} className="flex gap-2 text-sm leading-relaxed">
-              <span className="text-primary mt-1 select-none">•</span>
-              <span>{item}</span>
-            </li>
-          ))}
-        </ul>
+      <CardContent className="pt-0 space-y-1">
+        {items.map((item) => (
+          <BrainwashingItemRow
+            key={item.id}
+            item={item}
+            category={category}
+            onDelete={() => deleteItem.mutate(item.id)}
+          />
+        ))}
+
+        {adding && (
+          <div className="flex items-start gap-2 pt-1">
+            <span className="text-primary mt-2 select-none">•</span>
+            <Input
+              autoFocus
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                } else if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewLabel("");
+                }
+              }}
+              onBlur={handleAdd}
+              placeholder="New principle…"
+              className="h-8 text-sm"
+            />
+          </div>
+        )}
+
+        {items.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground italic py-1">
+            No items yet — click Add to create one.
+          </p>
+        )}
       </CardContent>
     </Card>
+  );
+}
+
+function BrainwashingItemRow({
+  item,
+  category,
+  onDelete,
+}: {
+  item: { id: number; label: string };
+  category: string;
+  onDelete: () => void;
+}) {
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+  const [value, setValue] = useState(item.label);
+  const [dirty, setDirty] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    if (!dirty) setValue(item.label);
+  }, [item.label, dirty]);
+
+  const updateItem = useMutation({
+    mutationFn: async (label: string) => {
+      const res = await fetch(`${base}api/ideal-week/ritual-items/${item.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ label }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setDirty(false);
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+    },
+  });
+
+  const handleChange = (newVal: string) => {
+    setValue(newVal);
+    setDirty(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateItem.mutate(newVal);
+    }, 800);
+  };
+
+  const handleBlur = () => {
+    if (dirty) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      updateItem.mutate(value);
+    }
+  };
+
+  return (
+    <div className="group flex items-start gap-2 py-0.5 rounded hover:bg-muted/40">
+      <span className="text-primary mt-1 select-none">•</span>
+      <div
+        contentEditable
+        suppressContentEditableWarning
+        className="text-sm leading-relaxed flex-1 outline-none focus:bg-muted/50 rounded px-1 -mx-1 cursor-text whitespace-pre-wrap"
+        onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+        onBlur={handleBlur}
+      >
+        {value}
+      </div>
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+        onClick={onDelete}
+        aria-label="Delete item"
+      >
+        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+      </Button>
+    </div>
   );
 }
 
