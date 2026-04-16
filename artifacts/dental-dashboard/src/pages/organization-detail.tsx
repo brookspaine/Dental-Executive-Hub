@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TodoList } from "@/components/todo-list";
 import {
   ArrowLeft,
   Building2,
@@ -11,8 +12,6 @@ import {
   MapPin,
   Users as UsersIcon,
   Activity,
-  Phone,
-  Mail,
 } from "lucide-react";
 
 export function OrganizationDetail() {
@@ -75,123 +74,63 @@ export function OrganizationDetail() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="min-h-[280px]">
+        <Card className="min-h-[320px] flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <DollarSign className="h-5 w-5 text-primary" />
               Financials
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Monthly Revenue</span>
-              <span className="text-2xl font-semibold">
-                ${(org.monthlyRevenue ?? 0).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Annual (est.)</span>
-              <span className="text-lg font-medium">
-                ${annualRevenue.toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Revenue / Patient</span>
-              <span className="text-lg font-medium">
-                ${revenuePerPatient.toLocaleString()}
-              </span>
-            </div>
+          <CardContent className="flex-1 flex flex-col">
+            <TodoList
+              storageKey={`org-todos-${org.id}-financials`}
+              placeholder="Add a financial to-do…"
+            />
           </CardContent>
         </Card>
 
-        <Card className="min-h-[280px]">
+        <Card className="min-h-[320px] flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <MapPin className="h-5 w-5 text-primary" />
               Location
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="text-base">
-              {org.address || (
-                <span className="text-muted-foreground italic">No address on file</span>
-              )}
-            </div>
-            <div className="text-base text-muted-foreground">
-              {org.city}
-              {org.city && org.state ? ", " : ""}
-              {org.state}
-            </div>
-            {org.phone && (
-              <div className="flex items-center gap-2 text-sm">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                {org.phone}
-              </div>
-            )}
-            {org.email && (
-              <div className="flex items-center gap-2 text-sm">
-                <Mail className="h-4 w-4 text-muted-foreground" />
-                {org.email}
-              </div>
-            )}
+          <CardContent className="flex-1 flex flex-col">
+            <TodoList
+              storageKey={`org-todos-${org.id}-location`}
+              placeholder="Add a location to-do…"
+            />
           </CardContent>
         </Card>
 
-        <Card className="min-h-[280px]">
+        <Card className="min-h-[320px] flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <UsersIcon className="h-5 w-5 text-primary" />
               People
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Providers</span>
-              <span className="text-2xl font-semibold">{org.providerCount ?? 0}</span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Patients</span>
-              <span className="text-lg font-medium">
-                {(org.patientCount ?? 0).toLocaleString()}
-              </span>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Patients / Provider</span>
-              <span className="text-lg font-medium">
-                {patientsPerProvider.toLocaleString()}
-              </span>
-            </div>
+          <CardContent className="flex-1 flex flex-col">
+            <TodoList
+              storageKey={`org-todos-${org.id}-people`}
+              placeholder="Add a people to-do…"
+            />
           </CardContent>
         </Card>
 
-        <Card className="min-h-[280px]">
+        <Card className="min-h-[320px] flex flex-col">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
               <Activity className="h-5 w-5 text-primary" />
               Operations
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-muted-foreground">Status</span>
-              <Badge variant={org.status === "active" ? "default" : "secondary"}>
-                {org.status}
-              </Badge>
-            </div>
-            <div className="flex justify-between items-baseline">
-              <span className="text-sm text-muted-foreground">Category</span>
-              <span className="text-base font-medium capitalize">
-                {org.category || "edge"}
-              </span>
-            </div>
-            {org.createdAt && (
-              <div className="flex justify-between items-baseline">
-                <span className="text-sm text-muted-foreground">Added</span>
-                <span className="text-base font-medium">
-                  {new Date(org.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            )}
+          <CardContent className="flex-1 flex flex-col">
+            <TodoList
+              storageKey={`org-todos-${org.id}-operations`}
+              placeholder="Add an operations to-do…"
+            />
           </CardContent>
         </Card>
       </div>

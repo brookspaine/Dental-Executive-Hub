@@ -19,10 +19,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { TodoList } from "@/components/todo-list";
 import {
   MapPin,
-  Phone,
-  Mail,
   Users as UsersIcon,
   DollarSign,
   Pencil,
@@ -270,132 +269,63 @@ export function UrgentDental() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="min-h-[280px]">
+            <Card className="min-h-[320px] flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <DollarSign className="h-5 w-5 text-primary" />
                   Financials
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Monthly Revenue</span>
-                  <span className="text-2xl font-semibold">
-                    ${(location.monthlyRevenue ?? 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Annual (est.)</span>
-                  <span className="text-lg font-medium">
-                    ${((location.monthlyRevenue ?? 0) * 12).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Revenue / Patient</span>
-                  <span className="text-lg font-medium">
-                    $
-                    {location.patientCount && location.patientCount > 0
-                      ? Math.round(
-                          (location.monthlyRevenue ?? 0) / location.patientCount,
-                        ).toLocaleString()
-                      : "0"}
-                  </span>
-                </div>
+              <CardContent className="flex-1 flex flex-col">
+                <TodoList
+                  storageKey={`urgent-todos-${location.id}-financials`}
+                  placeholder="Add a financial to-do…"
+                />
               </CardContent>
             </Card>
 
-            <Card className="min-h-[280px]">
+            <Card className="min-h-[320px] flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <MapPin className="h-5 w-5 text-primary" />
                   Location
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="text-base">
-                  {location.address || (
-                    <span className="text-muted-foreground italic">No address on file</span>
-                  )}
-                </div>
-                <div className="text-base text-muted-foreground">
-                  {location.city}
-                  {location.city && location.state ? ", " : ""}
-                  {location.state}
-                </div>
-                {location.phone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                    {location.phone}
-                  </div>
-                )}
-                {location.email && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                    {location.email}
-                  </div>
-                )}
+              <CardContent className="flex-1 flex flex-col">
+                <TodoList
+                  storageKey={`urgent-todos-${location.id}-location`}
+                  placeholder="Add a location to-do…"
+                />
               </CardContent>
             </Card>
 
-            <Card className="min-h-[280px]">
+            <Card className="min-h-[320px] flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <UsersIcon className="h-5 w-5 text-primary" />
                   People
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Providers</span>
-                  <span className="text-2xl font-semibold">
-                    {location.providerCount ?? 0}
-                  </span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Patients</span>
-                  <span className="text-lg font-medium">
-                    {(location.patientCount ?? 0).toLocaleString()}
-                  </span>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Patients / Provider</span>
-                  <span className="text-lg font-medium">
-                    {location.providerCount && location.providerCount > 0
-                      ? Math.round(
-                          (location.patientCount ?? 0) / location.providerCount,
-                        ).toLocaleString()
-                      : "0"}
-                  </span>
-                </div>
+              <CardContent className="flex-1 flex flex-col">
+                <TodoList
+                  storageKey={`urgent-todos-${location.id}-people`}
+                  placeholder="Add a people to-do…"
+                />
               </CardContent>
             </Card>
 
-            <Card className="min-h-[280px]">
+            <Card className="min-h-[320px] flex flex-col">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-lg">
                   <Activity className="h-5 w-5 text-primary" />
                   Operations
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Status</span>
-                  <Badge variant={location.status === "active" ? "default" : "secondary"}>
-                    {location.status}
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-baseline">
-                  <span className="text-sm text-muted-foreground">Category</span>
-                  <span className="text-base font-medium">Urgent Dental</span>
-                </div>
-                {location.createdAt && (
-                  <div className="flex justify-between items-baseline">
-                    <span className="text-sm text-muted-foreground">Added</span>
-                    <span className="text-base font-medium">
-                      {new Date(location.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                )}
+              <CardContent className="flex-1 flex flex-col">
+                <TodoList
+                  storageKey={`urgent-todos-${location.id}-operations`}
+                  placeholder="Add an operations to-do…"
+                />
               </CardContent>
             </Card>
           </div>
