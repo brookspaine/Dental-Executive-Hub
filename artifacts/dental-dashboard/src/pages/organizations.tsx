@@ -1,4 +1,5 @@
-import { Fragment, useState } from "react";
+import { useState } from "react";
+import { useLocation } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListOrganizations,
@@ -44,10 +45,6 @@ import {
   MapPin,
   Phone,
   Mail,
-  ChevronRight,
-  DollarSign,
-  Users as UsersIcon,
-  Activity,
 } from "lucide-react";
 
 type OrgFormData = {
@@ -84,10 +81,10 @@ export function Organizations() {
   const updateOrg = useUpdateOrganization();
   const deleteOrg = useDeleteOrganization();
 
+  const [, setLocation] = useLocation();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
-  const [expandedId, setExpandedId] = useState<number | null>(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListOrganizationsQueryKey() });
@@ -289,7 +286,6 @@ export function Organizations() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-8"></TableHead>
                   <TableHead>EDGE Location</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Contact</TableHead>
@@ -302,18 +298,12 @@ export function Organizations() {
               </TableHeader>
               <TableBody>
                 {orgs.map((org) => {
-                  const isExpanded = expandedId === org.id;
                   return (
-                    <Fragment key={org.id}>
-                      <TableRow
-                        className="cursor-pointer hover:bg-muted/50"
-                        onClick={() => setExpandedId(isExpanded ? null : org.id)}
-                      >
-                        <TableCell className="w-8">
-                          <ChevronRight
-                            className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`}
-                          />
-                        </TableCell>
+                    <TableRow
+                      key={org.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setLocation(`/organizations/${org.id}`)}
+                    >
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
                             <div className="p-1.5 rounded bg-primary/10">
@@ -374,142 +364,7 @@ export function Organizations() {
                             </button>
                           </div>
                         </TableCell>
-                      </TableRow>
-                      {isExpanded && (
-                        <TableRow key={`${org.id}-details`} className="bg-muted/30 hover:bg-muted/30">
-                          <TableCell colSpan={9} className="p-0">
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 p-6">
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  <DollarSign className="h-3.5 w-3.5" />
-                                  Financials
-                                </div>
-                                <div className="space-y-1.5 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Monthly Revenue</span>
-                                    <span className="font-medium">
-                                      ${(org.monthlyRevenue ?? 0).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Annual (est.)</span>
-                                    <span className="font-medium">
-                                      ${((org.monthlyRevenue ?? 0) * 12).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Revenue / Patient</span>
-                                    <span className="font-medium">
-                                      $
-                                      {org.patientCount && org.patientCount > 0
-                                        ? Math.round(
-                                            (org.monthlyRevenue ?? 0) / org.patientCount,
-                                          ).toLocaleString()
-                                        : "0"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  <MapPin className="h-3.5 w-3.5" />
-                                  Location
-                                </div>
-                                <div className="space-y-1.5 text-sm">
-                                  <div className="text-foreground">
-                                    {org.address || (
-                                      <span className="text-muted-foreground italic">
-                                        No address
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="text-muted-foreground">
-                                    {org.city}
-                                    {org.city && org.state ? ", " : ""}
-                                    {org.state}
-                                  </div>
-                                  {org.phone && (
-                                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                                      <Phone className="h-3 w-3" />
-                                      {org.phone}
-                                    </div>
-                                  )}
-                                  {org.email && (
-                                    <div className="flex items-center gap-1.5 text-muted-foreground">
-                                      <Mail className="h-3 w-3" />
-                                      {org.email}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  <UsersIcon className="h-3.5 w-3.5" />
-                                  People
-                                </div>
-                                <div className="space-y-1.5 text-sm">
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Providers</span>
-                                    <span className="font-medium">
-                                      {org.providerCount ?? 0}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Patients</span>
-                                    <span className="font-medium">
-                                      {(org.patientCount ?? 0).toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Patients / Provider</span>
-                                    <span className="font-medium">
-                                      {org.providerCount && org.providerCount > 0
-                                        ? Math.round(
-                                            (org.patientCount ?? 0) / org.providerCount,
-                                          ).toLocaleString()
-                                        : "0"}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="space-y-2">
-                                <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                                  <Activity className="h-3.5 w-3.5" />
-                                  Operations
-                                </div>
-                                <div className="space-y-1.5 text-sm">
-                                  <div className="flex justify-between items-center">
-                                    <span className="text-muted-foreground">Status</span>
-                                    <Badge
-                                      variant={org.status === "active" ? "default" : "secondary"}
-                                    >
-                                      {org.status}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex justify-between">
-                                    <span className="text-muted-foreground">Category</span>
-                                    <span className="font-medium capitalize">
-                                      {org.category || "edge"}
-                                    </span>
-                                  </div>
-                                  {org.createdAt && (
-                                    <div className="flex justify-between">
-                                      <span className="text-muted-foreground">Added</span>
-                                      <span className="font-medium">
-                                        {new Date(org.createdAt).toLocaleDateString()}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </Fragment>
+                    </TableRow>
                   );
                 })}
               </TableBody>
