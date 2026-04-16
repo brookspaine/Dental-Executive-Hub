@@ -1258,28 +1258,30 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
                                     <div
                                       key={block.id}
                                       data-block
-                                      className={`absolute rounded-md border cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow overflow-hidden z-10 ${c.bg} ${c.text} ${c.border} ${isMovingThisBlock ? "opacity-80 shadow-lg ring-2 ring-primary/30" : ""}`}
+                                      className={`absolute rounded-md border cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow z-10 ${c.bg} ${c.text} ${c.border} ${isMovingThisBlock ? "opacity-80 shadow-lg ring-2 ring-primary/30" : ""}`}
                                       style={{ top, height, left: "2px", right: hasOverlappingCalEvent ? "50%" : "2px" }}
                                       onMouseDown={(e) => {
                                         const t = e.target as HTMLElement;
-                                        if (t.closest(".cursor-s-resize")) return;
+                                        if (t.closest("[data-resize-handle]")) return;
                                         startMoveDrag(e, block);
                                       }}
                                       onContextMenu={(e) => handleContextMenu(e, day, block)}
                                     >
-                                      <div className="px-1.5 py-0.5 text-[11px] font-semibold leading-tight truncate">
+                                      <div className="px-1.5 py-0.5 text-[11px] font-semibold leading-tight truncate overflow-hidden">
                                         {block.label}
                                       </div>
                                       {height >= HOUR_HEIGHT * 0.75 && (
-                                        <div className="px-1.5 text-[9px] opacity-70">
+                                        <div className="px-1.5 text-[9px] opacity-70 overflow-hidden">
                                           {formatTimeRange(blockStart, blockStart + blockDuration)}
                                         </div>
                                       )}
                                       <div
-                                        className="absolute bottom-0 left-0 right-0 h-3 cursor-s-resize group/resize flex items-center justify-center"
+                                        data-resize-handle
+                                        className="absolute left-0 right-0 cursor-s-resize group/resize flex items-center justify-center z-20"
+                                        style={{ bottom: "-6px", height: "14px" }}
                                         onMouseDown={(e) => startResizeDrag(e, block)}
                                       >
-                                        <div className="w-8 h-1 rounded-full bg-current opacity-0 group-hover/resize:opacity-40 transition-opacity" />
+                                        <div className="w-10 h-1.5 rounded-full bg-current opacity-0 group-hover/resize:opacity-40 transition-opacity" />
                                       </div>
                                     </div>
                                   );
