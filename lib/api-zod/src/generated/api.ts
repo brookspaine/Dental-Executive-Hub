@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
 export const ListDailyTop3ResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
-  description: zod.string().nullish(),
+  description: zod.string().optional(),
   completed: zod.boolean(),
   priority: zod.number(),
   date: zod.coerce.date(),
@@ -54,7 +54,7 @@ export const UpdateDailyTop3Body = zod.object({
 export const UpdateDailyTop3Response = zod.object({
   id: zod.number(),
   title: zod.string(),
-  description: zod.string().nullish(),
+  description: zod.string().optional(),
   completed: zod.boolean(),
   priority: zod.number(),
   date: zod.coerce.date(),
@@ -82,7 +82,7 @@ export const ListOrganizationsResponseItem = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod.enum(["edge", "urgent_dental"]).optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
   createdAt: zod.coerce.date(),
 });
@@ -103,7 +103,7 @@ export const CreateOrganizationBody = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod.enum(["edge", "urgent_dental"]).optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]).optional(),
 });
 
@@ -125,7 +125,7 @@ export const GetOrganizationResponse = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod.enum(["edge", "urgent_dental"]).optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
   createdAt: zod.coerce.date(),
 });
@@ -147,7 +147,7 @@ export const UpdateOrganizationBody = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod.enum(["edge", "urgent_dental"]).optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]).optional(),
 });
 
@@ -162,7 +162,7 @@ export const UpdateOrganizationResponse = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod.enum(["edge", "urgent_dental"]).optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
   createdAt: zod.coerce.date(),
 });

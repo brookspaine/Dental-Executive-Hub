@@ -37,6 +37,7 @@ export type OrganizationCategory =
 
 export const OrganizationCategory = {
   edge: "edge",
+  edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
 } as const;
 
@@ -69,6 +70,7 @@ export type CreateOrganizationBodyCategory =
 
 export const CreateOrganizationBodyCategory = {
   edge: "edge",
+  edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
 } as const;
 
@@ -99,6 +101,7 @@ export type UpdateOrganizationBodyCategory =
 
 export const UpdateOrganizationBodyCategory = {
   edge: "edge",
+  edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
 } as const;
 

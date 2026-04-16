@@ -58,6 +58,7 @@ type OrgFormData = {
   patientCount: number;
   monthlyRevenue: number;
   status: "active" | "inactive";
+  category: "edge" | "edge_dso";
 };
 
 const emptyForm: OrgFormData = {
@@ -71,11 +72,13 @@ const emptyForm: OrgFormData = {
   patientCount: 0,
   monthlyRevenue: 0,
   status: "active",
+  category: "edge",
 };
 
 export function Organizations() {
   const queryClient = useQueryClient();
   const { data: allOrgs, isLoading } = useListOrganizations();
+  const dsoOrgs = allOrgs?.filter((o: any) => o.category === "edge_dso");
   const orgs = allOrgs?.filter((o: any) => !o.category || o.category === "edge");
   const createOrg = useCreateOrganization();
   const updateOrg = useUpdateOrganization();
@@ -133,7 +136,14 @@ export function Organizations() {
       patientCount: org.patientCount || 0,
       monthlyRevenue: org.monthlyRevenue || 0,
       status: org.status,
+      category: (org.category as "edge" | "edge_dso") || "edge",
     });
+    setDialogOpen(true);
+  };
+
+  const openAddDialog = (category: "edge" | "edge_dso") => {
+    setEditingId(null);
+    setForm({ ...emptyForm, category });
     setDialogOpen(true);
   };
 
@@ -150,6 +160,16 @@ export function Organizations() {
             Manage your dental practice locations
           </p>
         </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => openAddDialog("edge_dso")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add EDGE DSO
+          </Button>
+          <Button onClick={() => openAddDialog("edge")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add EDGE Location
+          </Button>
+        </div>
         <Dialog
           open={dialogOpen}
           onOpenChange={(open) => {
@@ -160,15 +180,12 @@ export function Organizations() {
             }
           }}
         >
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add EDGE Location
-            </Button>
-          </DialogTrigger>
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingId ? "Edit EDGE Location" : "Add EDGE Location"}</DialogTitle>
+              <DialogTitle>
+                {editingId ? "Edit" : "Add"}{" "}
+                {form.category === "edge_dso" ? "EDGE DSO" : "EDGE Location"}
+              </DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-2">
               <div className="grid gap-2">
@@ -267,18 +284,70 @@ export function Organizations() {
                 </Select>
               </div>
               <Button onClick={handleSubmit} className="mt-2">
-                {editingId ? "Update" : "Create"} EDGE Location
+                {editingId ? "Update" : "Create"}{" "}
+                {form.category === "edge_dso" ? "EDGE DSO" : "EDGE Location"}
               </Button>
             </div>
           </DialogContent>
         </Dialog>
       </div>
 
+      <OrgSection
+        title="EDGE DSO"
+        nameLabel="EDGE DSO"
+        emptyText="No EDGE DSOs yet"
+        isLoading={isLoading}
+        orgs={dsoOrgs}
+        onRowClick={(id) => setLocation(`/organizations/${id}`)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
+      <OrgSection
+        title="EDGE Locations"
+        nameLabel="EDGE Location"
+        emptyText="No EDGE locations yet"
+        isLoading={isLoading}
+        orgs={orgs}
+        onRowClick={(id) => setLocation(`/organizations/${id}`)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+    </div>
+  );
+}
+
+type OrgSectionProps = {
+  title: string;
+  nameLabel: string;
+  emptyText: string;
+  isLoading: boolean;
+  orgs: any[] | undefined;
+  onRowClick: (id: number) => void;
+  onEdit: (org: any) => void;
+  onDelete: (id: number) => void;
+};
+
+function OrgSection({
+  title,
+  nameLabel,
+  emptyText,
+  isLoading,
+  orgs,
+  onRowClick,
+  onEdit,
+  onDelete,
+}: OrgSectionProps) {
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide px-1">
+        {title}
+      </h3>
       <Card>
         <CardContent className="p-0">
           {isLoading ? (
             <div className="p-6 space-y-3">
-              {Array.from({ length: 3 }).map((_, i) => (
+              {Array.from({ length: 2 }).map((_, i) => (
                 <Skeleton key={i} className="h-16 w-full" />
               ))}
             </div>
@@ -286,7 +355,7 @@ export function Organizations() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>EDGE Location</TableHead>
+                  <TableHead>{nameLabel}</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead className="text-right">Providers</TableHead>
@@ -297,85 +366,84 @@ export function Organizations() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {orgs.map((org) => {
-                  return (
-                    <TableRow
-                      key={org.id}
-                      className="cursor-pointer hover:bg-muted/50"
-                      onClick={() => setLocation(`/organizations/${org.id}`)}
-                    >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            <div className="p-1.5 rounded bg-primary/10">
-                              <Building2 className="h-3.5 w-3.5 text-primary" />
-                            </div>
-                            {org.name}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1 text-muted-foreground text-sm">
-                            <MapPin className="h-3 w-3" />
-                            {org.city}
-                            {org.city && org.state ? ", " : ""}
-                            {org.state}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="space-y-0.5 text-sm text-muted-foreground">
-                            {org.phone && (
-                              <div className="flex items-center gap-1">
-                                <Phone className="h-3 w-3" />
-                                {org.phone}
-                              </div>
-                            )}
-                            {org.email && (
-                              <div className="flex items-center gap-1">
-                                <Mail className="h-3 w-3" />
-                                {org.email}
-                              </div>
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">{org.providerCount ?? 0}</TableCell>
-                        <TableCell className="text-right">
-                          {(org.patientCount ?? 0).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          ${((org.monthlyRevenue ?? 0) / 1000).toFixed(0)}K
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={org.status === "active" ? "default" : "secondary"}>
-                            {org.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell onClick={(e) => e.stopPropagation()}>
+                {orgs.map((org) => (
+                  <TableRow
+                    key={org.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => onRowClick(org.id)}
+                  >
+                    <TableCell className="font-medium">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1.5 rounded bg-primary/10">
+                          <Building2 className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        {org.name}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-muted-foreground text-sm">
+                        <MapPin className="h-3 w-3" />
+                        {org.city}
+                        {org.city && org.state ? ", " : ""}
+                        {org.state}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-0.5 text-sm text-muted-foreground">
+                        {org.phone && (
                           <div className="flex items-center gap-1">
-                            <button
-                              onClick={() => handleEdit(org)}
-                              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                            >
-                              <Pencil className="h-3.5 w-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(org.id)}
-                              className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            <Phone className="h-3 w-3" />
+                            {org.phone}
                           </div>
-                        </TableCell>
-                    </TableRow>
-                  );
-                })}
+                        )}
+                        {org.email && (
+                          <div className="flex items-center gap-1">
+                            <Mail className="h-3 w-3" />
+                            {org.email}
+                          </div>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {org.providerCount ?? 0}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      {(org.patientCount ?? 0).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">
+                      ${((org.monthlyRevenue ?? 0) / 1000).toFixed(0)}K
+                    </TableCell>
+                    <TableCell>
+                      <Badge
+                        variant={org.status === "active" ? "default" : "secondary"}
+                      >
+                        {org.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => onEdit(org)}
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={() => onDelete(org.id)}
+                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
               </TableBody>
             </Table>
           ) : (
-            <div className="p-12 text-center">
-              <Building2 className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm text-muted-foreground">No EDGE locations yet</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Add your first dental practice to get started
-              </p>
+            <div className="p-8 text-center">
+              <Building2 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+              <p className="text-sm text-muted-foreground">{emptyText}</p>
             </div>
           )}
         </CardContent>

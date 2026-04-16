@@ -11,5 +11,6 @@ export type OrganizationCategory =
 
 export const OrganizationCategory = {
   edge: "edge",
+  edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
 } as const;
