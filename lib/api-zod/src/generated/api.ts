@@ -20,7 +20,7 @@ export const HealthCheckResponse = zod.object({
 export const ListDailyTop3ResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
-  description: zod.string().optional(),
+  description: zod.string().nullish(),
   completed: zod.boolean(),
   priority: zod.number(),
   date: zod.coerce.date(),
@@ -54,7 +54,7 @@ export const UpdateDailyTop3Body = zod.object({
 export const UpdateDailyTop3Response = zod.object({
   id: zod.number(),
   title: zod.string(),
-  description: zod.string().optional(),
+  description: zod.string().nullish(),
   completed: zod.boolean(),
   priority: zod.number(),
   date: zod.coerce.date(),
