@@ -20,17 +20,16 @@ import {
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
-  Building2,
   MapPin,
   Phone,
   Mail,
-  Users,
-  UserCheck,
+  Users as UsersIcon,
   DollarSign,
   Pencil,
   X,
   Save,
   Zap,
+  Activity,
 } from "lucide-react";
 
 export function UrgentDental() {
@@ -251,116 +250,155 @@ export function UrgentDental() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-lg bg-amber-50">
-                    <Zap className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg">{location.name}</CardTitle>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-                      <MapPin className="h-3.5 w-3.5" />
-                      {location.address}, {location.city}, {location.state}
-                    </div>
-                  </div>
-                </div>
-                <Badge variant={location.status === "active" ? "default" : "secondary"}>
-                  {location.status}
-                </Badge>
+        <div className="space-y-6">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-lg bg-amber-50">
+              <Zap className="h-5 w-5 text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold">{location.name}</h3>
+              <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
+                <MapPin className="h-3.5 w-3.5" />
+                {location.city}
+                {location.city && location.state ? ", " : ""}
+                {location.state}
               </div>
-            </CardHeader>
-          </Card>
+            </div>
+            <Badge variant={location.status === "active" ? "default" : "secondary"}>
+              {location.status}
+            </Badge>
+          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-50">
-                    <Users className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{location.providerCount ?? 0}</p>
-                    <p className="text-xs text-muted-foreground">Providers</p>
-                  </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="min-h-[280px]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <DollarSign className="h-5 w-5 text-primary" />
+                  Financials
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Monthly Revenue</span>
+                  <span className="text-2xl font-semibold">
+                    ${(location.monthlyRevenue ?? 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Annual (est.)</span>
+                  <span className="text-lg font-medium">
+                    ${((location.monthlyRevenue ?? 0) * 12).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Revenue / Patient</span>
+                  <span className="text-lg font-medium">
+                    $
+                    {location.patientCount && location.patientCount > 0
+                      ? Math.round(
+                          (location.monthlyRevenue ?? 0) / location.patientCount,
+                        ).toLocaleString()
+                      : "0"}
+                  </span>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-50">
-                    <UserCheck className="h-4 w-4 text-emerald-600" />
+
+            <Card className="min-h-[280px]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <MapPin className="h-5 w-5 text-primary" />
+                  Location
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-base">
+                  {location.address || (
+                    <span className="text-muted-foreground italic">No address on file</span>
+                  )}
+                </div>
+                <div className="text-base text-muted-foreground">
+                  {location.city}
+                  {location.city && location.state ? ", " : ""}
+                  {location.state}
+                </div>
+                {location.phone && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                    {location.phone}
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold">{(location.patientCount ?? 0).toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">Patients</p>
+                )}
+                {location.email && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Mail className="h-4 w-4 text-muted-foreground" />
+                    {location.email}
                   </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="min-h-[280px]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <UsersIcon className="h-5 w-5 text-primary" />
+                  People
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Providers</span>
+                  <span className="text-2xl font-semibold">
+                    {location.providerCount ?? 0}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Patients</span>
+                  <span className="text-lg font-medium">
+                    {(location.patientCount ?? 0).toLocaleString()}
+                  </span>
+                </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Patients / Provider</span>
+                  <span className="text-lg font-medium">
+                    {location.providerCount && location.providerCount > 0
+                      ? Math.round(
+                          (location.patientCount ?? 0) / location.providerCount,
+                        ).toLocaleString()
+                      : "0"}
+                  </span>
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="p-5">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-violet-50">
-                    <DollarSign className="h-4 w-4 text-violet-600" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">${((location.monthlyRevenue ?? 0) / 1000).toFixed(0)}K</p>
-                    <p className="text-xs text-muted-foreground">Monthly Revenue</p>
-                  </div>
+
+            <Card className="min-h-[280px]">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <Activity className="h-5 w-5 text-primary" />
+                  Operations
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-muted-foreground">Status</span>
+                  <Badge variant={location.status === "active" ? "default" : "secondary"}>
+                    {location.status}
+                  </Badge>
                 </div>
+                <div className="flex justify-between items-baseline">
+                  <span className="text-sm text-muted-foreground">Category</span>
+                  <span className="text-base font-medium">Urgent Dental</span>
+                </div>
+                {location.createdAt && (
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-sm text-muted-foreground">Added</span>
+                    <span className="text-base font-medium">
+                      {new Date(location.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base">Contact Information</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded bg-muted">
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Phone</p>
-                    <p className="text-sm font-medium">{location.phone || "Not set"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded bg-muted">
-                    <Mail className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Email</p>
-                    <p className="text-sm font-medium">{location.email || "Not set"}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded bg-muted">
-                    <MapPin className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Address</p>
-                    <p className="text-sm font-medium">{location.address}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded bg-muted">
-                    <Building2 className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">City / State</p>
-                    <p className="text-sm font-medium">{location.city}, {location.state}</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
       )}
     </div>
