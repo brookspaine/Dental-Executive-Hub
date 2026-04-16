@@ -61,12 +61,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-12 border-b bg-card flex items-center justify-between px-6">
+        <header className="h-12 border-b bg-card grid grid-cols-3 items-center px-6">
           <h1 className="text-lg font-semibold tracking-tight">
             {navItems.find((i) => i.href === location)?.label || "Dashboard"}
           </h1>
-          <div className="flex items-center gap-3">
-            <div id="header-actions" className="flex items-center" />
+          <div id="header-actions" className="flex items-center justify-center" />
+          <div className="flex items-center justify-end gap-3">
             <button className="relative p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive border-2 border-card" />
