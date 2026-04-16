@@ -1905,17 +1905,6 @@ export function IdealWeek() {
         <div className="space-y-4">
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
-          <Card className="bg-white border-primary/20">
-            <CardContent className="p-4 flex items-center justify-center">
-              <p className="text-sm md:text-base italic text-center text-foreground/90">
-                <span className="text-primary/60 select-none mr-1">&ldquo;</span>
-                What you think of yourself and what you believe is likely what
-                actually will happen.
-                <span className="text-primary/60 select-none ml-1">&rdquo;</span>
-              </p>
-            </CardContent>
-          </Card>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Big3Section
               title="Today's Big 3"
@@ -1958,6 +1947,17 @@ export function IdealWeek() {
               onRename={(id, title) => updateWeekly.mutate({ id, title })}
             />
           </div>
+
+          <Card className="bg-white border-primary/20">
+            <CardContent className="p-4 flex items-center justify-center">
+              <p className="text-sm md:text-base italic text-center text-foreground/90">
+                <span className="text-primary/60 select-none mr-1">&ldquo;</span>
+                What you think of yourself and what you believe is likely what
+                actually will happen.
+                <span className="text-primary/60 select-none ml-1">&rdquo;</span>
+              </p>
+            </CardContent>
+          </Card>
 
           <DailyBrainwashing />
 
