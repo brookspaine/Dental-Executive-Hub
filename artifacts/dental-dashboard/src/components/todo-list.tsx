@@ -14,6 +14,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { format, isPast, isToday, isTomorrow, parseISO } from "date-fns";
+import { useListDirectReports } from "@workspace/api-client-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -22,6 +23,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Select,
   SelectContent,
@@ -436,17 +445,10 @@ function TaskRow({
             placeholder="Add a description…"
             className="text-sm min-h-[60px] resize-none"
           />
-          <div className="relative">
-            <UserIcon className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-            <Input
-              value={task.assignee ?? ""}
-              onChange={(e) =>
-                onUpdate({ assignee: e.target.value || undefined })
-              }
-              placeholder="Who is responsible?"
-              className="h-8 text-sm pl-7"
-            />
-          </div>
+          <AssigneePicker
+            value={task.assignee}
+            onChange={(v) => onUpdate({ assignee: v })}
+          />
           <div className="flex flex-wrap gap-2">
             <Select
               value={task.priority}
@@ -512,5 +514,101 @@ function TaskRow({
         </div>
       )}
     </div>
+  );
+}
+
+function AssigneePicker({
+  value,
+  onChange,
+}: {
+  value?: string;
+  onChange: (v: string | undefined) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const { data: reports, isLoading } = useListDirectReports();
+
+  const list = reports ?? [];
+  const selected = list.find((r) => r.name === value);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          size="sm"
+          role="combobox"
+          aria-expanded={open}
+          className="w-full h-8 justify-between font-normal text-sm"
+        >
+          {value ? (
+            <span className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center justify-center h-5 min-w-[20px] px-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase">
+                {initials(value)}
+              </span>
+              <span className="truncate">{value}</span>
+              {selected?.role && (
+                <span className="text-xs text-muted-foreground truncate">
+                  · {selected.role}
+                </span>
+              )}
+            </span>
+          ) : (
+            <span className="flex items-center gap-2 text-muted-foreground">
+              <UserIcon className="h-3.5 w-3.5" />
+              Assign to a direct report…
+            </span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+        <Command>
+          <CommandInput placeholder="Search direct reports…" className="h-9" />
+          <CommandList>
+            <CommandEmpty>
+              {isLoading ? "Loading…" : "No direct reports found"}
+            </CommandEmpty>
+            <CommandGroup>
+              {list.map((r) => (
+                <CommandItem
+                  key={r.id}
+                  value={r.name}
+                  onSelect={() => {
+                    onChange(r.name);
+                    setOpen(false);
+                  }}
+                >
+                  <span className="inline-flex items-center justify-center h-6 min-w-[24px] px-1 rounded-full bg-primary/10 text-primary text-[10px] font-semibold uppercase mr-2">
+                    {initials(r.name)}
+                  </span>
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-sm truncate">{r.name}</span>
+                    {r.role && (
+                      <span className="text-xs text-muted-foreground truncate">
+                        {r.role}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            {value && (
+              <div className="p-1 border-t">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-xs justify-start"
+                  onClick={() => {
+                    onChange(undefined);
+                    setOpen(false);
+                  }}
+                >
+                  Clear assignment
+                </Button>
+              </div>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
   );
 }
