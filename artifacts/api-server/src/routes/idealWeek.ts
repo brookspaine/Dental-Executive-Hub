@@ -292,16 +292,10 @@ router.post("/ideal-week/completions/toggle", async (req, res): Promise<void> =>
   res.json(ToggleIdealWeekCompletionResponse.parse(completion));
 });
 
-router.get("/ideal-week/weekly-top3", async (req, res): Promise<void> => {
-  const weekStart = req.query.weekStart as string | undefined;
-  if (!weekStart) {
-    res.status(400).json({ error: "weekStart query parameter is required" });
-    return;
-  }
+router.get("/ideal-week/weekly-top3", async (_req, res): Promise<void> => {
   const items = await db
     .select()
     .from(weeklyTop3Table)
-    .where(eq(weeklyTop3Table.weekStart, weekStart))
     .orderBy(weeklyTop3Table.priority);
   res.json(items);
 });

@@ -12,12 +12,10 @@ import {
 
 const router: IRouter = Router();
 
-router.get("/daily-top3", async (req, res): Promise<void> => {
-  const today = new Date().toISOString().split("T")[0];
+router.get("/daily-top3", async (_req, res): Promise<void> => {
   const items = await db
     .select()
     .from(dailyTop3Table)
-    .where(eq(dailyTop3Table.date, today))
     .orderBy(dailyTop3Table.priority);
   res.json(ListDailyTop3Response.parse(items));
 });
