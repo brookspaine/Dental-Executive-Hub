@@ -1691,28 +1691,28 @@ export function IdealWeek() {
   return (
     <div className="space-y-6">
       <Card>
-        <CardContent className="p-4">
+        <CardContent className="px-3 py-1.5">
           <div className="flex items-center justify-between">
-            <Button variant="outline" size="icon" onClick={goToPrevWeek}>
-              <ChevronLeft className="h-4 w-4" />
+            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToPrevWeek}>
+              <ChevronLeft className="h-3.5 w-3.5" />
             </Button>
             <div className="text-center">
-              <p className="text-sm font-semibold">
+              <span className="text-xs font-semibold">
                 {isCurrentWeek(weekStart) ? "This Week" : weekLabel}
-              </p>
+              </span>
               {isCurrentWeek(weekStart) && (
-                <p className="text-xs text-muted-foreground">{weekLabel}</p>
+                <span className="text-[10px] text-muted-foreground ml-1.5">{weekLabel}</span>
               )}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-1">
               {!isCurrentWeek(weekStart) && (
-                <Button variant="outline" size="sm" onClick={goToThisWeek}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" />
-                  This Week
+                <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={goToThisWeek}>
+                  <RotateCcw className="h-3 w-3 mr-1" />
+                  Today
                 </Button>
               )}
-              <Button variant="outline" size="icon" onClick={goToNextWeek}>
-                <ChevronRight className="h-4 w-4" />
+              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={goToNextWeek}>
+                <ChevronRight className="h-3.5 w-3.5" />
               </Button>
             </div>
           </div>
