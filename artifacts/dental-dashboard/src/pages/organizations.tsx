@@ -302,7 +302,7 @@ export function Organizations() {
 
       <OrgSection
         title="EDGE Locations"
-        nameLabel="EDGE Location"
+        nameLabel="Location"
         emptyText="No EDGE locations yet"
         isLoading={isLoading}
         orgs={orgs}
@@ -350,7 +350,7 @@ function DsoSection({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>EDGE DSO</TableHead>
+                  <TableHead>DSO</TableHead>
                   <TableHead className="text-right">Total Revenue</TableHead>
                   <TableHead className="text-right">EBITDA</TableHead>
                   <TableHead className="text-right"># of Locations</TableHead>
