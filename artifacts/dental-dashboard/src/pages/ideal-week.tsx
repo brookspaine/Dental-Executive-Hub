@@ -655,23 +655,43 @@ type DevotionalPayload = {
   text: string;
 };
 
+const DEVOTIONAL_VOICES = [
+  { id: "onyx", label: "Onyx (deep male)" },
+  { id: "echo", label: "Echo (warm male)" },
+  { id: "fable", label: "Fable (British male)" },
+  { id: "alloy", label: "Alloy (neutral)" },
+  { id: "nova", label: "Nova (warm female)" },
+  { id: "shimmer", label: "Shimmer (bright female)" },
+] as const;
+
 function DailyDevotionalPlayer() {
   const base = import.meta.env.BASE_URL || "/";
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [audioLoading, setAudioLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [data, setData] = useState<DevotionalPayload | null>(null);
-  const [speaking, setSpeaking] = useState(false);
-  const [paused, setPaused] = useState(false);
-  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [voice, setVoice] = useState<string>(() => {
+    if (typeof window === "undefined") return "onyx";
+    return window.localStorage.getItem("devotional-voice") || "onyx";
+  });
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
     return () => {
-      if (typeof window !== "undefined" && window.speechSynthesis) {
-        window.speechSynthesis.cancel();
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem("devotional-voice", voice);
+    }
+  }, [voice]);
 
   const ensureLoaded = async (): Promise<DevotionalPayload | null> => {
     if (data) return data;
@@ -703,72 +723,99 @@ function DailyDevotionalPlayer() {
 
   const handlePlay = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    const synth = window.speechSynthesis;
-    if (!synth) {
-      setError("Text-to-speech not supported in this browser");
+
+    // Resume if paused
+    if (audioRef.current && !audioRef.current.ended && audioRef.current.currentTime > 0 && audioRef.current.paused) {
+      try {
+        await audioRef.current.play();
+        setPlaying(true);
+      } catch {}
       return;
     }
-    if (speaking && paused) {
-      synth.resume();
-      setPaused(false);
-      return;
+
+    setError(null);
+    setAudioLoading(true);
+    try {
+      // Stop any prior audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+
+      const audio = new Audio(`${base}api/daily-devotional/audio?voice=${voice}&t=${Date.now()}`);
+      audio.preload = "auto";
+      audio.onended = () => {
+        setPlaying(false);
+      };
+      audio.onerror = () => {
+        setError("Audio failed to load. Try again.");
+        setPlaying(false);
+        setAudioLoading(false);
+      };
+      audio.onplaying = () => {
+        setAudioLoading(false);
+        setPlaying(true);
+      };
+      audio.onpause = () => {
+        if (!audio.ended) setPlaying(false);
+      };
+      audioRef.current = audio;
+      await audio.play();
+    } catch (err) {
+      setError((err as Error).message || "Playback failed");
+      setAudioLoading(false);
+      setPlaying(false);
     }
-    if (speaking) return;
-    const payload = await ensureLoaded();
-    if (!payload) return;
-    synth.cancel();
-    const utter = new SpeechSynthesisUtterance(
-      `${payload.title}. ${payload.text}`
-    );
-    utter.rate = 1;
-    utter.pitch = 1;
-    utter.onend = () => {
-      setSpeaking(false);
-      setPaused(false);
-    };
-    utter.onerror = () => {
-      setSpeaking(false);
-      setPaused(false);
-    };
-    utterRef.current = utter;
-    setSpeaking(true);
-    setPaused(false);
-    synth.speak(utter);
   };
 
   const handlePause = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    if (speaking && !paused) {
-      synth.pause();
-      setPaused(true);
+    if (audioRef.current && !audioRef.current.paused) {
+      audioRef.current.pause();
+      setPlaying(false);
     }
   };
 
   const handleStop = (e: React.MouseEvent) => {
     e.stopPropagation();
-    const synth = window.speechSynthesis;
-    if (!synth) return;
-    synth.cancel();
-    setSpeaking(false);
-    setPaused(false);
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    setPlaying(false);
+    setAudioLoading(false);
+  };
+
+  const handleVoiceChange = (newVoice: string) => {
+    setVoice(newVoice);
+    // Stop current playback when switching voices
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = "";
+      audioRef.current = null;
+    }
+    setPlaying(false);
+    setAudioLoading(false);
   };
 
   return (
     <>
       <div className="flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
-        {!speaking && (
+        {!playing && (
           <button
             type="button"
             onClick={handlePlay}
-            title="Read devotional aloud"
-            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-primary"
+            disabled={audioLoading}
+            title="Read devotional aloud (AI voice)"
+            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-primary disabled:opacity-50"
           >
-            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+            {audioLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
           </button>
         )}
-        {speaking && !paused && (
+        {playing && (
           <button
             type="button"
             onClick={handlePause}
@@ -778,17 +825,7 @@ function DailyDevotionalPlayer() {
             <Pause className="h-3 w-3" />
           </button>
         )}
-        {speaking && paused && (
-          <button
-            type="button"
-            onClick={handlePlay}
-            title="Resume"
-            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-primary"
-          >
-            <Play className="h-3 w-3" />
-          </button>
-        )}
-        {speaking && (
+        {(playing || audioLoading || (audioRef.current && !audioRef.current.ended)) && (
           <button
             type="button"
             onClick={handleStop}
@@ -809,6 +846,23 @@ function DailyDevotionalPlayer() {
       </div>
       {open && (
         <div className="basis-full ml-5 mt-1 mb-1 p-2 rounded-md bg-muted/40 border border-border max-h-64 overflow-y-auto">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <span className="text-[9px] uppercase tracking-wide text-muted-foreground">Voice:</span>
+            <select
+              value={voice}
+              onChange={(e) => handleVoiceChange(e.target.value)}
+              className="text-[10px] bg-background border border-border rounded px-1 py-0.5 focus:outline-none focus:ring-1 focus:ring-primary"
+            >
+              {DEVOTIONAL_VOICES.map((v) => (
+                <option key={v.id} value={v.id}>{v.label}</option>
+              ))}
+            </select>
+            {audioLoading && (
+              <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                <Loader2 className="h-2.5 w-2.5 animate-spin" /> Generating…
+              </span>
+            )}
+          </div>
           {loading && (
             <div className="text-[10px] text-muted-foreground flex items-center gap-1">
               <Loader2 className="h-3 w-3 animate-spin" /> Loading today's devotional…

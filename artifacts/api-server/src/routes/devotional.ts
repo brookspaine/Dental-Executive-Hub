@@ -1,6 +1,14 @@
 import { Router, type IRouter } from "express";
+import { textToSpeech } from "@workspace/integrations-openai-ai-server/audio";
 
 const router: IRouter = Router();
+
+const VOICES = ["alloy", "echo", "fable", "onyx", "nova", "shimmer"] as const;
+type Voice = (typeof VOICES)[number];
+const DEFAULT_VOICE: Voice = "onyx";
+
+const audioCache = new Map<string, { buffer: Buffer; createdAt: number }>();
+const AUDIO_CACHE_MS = 6 * 60 * 60 * 1000;
 
 const LIST_URL = "https://www.pastorrick.com/devotional/";
 const SITE_BASE = "https://www.pastorrick.com";
@@ -122,6 +130,54 @@ router.get("/daily-devotional", async (_req, res): Promise<void> => {
     res
       .status(502)
       .json({ error: (err as Error).message || "Failed to fetch devotional" });
+  }
+});
+
+router.get("/daily-devotional/audio", async (req, res): Promise<void> => {
+  const voiceParam = String(req.query["voice"] || DEFAULT_VOICE);
+  const voice = (VOICES as readonly string[]).includes(voiceParam)
+    ? (voiceParam as Voice)
+    : DEFAULT_VOICE;
+
+  try {
+    let payload = cache?.payload;
+    const fresh = cache && Date.now() - cache.fetchedAt < CACHE_MS;
+    if (!payload || !fresh) {
+      try {
+        payload = await fetchDevotional();
+        cache = { fetchedAt: Date.now(), payload };
+      } catch (err) {
+        if (!payload) throw err;
+      }
+    }
+
+    const cacheKey = `${payload!.url}::${voice}`;
+    const cachedAudio = audioCache.get(cacheKey);
+    if (cachedAudio && Date.now() - cachedAudio.createdAt < AUDIO_CACHE_MS) {
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Cache-Control", "public, max-age=3600");
+      res.send(cachedAudio.buffer);
+      return;
+    }
+
+    const speechText = `${payload!.title}. ${payload!.text}`;
+    const buffer = await textToSpeech(speechText, voice, "mp3");
+
+    audioCache.set(cacheKey, { buffer, createdAt: Date.now() });
+    if (audioCache.size > 24) {
+      const oldest = [...audioCache.entries()].sort(
+        (a, b) => a[1].createdAt - b[1].createdAt
+      )[0];
+      if (oldest) audioCache.delete(oldest[0]);
+    }
+
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.send(buffer);
+  } catch (err) {
+    res
+      .status(502)
+      .json({ error: (err as Error).message || "Failed to generate audio" });
   }
 });
 
