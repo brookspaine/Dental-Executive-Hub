@@ -375,8 +375,8 @@ function DailyBrainwashing() {
         ))}
 
         {adding && (
-          <div className="flex items-start gap-2 pt-1">
-            <span className="text-primary mt-2 select-none">•</span>
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-primary select-none leading-none">•</span>
             <Input
               autoFocus
               value={newLabel}
@@ -458,8 +458,8 @@ function BrainwashingItemRow({
   };
 
   return (
-    <div className="group flex items-start gap-2 py-0.5 rounded hover:bg-muted/40">
-      <span className="text-primary mt-1 select-none">•</span>
+    <div className="group flex items-center gap-2 py-0.5 rounded hover:bg-muted/40">
+      <span className="text-primary select-none leading-none">•</span>
       <div
         contentEditable
         suppressContentEditableWarning
@@ -954,8 +954,8 @@ function EditableRitualItem({
 
   return (
     <div>
-      <div className="flex items-start gap-1.5 px-1 py-0.5 rounded-md">
-        <span className="text-muted-foreground text-[10px] mt-0.5">•</span>
+      <div className="flex items-center gap-1.5 px-1 py-0.5 rounded-md">
+        <span className="text-muted-foreground text-[10px] leading-none">•</span>
         <div
           contentEditable
           suppressContentEditableWarning
