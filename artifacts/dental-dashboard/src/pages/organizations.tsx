@@ -296,6 +296,7 @@ export function Organizations() {
         isLoading={isLoading}
         dsoOrgs={dsoOrgs}
         edgeOrgs={orgs}
+        onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
       />
@@ -318,6 +319,7 @@ type DsoSectionProps = {
   isLoading: boolean;
   dsoOrgs: any[] | undefined;
   edgeOrgs: any[] | undefined;
+  onRowClick: (id: number) => void;
   onEdit: (org: any) => void;
   onDelete: (id: number) => void;
 };
@@ -326,6 +328,7 @@ function DsoSection({
   isLoading,
   dsoOrgs,
   edgeOrgs,
+  onRowClick,
   onEdit,
   onDelete,
 }: DsoSectionProps) {
@@ -357,7 +360,11 @@ function DsoSection({
               </TableHeader>
               <TableBody>
                 {dsoOrgs.map((org) => (
-                  <TableRow key={org.id} className="hover:bg-muted/50">
+                  <TableRow
+                    key={org.id}
+                    className="cursor-pointer hover:bg-muted/50"
+                    onClick={() => onRowClick(org.id)}
+                  >
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
                         <div className="p-1.5 rounded bg-primary/10">
@@ -382,7 +389,7 @@ function DsoSection({
                         {org.status}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="flex items-center gap-1">
                         <button
                           onClick={() => onEdit(org)}
