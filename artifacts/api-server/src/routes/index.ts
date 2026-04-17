@@ -6,6 +6,7 @@ import directReportsRouter from "./directReports";
 import announcementsRouter from "./announcements";
 import dashboardRouter from "./dashboard";
 import idealWeekRouter from "./idealWeek";
+import devotionalRouter from "./devotional";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(directReportsRouter);
 router.use(announcementsRouter);
 router.use(dashboardRouter);
 router.use(idealWeekRouter);
+router.use(devotionalRouter);
 
 export default router;

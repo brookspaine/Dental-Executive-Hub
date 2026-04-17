@@ -64,6 +64,10 @@ import {
   ChevronDown,
   CalendarDays,
   Copy,
+  Play,
+  Pause,
+  Square,
+  Loader2,
 } from "lucide-react";
 import {
   categoryColors,
@@ -644,6 +648,198 @@ function useRitualItems(category: string) {
   });
 }
 
+type DevotionalPayload = {
+  title: string;
+  url: string;
+  paragraphs: string[];
+  text: string;
+};
+
+function DailyDevotionalPlayer() {
+  const base = import.meta.env.BASE_URL || "/";
+  const [open, setOpen] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<DevotionalPayload | null>(null);
+  const [speaking, setSpeaking] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const utterRef = useRef<SpeechSynthesisUtterance | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== "undefined" && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
+  const ensureLoaded = async (): Promise<DevotionalPayload | null> => {
+    if (data) return data;
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch(`${base}api/daily-devotional`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const payload = (await res.json()) as DevotionalPayload;
+      setData(payload);
+      return payload;
+    } catch (e) {
+      setError((e as Error).message || "Failed to load");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleToggle = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!open) {
+      setOpen(true);
+      await ensureLoaded();
+      return;
+    }
+    setOpen(false);
+  };
+
+  const handlePlay = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const synth = window.speechSynthesis;
+    if (!synth) {
+      setError("Text-to-speech not supported in this browser");
+      return;
+    }
+    if (speaking && paused) {
+      synth.resume();
+      setPaused(false);
+      return;
+    }
+    if (speaking) return;
+    const payload = await ensureLoaded();
+    if (!payload) return;
+    synth.cancel();
+    const utter = new SpeechSynthesisUtterance(
+      `${payload.title}. ${payload.text}`
+    );
+    utter.rate = 1;
+    utter.pitch = 1;
+    utter.onend = () => {
+      setSpeaking(false);
+      setPaused(false);
+    };
+    utter.onerror = () => {
+      setSpeaking(false);
+      setPaused(false);
+    };
+    utterRef.current = utter;
+    setSpeaking(true);
+    setPaused(false);
+    synth.speak(utter);
+  };
+
+  const handlePause = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    if (speaking && !paused) {
+      synth.pause();
+      setPaused(true);
+    }
+  };
+
+  const handleStop = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const synth = window.speechSynthesis;
+    if (!synth) return;
+    synth.cancel();
+    setSpeaking(false);
+    setPaused(false);
+  };
+
+  return (
+    <>
+      <div className="flex items-center gap-0.5 ml-1" onClick={(e) => e.stopPropagation()}>
+        {!speaking && (
+          <button
+            type="button"
+            onClick={handlePlay}
+            title="Read devotional aloud"
+            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-primary"
+          >
+            {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
+          </button>
+        )}
+        {speaking && !paused && (
+          <button
+            type="button"
+            onClick={handlePause}
+            title="Pause"
+            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-primary"
+          >
+            <Pause className="h-3 w-3" />
+          </button>
+        )}
+        {speaking && paused && (
+          <button
+            type="button"
+            onClick={handlePlay}
+            title="Resume"
+            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-primary"
+          >
+            <Play className="h-3 w-3" />
+          </button>
+        )}
+        {speaking && (
+          <button
+            type="button"
+            onClick={handleStop}
+            title="Stop"
+            className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+          >
+            <Square className="h-3 w-3" />
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={handleToggle}
+          title={open ? "Hide text" : "Show text"}
+          className="h-4 w-4 inline-flex items-center justify-center rounded hover:bg-muted text-muted-foreground"
+        >
+          <ChevronDown className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+      </div>
+      {open && (
+        <div className="basis-full ml-5 mt-1 mb-1 p-2 rounded-md bg-muted/40 border border-border max-h-64 overflow-y-auto">
+          {loading && (
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading today's devotional…
+            </div>
+          )}
+          {error && (
+            <div className="text-[10px] text-destructive">Error: {error}</div>
+          )}
+          {data && (
+            <div className="space-y-1.5">
+              <a
+                href={data.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-primary hover:underline"
+              >
+                {data.title}
+              </a>
+              {data.paragraphs.map((p, i) => (
+                <p key={i} className="text-[10.5px] leading-snug text-foreground whitespace-pre-wrap">
+                  {p}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
+}
+
 function EditableRitualItem({
   item,
   category,
@@ -698,6 +894,9 @@ function EditableRitualItem({
     journalResponses &&
     (item.label.toLowerCase().includes("journal questions") ||
       item.label.toLowerCase().includes("evening ritual reflection"));
+  const isDailyDevotional = item.label
+    .toLowerCase()
+    .includes("daily devotional");
 
   return (
     <div>
@@ -711,6 +910,7 @@ function EditableRitualItem({
           onBlur={handleBlur}
           dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>') }}
         />
+        {isDailyDevotional && <DailyDevotionalPlayer />}
       </div>
       {showJournalPrompts && (
         <div className="ml-5 mt-0.5 mb-1 space-y-2 border-l-2 border-muted pl-3">
