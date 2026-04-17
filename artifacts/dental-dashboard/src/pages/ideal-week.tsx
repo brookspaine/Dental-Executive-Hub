@@ -9,6 +9,7 @@ import {
   useCreateDailyTop3,
   useUpdateDailyTop3,
   useDeleteDailyTop3,
+  getListDailyTop3QueryKey,
   useListScheduleBlocks,
   useCreateScheduleBlock,
   useUpdateScheduleBlock,
@@ -2023,7 +2024,8 @@ export function IdealWeek() {
   const toggleCompletion = useToggleIdealWeekCompletion();
 
   const { data: dailyTop3 = [] } = useListDailyTop3();
-  const invalidateDaily = () => queryClient.invalidateQueries({ queryKey: ["/api/daily-top3"] });
+  const invalidateDaily = () =>
+    queryClient.invalidateQueries({ queryKey: getListDailyTop3QueryKey() });
   const createDaily = useCreateDailyTop3({
     mutation: { onSuccess: invalidateDaily },
   });

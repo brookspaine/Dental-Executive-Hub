@@ -37,7 +37,14 @@ router.post("/daily-top3", async (req, res): Promise<void> => {
     .values({ ...parsed.data, date: today })
     .returning();
 
-  res.status(201).json(UpdateDailyTop3Response.parse(item));
+  res
+    .status(201)
+    .json(
+      UpdateDailyTop3Response.parse({
+        ...item,
+        description: item.description ?? undefined,
+      })
+    );
 });
 
 router.patch("/daily-top3/:id", async (req, res): Promise<void> => {
@@ -64,7 +71,12 @@ router.patch("/daily-top3/:id", async (req, res): Promise<void> => {
     return;
   }
 
-  res.json(UpdateDailyTop3Response.parse(item));
+  res.json(
+    UpdateDailyTop3Response.parse({
+      ...item,
+      description: item.description ?? undefined,
+    })
+  );
 });
 
 router.delete("/daily-top3/:id", async (req, res): Promise<void> => {
