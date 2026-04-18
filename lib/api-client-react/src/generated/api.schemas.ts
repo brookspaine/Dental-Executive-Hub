@@ -32,6 +32,18 @@ export interface UpdateDailyTop3Body {
   priority?: number;
 }
 
+export interface WisdomQuote {
+  id: number;
+  text: string;
+  author?: string;
+  createdAt: string;
+}
+
+export interface CreateWisdomQuoteBody {
+  text: string;
+  author?: string;
+}
+
 export type OrganizationCategory =
   (typeof OrganizationCategory)[keyof typeof OrganizationCategory];
 

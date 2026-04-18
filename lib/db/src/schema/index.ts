@@ -9,3 +9,4 @@ export * from "./morningRitual";
 export * from "./journalResponses";
 export * from "./ritualItems";
 export * from "./readingList";
+export * from "./wisdomQuotes";

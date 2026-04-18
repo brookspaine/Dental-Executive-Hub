@@ -7,6 +7,7 @@ import announcementsRouter from "./announcements";
 import dashboardRouter from "./dashboard";
 import idealWeekRouter from "./idealWeek";
 import devotionalRouter from "./devotional";
+import wisdomQuotesRouter from "./wisdomQuotes";
 
 const router: IRouter = Router();
 
@@ -18,5 +19,6 @@ router.use(announcementsRouter);
 router.use(dashboardRouter);
 router.use(idealWeekRouter);
 router.use(devotionalRouter);
+router.use(wisdomQuotesRouter);
 
 export default router;

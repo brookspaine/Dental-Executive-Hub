@@ -69,6 +69,45 @@ export const DeleteDailyTop3Params = zod.object({
 });
 
 /**
+ * @summary List all wisdom quotes
+ */
+export const ListWisdomQuotesResponseItem = zod.object({
+  id: zod.number(),
+  text: zod.string(),
+  author: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const ListWisdomQuotesResponse = zod.array(ListWisdomQuotesResponseItem);
+
+/**
+ * @summary Create a wisdom quote
+ */
+export const CreateWisdomQuoteBody = zod.object({
+  text: zod.string(),
+  author: zod.string().optional(),
+});
+
+/**
+ * @summary Get today's 3 wisdom quotes (deterministic by date)
+ */
+export const GetTodayWisdomQuotesResponseItem = zod.object({
+  id: zod.number(),
+  text: zod.string(),
+  author: zod.string().optional(),
+  createdAt: zod.coerce.date(),
+});
+export const GetTodayWisdomQuotesResponse = zod.array(
+  GetTodayWisdomQuotesResponseItem,
+);
+
+/**
+ * @summary Delete a wisdom quote
+ */
+export const DeleteWisdomQuoteParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List all organizations
  */
 export const ListOrganizationsResponseItem = zod.object({

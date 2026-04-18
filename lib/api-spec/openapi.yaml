@@ -24,6 +24,8 @@ tags:
     description: Recent activity feed
   - name: idealWeek
     description: Ideal Week ritual tracking
+  - name: wisdomQuotes
+    description: Words of Wisdom quote pool
 
 paths:
   /healthz:
@@ -99,6 +101,68 @@ paths:
       operationId: deleteDailyTop3
       tags: [dailyTop3]
       summary: Delete a daily priority
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /wisdom-quotes:
+    get:
+      operationId: listWisdomQuotes
+      tags: [wisdomQuotes]
+      summary: List all wisdom quotes
+      responses:
+        "200":
+          description: List of wisdom quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WisdomQuote"
+    post:
+      operationId: createWisdomQuote
+      tags: [wisdomQuotes]
+      summary: Create a wisdom quote
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWisdomQuoteBody"
+      responses:
+        "201":
+          description: Created quote
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WisdomQuote"
+
+  /wisdom-quotes/today:
+    get:
+      operationId: getTodayWisdomQuotes
+      tags: [wisdomQuotes]
+      summary: Get today's 3 wisdom quotes (deterministic by date)
+      responses:
+        "200":
+          description: Today's selected wisdom quotes
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/WisdomQuote"
+
+  /wisdom-quotes/{id}:
+    delete:
+      operationId: deleteWisdomQuote
+      tags: [wisdomQuotes]
+      summary: Delete a wisdom quote
       parameters:
         - name: id
           in: path
@@ -591,6 +655,33 @@ components:
           type: boolean
         priority:
           type: integer
+
+    WisdomQuote:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        author:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - text
+        - createdAt
+
+    CreateWisdomQuoteBody:
+      type: object
+      properties:
+        text:
+          type: string
+        author:
+          type: string
+      required:
+        - text
 
     Organization:
       type: object

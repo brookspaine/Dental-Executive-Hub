@@ -24,6 +24,7 @@ import type {
   CreateDirectReportBody,
   CreateOrganizationBody,
   CreateScheduleBlockBody,
+  CreateWisdomQuoteBody,
   DailyTop3Item,
   DashboardSummary,
   DirectReport,
@@ -41,6 +42,7 @@ import type {
   UpdateIdealWeekRitualBody,
   UpdateOrganizationBody,
   UpdateScheduleBlockBody,
+  WisdomQuote,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -457,6 +459,326 @@ export const useDeleteDailyTop3 = <
   TContext
 > => {
   return useMutation(getDeleteDailyTop3MutationOptions(options));
+};
+
+/**
+ * @summary List all wisdom quotes
+ */
+export const getListWisdomQuotesUrl = () => {
+  return `/api/wisdom-quotes`;
+};
+
+export const listWisdomQuotes = async (
+  options?: RequestInit,
+): Promise<WisdomQuote[]> => {
+  return customFetch<WisdomQuote[]>(getListWisdomQuotesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListWisdomQuotesQueryKey = () => {
+  return [`/api/wisdom-quotes`] as const;
+};
+
+export const getListWisdomQuotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listWisdomQuotes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWisdomQuotes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListWisdomQuotesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listWisdomQuotes>>
+  > = ({ signal }) => listWisdomQuotes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listWisdomQuotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListWisdomQuotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listWisdomQuotes>>
+>;
+export type ListWisdomQuotesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all wisdom quotes
+ */
+
+export function useListWisdomQuotes<
+  TData = Awaited<ReturnType<typeof listWisdomQuotes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listWisdomQuotes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListWisdomQuotesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a wisdom quote
+ */
+export const getCreateWisdomQuoteUrl = () => {
+  return `/api/wisdom-quotes`;
+};
+
+export const createWisdomQuote = async (
+  createWisdomQuoteBody: CreateWisdomQuoteBody,
+  options?: RequestInit,
+): Promise<WisdomQuote> => {
+  return customFetch<WisdomQuote>(getCreateWisdomQuoteUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createWisdomQuoteBody),
+  });
+};
+
+export const getCreateWisdomQuoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWisdomQuote>>,
+    TError,
+    { data: BodyType<CreateWisdomQuoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createWisdomQuote>>,
+  TError,
+  { data: BodyType<CreateWisdomQuoteBody> },
+  TContext
+> => {
+  const mutationKey = ["createWisdomQuote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createWisdomQuote>>,
+    { data: BodyType<CreateWisdomQuoteBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createWisdomQuote(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateWisdomQuoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createWisdomQuote>>
+>;
+export type CreateWisdomQuoteMutationBody = BodyType<CreateWisdomQuoteBody>;
+export type CreateWisdomQuoteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a wisdom quote
+ */
+export const useCreateWisdomQuote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createWisdomQuote>>,
+    TError,
+    { data: BodyType<CreateWisdomQuoteBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createWisdomQuote>>,
+  TError,
+  { data: BodyType<CreateWisdomQuoteBody> },
+  TContext
+> => {
+  return useMutation(getCreateWisdomQuoteMutationOptions(options));
+};
+
+/**
+ * @summary Get today's 3 wisdom quotes (deterministic by date)
+ */
+export const getGetTodayWisdomQuotesUrl = () => {
+  return `/api/wisdom-quotes/today`;
+};
+
+export const getTodayWisdomQuotes = async (
+  options?: RequestInit,
+): Promise<WisdomQuote[]> => {
+  return customFetch<WisdomQuote[]>(getGetTodayWisdomQuotesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTodayWisdomQuotesQueryKey = () => {
+  return [`/api/wisdom-quotes/today`] as const;
+};
+
+export const getGetTodayWisdomQuotesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTodayWisdomQuotes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTodayWisdomQuotes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTodayWisdomQuotesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTodayWisdomQuotes>>
+  > = ({ signal }) => getTodayWisdomQuotes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTodayWisdomQuotes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTodayWisdomQuotesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTodayWisdomQuotes>>
+>;
+export type GetTodayWisdomQuotesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get today's 3 wisdom quotes (deterministic by date)
+ */
+
+export function useGetTodayWisdomQuotes<
+  TData = Awaited<ReturnType<typeof getTodayWisdomQuotes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTodayWisdomQuotes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTodayWisdomQuotesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Delete a wisdom quote
+ */
+export const getDeleteWisdomQuoteUrl = (id: number) => {
+  return `/api/wisdom-quotes/${id}`;
+};
+
+export const deleteWisdomQuote = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteWisdomQuoteUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteWisdomQuoteMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWisdomQuote>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteWisdomQuote>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteWisdomQuote"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteWisdomQuote>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteWisdomQuote(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteWisdomQuoteMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteWisdomQuote>>
+>;
+
+export type DeleteWisdomQuoteMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a wisdom quote
+ */
+export const useDeleteWisdomQuote = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteWisdomQuote>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteWisdomQuote>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteWisdomQuoteMutationOptions(options));
 };
 
 /**

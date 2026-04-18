@@ -15,6 +15,12 @@ import {
   useUpdateScheduleBlock,
   useDeleteScheduleBlock,
   getListScheduleBlocksQueryKey,
+  useListWisdomQuotes,
+  useGetTodayWisdomQuotes,
+  useCreateWisdomQuote,
+  useDeleteWisdomQuote,
+  getListWisdomQuotesQueryKey,
+  getGetTodayWisdomQuotesQueryKey,
 } from "@workspace/api-client-react";
 import type { ScheduleBlock as ScheduleBlockType } from "@workspace/api-client-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -480,6 +486,204 @@ function BrainwashingItemRow({
         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
       </Button>
     </div>
+  );
+}
+
+function WordsOfWisdom() {
+  const queryClient = useQueryClient();
+  const { data: todayQuotes = [], isLoading: todayLoading } =
+    useGetTodayWisdomQuotes();
+  const { data: allQuotes = [] } = useListWisdomQuotes();
+
+  const [adding, setAdding] = useState(false);
+  const [managing, setManaging] = useState(false);
+  const [newText, setNewText] = useState("");
+  const [newAuthor, setNewAuthor] = useState("");
+
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getListWisdomQuotesQueryKey() });
+    queryClient.invalidateQueries({
+      queryKey: getGetTodayWisdomQuotesQueryKey(),
+    });
+  };
+
+  const createQuote = useCreateWisdomQuote({
+    mutation: { onSuccess: invalidate },
+  });
+  const deleteQuote = useDeleteWisdomQuote({
+    mutation: { onSuccess: invalidate },
+  });
+
+  const handleAdd = () => {
+    const text = newText.trim();
+    if (!text) {
+      setAdding(false);
+      return;
+    }
+    createQuote.mutate({
+      data: { text, author: newAuthor.trim() || undefined },
+    });
+    setNewText("");
+    setNewAuthor("");
+    setAdding(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <BookOpen className="h-4 w-4 text-primary" />
+          Words of Wisdom
+        </CardTitle>
+        <div className="flex items-center gap-1">
+          {allQuotes.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setManaging((m) => !m)}
+            >
+              {managing ? "Done" : `Manage (${allQuotes.length})`}
+            </Button>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs"
+            onClick={() => setAdding(true)}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-3">
+        {todayLoading ? (
+          <div className="space-y-2">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-12 w-full" />
+          </div>
+        ) : todayQuotes.length > 0 ? (
+          <div className="space-y-3">
+            {todayQuotes.map((q) => (
+              <div
+                key={q.id}
+                className="border-l-2 border-primary/40 pl-3 py-1"
+              >
+                <p className="text-sm leading-relaxed italic text-foreground/90">
+                  <span className="text-primary/60 select-none mr-0.5">
+                    &ldquo;
+                  </span>
+                  {q.text}
+                  <span className="text-primary/60 select-none ml-0.5">
+                    &rdquo;
+                  </span>
+                </p>
+                {q.author && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    — {q.author}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        ) : (
+          !adding && (
+            <p className="text-sm text-muted-foreground italic py-1">
+              No quotes yet — add some to start receiving 3 each day.
+            </p>
+          )
+        )}
+
+        {adding && (
+          <div className="space-y-2 pt-1 border-t">
+            <Input
+              autoFocus
+              value={newText}
+              onChange={(e) => setNewText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                } else if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewText("");
+                  setNewAuthor("");
+                }
+              }}
+              placeholder="Quote text…"
+              className="h-8 text-sm"
+            />
+            <div className="flex items-center gap-2">
+              <Input
+                value={newAuthor}
+                onChange={(e) => setNewAuthor(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAdd();
+                  } else if (e.key === "Escape") {
+                    setAdding(false);
+                    setNewText("");
+                    setNewAuthor("");
+                  }
+                }}
+                placeholder="Author (optional)"
+                className="h-8 text-sm flex-1"
+              />
+              <Button size="sm" className="h-8" onClick={handleAdd}>
+                Save
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-8"
+                onClick={() => {
+                  setAdding(false);
+                  setNewText("");
+                  setNewAuthor("");
+                }}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {managing && allQuotes.length > 0 && (
+          <div className="space-y-1 pt-2 border-t">
+            <p className="text-xs text-muted-foreground mb-1">
+              Quote pool ({allQuotes.length})
+            </p>
+            {allQuotes.map((q) => (
+              <div
+                key={q.id}
+                className="group flex items-start gap-2 py-1 rounded hover:bg-muted/40 px-1"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs leading-snug truncate">
+                    &ldquo;{q.text}&rdquo;
+                    {q.author && (
+                      <span className="text-muted-foreground"> — {q.author}</span>
+                    )}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
+                  onClick={() => deleteQuote.mutate({ id: q.id })}
+                  aria-label="Delete quote"
+                >
+                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
@@ -2219,6 +2423,8 @@ export function IdealWeek() {
           </Card>
 
           <DailyBrainwashing />
+
+          <WordsOfWisdom />
 
           <Card>
             <CardContent className="p-4">
