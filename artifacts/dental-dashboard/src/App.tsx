@@ -8,6 +8,7 @@ import { Dashboard } from "@/pages/dashboard";
 import { Organizations } from "@/pages/organizations";
 import { OrganizationDetail } from "@/pages/organization-detail";
 import { UrgentDental } from "@/pages/urgent-dental";
+import { OrgChart } from "@/pages/org-chart";
 import { IdealWeek } from "@/pages/ideal-week";
 import { DirectReports } from "@/pages/direct-reports";
 import { Announcements } from "@/pages/announcements";
@@ -24,6 +25,7 @@ function Router() {
         <Route path="/organizations" component={Organizations} />
         <Route path="/organizations/:id" component={OrganizationDetail} />
         <Route path="/urgent-dental" component={UrgentDental} />
+        <Route path="/org-chart" component={OrgChart} />
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/announcements" component={Announcements} />
         <Route component={NotFound} />
