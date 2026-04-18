@@ -529,6 +529,7 @@ function AssigneePicker({
 
   const list = reports ?? [];
   const selected = list.find((r) => r.name === value);
+  const isMe = value === "Me";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -546,28 +547,51 @@ function AssigneePicker({
                 {initials(value)}
               </span>
               <span className="truncate">{value}</span>
-              {selected?.role && (
+              {isMe ? (
                 <span className="text-xs text-muted-foreground truncate">
-                  · {selected.role}
+                  · Me
                 </span>
+              ) : (
+                selected?.role && (
+                  <span className="text-xs text-muted-foreground truncate">
+                    · {selected.role}
+                  </span>
+                )
               )}
             </span>
           ) : (
             <span className="flex items-center gap-2 text-muted-foreground">
               <UserIcon className="h-3.5 w-3.5" />
-              Assign to a direct report…
+              Assign to me or a direct report…
             </span>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
         <Command>
-          <CommandInput placeholder="Search direct reports…" className="h-9" />
+          <CommandInput placeholder="Search assignees…" className="h-9" />
           <CommandList>
             <CommandEmpty>
-              {isLoading ? "Loading…" : "No direct reports found"}
+              {isLoading ? "Loading…" : "No matches found"}
             </CommandEmpty>
             <CommandGroup>
+              <CommandItem
+                value="Me"
+                onSelect={() => {
+                  onChange("Me");
+                  setOpen(false);
+                }}
+              >
+                <span className="inline-flex items-center justify-center h-6 min-w-[24px] px-1 rounded-full bg-primary/20 text-primary text-[10px] font-semibold uppercase mr-2">
+                  Me
+                </span>
+                <div className="flex flex-col min-w-0">
+                  <span className="text-sm truncate">Me</span>
+                  <span className="text-xs text-muted-foreground truncate">
+                    Assign to yourself
+                  </span>
+                </div>
+              </CommandItem>
               {list.map((r) => (
                 <CommandItem
                   key={r.id}
