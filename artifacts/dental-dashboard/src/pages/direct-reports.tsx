@@ -6,7 +6,9 @@ import {
   useUpdateDirectReport,
   useDeleteDirectReport,
   useListOrganizations,
+  useCreateOrganization,
   getListDirectReportsQueryKey,
+  getListOrganizationsQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -61,14 +63,58 @@ export function DirectReports() {
   const createReport = useCreateDirectReport();
   const updateReport = useUpdateDirectReport();
   const deleteReport = useDeleteDirectReport();
+  const createOrg = useCreateOrganization();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ReportFormData>(emptyForm);
+  const [vendorAdding, setVendorAdding] = useState(false);
+  const [newVendorName, setNewVendorName] = useState("");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+  };
+
+  const groupedOrgs = (() => {
+    const list = orgs ?? [];
+    return {
+      edge: list.filter((o: any) => !o.category || o.category === "edge"),
+      dso: list.filter((o: any) => o.category === "edge_dso"),
+      vendor: list.filter((o: any) => o.category === "vendor"),
+    };
+  })();
+
+  const handleAddVendor = () => {
+    const name = newVendorName.trim();
+    if (!name) {
+      setVendorAdding(false);
+      return;
+    }
+    createOrg.mutate(
+      {
+        data: {
+          name,
+          address: "",
+          city: "",
+          state: "",
+          category: "vendor",
+          status: "active",
+        } as any,
+      },
+      {
+        onSuccess: (created: any) => {
+          queryClient.invalidateQueries({
+            queryKey: getListOrganizationsQueryKey(),
+          });
+          if (created?.id) {
+            setForm((f) => ({ ...f, organizationId: created.id }));
+          }
+          setNewVendorName("");
+          setVendorAdding(false);
+        },
+      }
+    );
   };
 
   const handleSubmit = () => {
@@ -211,7 +257,18 @@ export function DirectReports() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Organization</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Organization</Label>
+                    {!vendorAdding && (
+                      <button
+                        type="button"
+                        onClick={() => setVendorAdding(true)}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        + Add vendor
+                      </button>
+                    )}
+                  </div>
                   <Select
                     value={form.organizationId?.toString() || ""}
                     onValueChange={(v) =>
@@ -222,13 +279,85 @@ export function DirectReports() {
                       <SelectValue placeholder="Select org" />
                     </SelectTrigger>
                     <SelectContent>
-                      {orgs?.map((org) => (
-                        <SelectItem key={org.id} value={org.id.toString()}>
-                          {org.name}
-                        </SelectItem>
-                      ))}
+                      {groupedOrgs.edge.length > 0 && (
+                        <>
+                          <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">
+                            EDGE Locations
+                          </div>
+                          {groupedOrgs.edge.map((org: any) => (
+                            <SelectItem key={org.id} value={org.id.toString()}>
+                              {org.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {groupedOrgs.dso.length > 0 && (
+                        <>
+                          <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">
+                            EDGE DSO
+                          </div>
+                          {groupedOrgs.dso.map((org: any) => (
+                            <SelectItem key={org.id} value={org.id.toString()}>
+                              {org.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+                      {groupedOrgs.vendor.length > 0 && (
+                        <>
+                          <div className="px-2 py-1 text-[10px] font-semibold uppercase text-muted-foreground tracking-wide">
+                            Outside Vendors
+                          </div>
+                          {groupedOrgs.vendor.map((org: any) => (
+                            <SelectItem key={org.id} value={org.id.toString()}>
+                              {org.name}
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
                     </SelectContent>
                   </Select>
+                  {vendorAdding && (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        autoFocus
+                        value={newVendorName}
+                        onChange={(e) => setNewVendorName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleAddVendor();
+                          } else if (e.key === "Escape") {
+                            setVendorAdding(false);
+                            setNewVendorName("");
+                          }
+                        }}
+                        placeholder="Vendor name"
+                        className="h-8 text-sm"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="h-8"
+                        onClick={handleAddVendor}
+                        disabled={createOrg.isPending}
+                      >
+                        Save
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-8"
+                        onClick={() => {
+                          setVendorAdding(false);
+                          setNewVendorName("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="grid gap-2">
                   <Label>Status</Label>

@@ -51,6 +51,7 @@ export const OrganizationCategory = {
   edge: "edge",
   edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
+  vendor: "vendor",
 } as const;
 
 export type OrganizationStatus =
@@ -84,6 +85,7 @@ export const CreateOrganizationBodyCategory = {
   edge: "edge",
   edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
+  vendor: "vendor",
 } as const;
 
 export type CreateOrganizationBodyStatus =
@@ -115,6 +117,7 @@ export const UpdateOrganizationBodyCategory = {
   edge: "edge",
   edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
+  vendor: "vendor",
 } as const;
 
 export type UpdateOrganizationBodyStatus =
