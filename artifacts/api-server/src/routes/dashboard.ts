@@ -14,9 +14,7 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const today = new Date().toISOString().split("T")[0];
 
   const orgs = await db.select().from(organizationsTable);
-  const edgeOrgs = orgs.filter(
-    (o) => o.category !== "urgent_dental" && o.category !== "vendor"
-  );
+  const edgeOrgs = orgs.filter((o) => o.category !== "urgent_dental");
   const reports = await db.select().from(directReportsTable);
   const todayItems = await db
     .select()
@@ -26,9 +24,8 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
   const totalOrganizations = edgeOrgs.length;
   const activeOrganizations = edgeOrgs.filter((o) => o.status === "active").length;
   const totalDirectReports = reports.length;
-  const nonVendorOrgs = orgs.filter((o) => o.category !== "vendor");
-  const totalPatients = nonVendorOrgs.reduce((sum, o) => sum + (o.patientCount ?? 0), 0);
-  const totalMonthlyRevenue = nonVendorOrgs.reduce((sum, o) => sum + (o.monthlyRevenue ?? 0), 0);
+  const totalPatients = orgs.reduce((sum, o) => sum + (o.patientCount ?? 0), 0);
+  const totalMonthlyRevenue = orgs.reduce((sum, o) => sum + (o.monthlyRevenue ?? 0), 0);
   const dailyTop3Completed = todayItems.filter((i) => i.completed).length;
   const dailyTop3Total = todayItems.length;
 

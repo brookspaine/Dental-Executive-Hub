@@ -14,6 +14,7 @@ export interface DirectReport {
   email: string;
   phone?: string;
   organizationId?: number;
+  organization?: string;
   organizationName?: string;
   status: DirectReportStatus;
   hireDate?: Date;

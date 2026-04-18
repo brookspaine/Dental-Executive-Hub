@@ -21,6 +21,7 @@ const directReportSelect = {
   email: directReportsTable.email,
   phone: directReportsTable.phone,
   organizationId: directReportsTable.organizationId,
+  organization: directReportsTable.organization,
   organizationName: organizationsTable.name,
   status: directReportsTable.status,
   hireDate: directReportsTable.hireDate,
@@ -30,11 +31,14 @@ const directReportSelect = {
 };
 
 function mapNulls(r: any) {
+  const organization = r.organization ?? undefined;
+  const joinedName = r.organizationName ?? undefined;
   return {
     ...r,
     phone: r.phone ?? undefined,
     organizationId: r.organizationId ?? undefined,
-    organizationName: r.organizationName ?? undefined,
+    organization,
+    organizationName: organization ?? joinedName,
     hireDate: r.hireDate ?? undefined,
     performanceRating: r.performanceRating ?? undefined,
     avatarUrl: r.avatarUrl ?? undefined,

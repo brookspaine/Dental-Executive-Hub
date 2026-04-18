@@ -121,9 +121,7 @@ export const ListOrganizationsResponseItem = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod
-    .enum(["edge", "edge_dso", "urgent_dental", "vendor"])
-    .optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
   createdAt: zod.coerce.date(),
 });
@@ -144,9 +142,7 @@ export const CreateOrganizationBody = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod
-    .enum(["edge", "edge_dso", "urgent_dental", "vendor"])
-    .optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]).optional(),
 });
 
@@ -168,9 +164,7 @@ export const GetOrganizationResponse = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod
-    .enum(["edge", "edge_dso", "urgent_dental", "vendor"])
-    .optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
   createdAt: zod.coerce.date(),
 });
@@ -192,9 +186,7 @@ export const UpdateOrganizationBody = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod
-    .enum(["edge", "edge_dso", "urgent_dental", "vendor"])
-    .optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]).optional(),
 });
 
@@ -209,9 +201,7 @@ export const UpdateOrganizationResponse = zod.object({
   providerCount: zod.number().optional(),
   patientCount: zod.number().optional(),
   monthlyRevenue: zod.number().optional(),
-  category: zod
-    .enum(["edge", "edge_dso", "urgent_dental", "vendor"])
-    .optional(),
+  category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
   createdAt: zod.coerce.date(),
 });
@@ -233,6 +223,7 @@ export const ListDirectReportsResponseItem = zod.object({
   email: zod.string(),
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
+  organization: zod.string().optional(),
   organizationName: zod.string().optional(),
   status: zod.enum(["active", "on_leave", "inactive"]),
   hireDate: zod.coerce.date().optional(),
@@ -253,6 +244,7 @@ export const CreateDirectReportBody = zod.object({
   email: zod.string(),
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
+  organization: zod.string().optional(),
   status: zod.enum(["active", "on_leave", "inactive"]).optional(),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
@@ -273,6 +265,7 @@ export const GetDirectReportResponse = zod.object({
   email: zod.string(),
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
+  organization: zod.string().optional(),
   organizationName: zod.string().optional(),
   status: zod.enum(["active", "on_leave", "inactive"]),
   hireDate: zod.coerce.date().optional(),
@@ -294,6 +287,7 @@ export const UpdateDirectReportBody = zod.object({
   email: zod.string().optional(),
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
+  organization: zod.string().optional(),
   status: zod.enum(["active", "on_leave", "inactive"]).optional(),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
@@ -307,6 +301,7 @@ export const UpdateDirectReportResponse = zod.object({
   email: zod.string(),
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
+  organization: zod.string().optional(),
   organizationName: zod.string().optional(),
   status: zod.enum(["active", "on_leave", "inactive"]),
   hireDate: zod.coerce.date().optional(),

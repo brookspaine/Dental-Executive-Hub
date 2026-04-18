@@ -51,7 +51,6 @@ export const OrganizationCategory = {
   edge: "edge",
   edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
-  vendor: "vendor",
 } as const;
 
 export type OrganizationStatus =
@@ -85,7 +84,6 @@ export const CreateOrganizationBodyCategory = {
   edge: "edge",
   edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
-  vendor: "vendor",
 } as const;
 
 export type CreateOrganizationBodyStatus =
@@ -117,7 +115,6 @@ export const UpdateOrganizationBodyCategory = {
   edge: "edge",
   edge_dso: "edge_dso",
   urgent_dental: "urgent_dental",
-  vendor: "vendor",
 } as const;
 
 export type UpdateOrganizationBodyStatus =
@@ -158,6 +155,7 @@ export interface DirectReport {
   email: string;
   phone?: string;
   organizationId?: number;
+  organization?: string;
   organizationName?: string;
   status: DirectReportStatus;
   hireDate?: string;
@@ -181,6 +179,7 @@ export interface CreateDirectReportBody {
   email: string;
   phone?: string;
   organizationId?: number;
+  organization?: string;
   status?: CreateDirectReportBodyStatus;
   hireDate?: string;
   performanceRating?: number;
@@ -202,6 +201,7 @@ export interface UpdateDirectReportBody {
   email?: string;
   phone?: string;
   organizationId?: number;
+  organization?: string;
   status?: UpdateDirectReportBodyStatus;
   hireDate?: string;
   performanceRating?: number;

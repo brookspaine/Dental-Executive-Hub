@@ -10,6 +10,7 @@ export const directReportsTable = pgTable("direct_reports", {
   email: text("email").notNull(),
   phone: text("phone"),
   organizationId: integer("organization_id").references(() => organizationsTable.id),
+  organization: text("organization"),
   status: text("status").notNull().default("active"),
   hireDate: date("hire_date", { mode: "string" }),
   performanceRating: real("performance_rating"),

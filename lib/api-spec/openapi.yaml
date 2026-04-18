@@ -708,7 +708,7 @@ components:
           type: number
         category:
           type: string
-          enum: [edge, edge_dso, urgent_dental, vendor]
+          enum: [edge, edge_dso, urgent_dental]
         status:
           type: string
           enum: [active, inactive]
@@ -747,7 +747,7 @@ components:
           type: number
         category:
           type: string
-          enum: [edge, edge_dso, urgent_dental, vendor]
+          enum: [edge, edge_dso, urgent_dental]
         status:
           type: string
           enum: [active, inactive]
@@ -780,7 +780,7 @@ components:
           type: number
         category:
           type: string
-          enum: [edge, edge_dso, urgent_dental, vendor]
+          enum: [edge, edge_dso, urgent_dental]
         status:
           type: string
           enum: [active, inactive]
@@ -800,6 +800,8 @@ components:
           type: string
         organizationId:
           type: integer
+        organization:
+          type: string
         organizationName:
           type: string
         status:
@@ -836,6 +838,8 @@ components:
           type: string
         organizationId:
           type: integer
+        organization:
+          type: string
         status:
           type: string
           enum: [active, on_leave, inactive]
@@ -864,6 +868,8 @@ components:
           type: string
         organizationId:
           type: integer
+        organization:
+          type: string
         status:
           type: string
           enum: [active, on_leave, inactive]

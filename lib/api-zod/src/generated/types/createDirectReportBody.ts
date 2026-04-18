@@ -13,6 +13,7 @@ export interface CreateDirectReportBody {
   email: string;
   phone?: string;
   organizationId?: number;
+  organization?: string;
   status?: CreateDirectReportBodyStatus;
   hireDate?: Date;
   performanceRating?: number;
