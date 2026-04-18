@@ -298,15 +298,17 @@ export function DirectReports() {
           {reports.map((r) => (
             <Card key={r.id} className="group relative">
               <CardContent className="p-5">
-                <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
+                <div className="absolute top-3 right-3 flex gap-1">
                   <button
                     onClick={() => handleEdit(r)}
+                    aria-label={`Edit ${r.name}`}
                     className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </button>
                   <button
                     onClick={() => handleDelete(r.id)}
+                    aria-label={`Delete ${r.name}`}
                     className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
