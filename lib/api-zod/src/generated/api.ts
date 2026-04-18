@@ -535,3 +535,72 @@ export const ToggleIdealWeekCompletionResponse = zod.object({
   completed: zod.boolean(),
   createdAt: zod.coerce.date(),
 });
+
+/**
+ * @summary List org chart seats for an organization
+ */
+export const ListOrgChartSeatsParams = zod.object({
+  organizationId: zod.coerce.number(),
+});
+
+export const ListOrgChartSeatsResponseItem = zod.object({
+  id: zod.number(),
+  organizationId: zod.number(),
+  parentSeatId: zod.number().nullish(),
+  title: zod.string(),
+  name: zod.string().nullish(),
+  accountabilities: zod.array(zod.string()),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListOrgChartSeatsResponse = zod.array(
+  ListOrgChartSeatsResponseItem,
+);
+
+/**
+ * @summary Create a seat in an organization's chart
+ */
+export const CreateOrgChartSeatParams = zod.object({
+  organizationId: zod.coerce.number(),
+});
+
+export const CreateOrgChartSeatBody = zod.object({
+  title: zod.string(),
+  name: zod.string().nullish(),
+  parentSeatId: zod.number().nullish(),
+  accountabilities: zod.array(zod.string()).optional(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a seat
+ */
+export const UpdateOrgChartSeatParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateOrgChartSeatBody = zod.object({
+  title: zod.string().optional(),
+  name: zod.string().nullish(),
+  parentSeatId: zod.number().nullish(),
+  accountabilities: zod.array(zod.string()).optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateOrgChartSeatResponse = zod.object({
+  id: zod.number(),
+  organizationId: zod.number(),
+  parentSeatId: zod.number().nullish(),
+  title: zod.string(),
+  name: zod.string().nullish(),
+  accountabilities: zod.array(zod.string()),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a seat
+ */
+export const DeleteOrgChartSeatParams = zod.object({
+  id: zod.coerce.number(),
+});

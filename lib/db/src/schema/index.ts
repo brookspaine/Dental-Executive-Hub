@@ -10,3 +10,4 @@ export * from "./journalResponses";
 export * from "./ritualItems";
 export * from "./readingList";
 export * from "./wisdomQuotes";
+export * from "./orgChartSeats";

@@ -357,6 +357,33 @@ export interface UpdateScheduleBlockBody {
   sortOrder?: number;
 }
 
+export interface OrgChartSeat {
+  id: number;
+  organizationId: number;
+  parentSeatId?: number | null;
+  title: string;
+  name?: string | null;
+  accountabilities: string[];
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface CreateOrgChartSeatBody {
+  title: string;
+  name?: string | null;
+  parentSeatId?: number | null;
+  accountabilities?: string[];
+  sortOrder?: number;
+}
+
+export interface UpdateOrgChartSeatBody {
+  title?: string;
+  name?: string | null;
+  parentSeatId?: number | null;
+  accountabilities?: string[];
+  sortOrder?: number;
+}
+
 export type GetRecentActivityParams = {
   limit?: number;
 };

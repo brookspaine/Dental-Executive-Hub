@@ -22,6 +22,7 @@ import type {
   CreateAnnouncementBody,
   CreateDailyTop3Body,
   CreateDirectReportBody,
+  CreateOrgChartSeatBody,
   CreateOrganizationBody,
   CreateScheduleBlockBody,
   CreateWisdomQuoteBody,
@@ -33,6 +34,7 @@ import type {
   IdealWeekCompletion,
   IdealWeekRitual,
   ListIdealWeekCompletionsParams,
+  OrgChartSeat,
   OrgPerformance,
   Organization,
   ScheduleBlock,
@@ -40,6 +42,7 @@ import type {
   UpdateDailyTop3Body,
   UpdateDirectReportBody,
   UpdateIdealWeekRitualBody,
+  UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
   UpdateScheduleBlockBody,
   WisdomQuote,
@@ -2794,4 +2797,354 @@ export const useToggleIdealWeekCompletion = <
   TContext
 > => {
   return useMutation(getToggleIdealWeekCompletionMutationOptions(options));
+};
+
+/**
+ * @summary List org chart seats for an organization
+ */
+export const getListOrgChartSeatsUrl = (organizationId: number) => {
+  return `/api/organizations/${organizationId}/seats`;
+};
+
+export const listOrgChartSeats = async (
+  organizationId: number,
+  options?: RequestInit,
+): Promise<OrgChartSeat[]> => {
+  return customFetch<OrgChartSeat[]>(getListOrgChartSeatsUrl(organizationId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListOrgChartSeatsQueryKey = (organizationId: number) => {
+  return [`/api/organizations/${organizationId}/seats`] as const;
+};
+
+export const getListOrgChartSeatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listOrgChartSeats>>,
+  TError = ErrorType<unknown>,
+>(
+  organizationId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOrgChartSeats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListOrgChartSeatsQueryKey(organizationId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listOrgChartSeats>>
+  > = ({ signal }) =>
+    listOrgChartSeats(organizationId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!organizationId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listOrgChartSeats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListOrgChartSeatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listOrgChartSeats>>
+>;
+export type ListOrgChartSeatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List org chart seats for an organization
+ */
+
+export function useListOrgChartSeats<
+  TData = Awaited<ReturnType<typeof listOrgChartSeats>>,
+  TError = ErrorType<unknown>,
+>(
+  organizationId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listOrgChartSeats>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListOrgChartSeatsQueryOptions(
+    organizationId,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a seat in an organization's chart
+ */
+export const getCreateOrgChartSeatUrl = (organizationId: number) => {
+  return `/api/organizations/${organizationId}/seats`;
+};
+
+export const createOrgChartSeat = async (
+  organizationId: number,
+  createOrgChartSeatBody: CreateOrgChartSeatBody,
+  options?: RequestInit,
+): Promise<OrgChartSeat> => {
+  return customFetch<OrgChartSeat>(getCreateOrgChartSeatUrl(organizationId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createOrgChartSeatBody),
+  });
+};
+
+export const getCreateOrgChartSeatMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgChartSeat>>,
+    TError,
+    { organizationId: number; data: BodyType<CreateOrgChartSeatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createOrgChartSeat>>,
+  TError,
+  { organizationId: number; data: BodyType<CreateOrgChartSeatBody> },
+  TContext
+> => {
+  const mutationKey = ["createOrgChartSeat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createOrgChartSeat>>,
+    { organizationId: number; data: BodyType<CreateOrgChartSeatBody> }
+  > = (props) => {
+    const { organizationId, data } = props ?? {};
+
+    return createOrgChartSeat(organizationId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateOrgChartSeatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createOrgChartSeat>>
+>;
+export type CreateOrgChartSeatMutationBody = BodyType<CreateOrgChartSeatBody>;
+export type CreateOrgChartSeatMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a seat in an organization's chart
+ */
+export const useCreateOrgChartSeat = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createOrgChartSeat>>,
+    TError,
+    { organizationId: number; data: BodyType<CreateOrgChartSeatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createOrgChartSeat>>,
+  TError,
+  { organizationId: number; data: BodyType<CreateOrgChartSeatBody> },
+  TContext
+> => {
+  return useMutation(getCreateOrgChartSeatMutationOptions(options));
+};
+
+/**
+ * @summary Update a seat
+ */
+export const getUpdateOrgChartSeatUrl = (id: number) => {
+  return `/api/seats/${id}`;
+};
+
+export const updateOrgChartSeat = async (
+  id: number,
+  updateOrgChartSeatBody: UpdateOrgChartSeatBody,
+  options?: RequestInit,
+): Promise<OrgChartSeat> => {
+  return customFetch<OrgChartSeat>(getUpdateOrgChartSeatUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateOrgChartSeatBody),
+  });
+};
+
+export const getUpdateOrgChartSeatMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrgChartSeat>>,
+    TError,
+    { id: number; data: BodyType<UpdateOrgChartSeatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateOrgChartSeat>>,
+  TError,
+  { id: number; data: BodyType<UpdateOrgChartSeatBody> },
+  TContext
+> => {
+  const mutationKey = ["updateOrgChartSeat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateOrgChartSeat>>,
+    { id: number; data: BodyType<UpdateOrgChartSeatBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateOrgChartSeat(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateOrgChartSeatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateOrgChartSeat>>
+>;
+export type UpdateOrgChartSeatMutationBody = BodyType<UpdateOrgChartSeatBody>;
+export type UpdateOrgChartSeatMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a seat
+ */
+export const useUpdateOrgChartSeat = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateOrgChartSeat>>,
+    TError,
+    { id: number; data: BodyType<UpdateOrgChartSeatBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateOrgChartSeat>>,
+  TError,
+  { id: number; data: BodyType<UpdateOrgChartSeatBody> },
+  TContext
+> => {
+  return useMutation(getUpdateOrgChartSeatMutationOptions(options));
+};
+
+/**
+ * @summary Delete a seat
+ */
+export const getDeleteOrgChartSeatUrl = (id: number) => {
+  return `/api/seats/${id}`;
+};
+
+export const deleteOrgChartSeat = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteOrgChartSeatUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteOrgChartSeatMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrgChartSeat>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteOrgChartSeat>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteOrgChartSeat"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteOrgChartSeat>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteOrgChartSeat(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteOrgChartSeatMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteOrgChartSeat>>
+>;
+
+export type DeleteOrgChartSeatMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a seat
+ */
+export const useDeleteOrgChartSeat = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteOrgChartSeat>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteOrgChartSeat>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteOrgChartSeatMutationOptions(options));
 };
