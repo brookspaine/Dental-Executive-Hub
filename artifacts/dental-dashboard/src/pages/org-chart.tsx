@@ -157,6 +157,7 @@ export function OrgChart() {
   const [editingSeat, setEditingSeat] = useState<Seat | null>(null);
   const [parentForNewSeat, setParentForNewSeat] = useState<number | null>(null);
   const [form, setForm] = useState<SeatFormState>(emptyForm);
+  const [editMode, setEditMode] = useState(false);
 
   const openAddDialog = (parentId: number | null) => {
     setEditingSeat(null);
@@ -255,12 +256,22 @@ export function OrgChart() {
             </SelectContent>
           </Select>
           <Button
-            onClick={() => openAddDialog(null)}
+            variant={editMode ? "default" : "outline"}
+            onClick={() => setEditMode((v) => !v)}
             disabled={!selectedOrgId}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Add seat
+            <Pencil className="h-4 w-4 mr-2" />
+            {editMode ? "Done editing" : "Edit"}
           </Button>
+          {editMode && (
+            <Button
+              onClick={() => openAddDialog(null)}
+              disabled={!selectedOrgId}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add seat
+            </Button>
+          )}
         </div>
       </div>
 
@@ -345,6 +356,7 @@ export function OrgChart() {
                             seat={seat}
                             parent={parent ?? null}
                             compact={isOwnerTier}
+                            editMode={editMode}
                             onAdd={openAddDialog}
                             onEdit={openEditDialog}
                             onDelete={handleDelete}
@@ -475,6 +487,7 @@ function SeatCard({
   seat,
   parent,
   compact = false,
+  editMode = false,
   onAdd,
   onEdit,
   onDelete,
@@ -482,6 +495,7 @@ function SeatCard({
   seat: Seat;
   parent: Seat | null;
   compact?: boolean;
+  editMode?: boolean;
   onAdd: (parentId: number | null) => void;
   onEdit: (seat: Seat) => void;
   onDelete: (seat: Seat) => void;
@@ -513,26 +527,28 @@ function SeatCard({
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-0 shrink-0">
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() => onEdit(seat)}
-              aria-label="Edit seat"
-            >
-              <Pencil className="h-3 w-3" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 text-destructive"
-              onClick={() => onDelete(seat)}
-              aria-label="Delete seat"
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
+          {editMode && (
+            <div className="flex items-center gap-0 shrink-0">
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6"
+                onClick={() => onEdit(seat)}
+                aria-label="Edit seat"
+              >
+                <Pencil className="h-3 w-3" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 text-destructive"
+                onClick={() => onDelete(seat)}
+                aria-label="Delete seat"
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
         </div>
 
         {!compact && parent && (
@@ -566,17 +582,19 @@ function SeatCard({
             </div>
           )}
 
-        <div className={`${compact ? "mt-1.5" : "mt-2"} pt-1.5 border-t`}>
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-6 px-1.5 text-[10px] w-full justify-start"
-            onClick={() => onAdd(seat.id)}
-          >
-            <Plus className="h-3 w-3 mr-1" />
-            Add direct report
-          </Button>
-        </div>
+        {editMode && (
+          <div className={`${compact ? "mt-1.5" : "mt-2"} pt-1.5 border-t`}>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="h-6 px-1.5 text-[10px] w-full justify-start"
+              onClick={() => onAdd(seat.id)}
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add direct report
+            </Button>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
