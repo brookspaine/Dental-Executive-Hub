@@ -287,23 +287,75 @@ export function OrgChart() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {seats.map((seat) => {
-            const parent = seat.parentSeatId
-              ? seats.find((s) => s.id === seat.parentSeatId)
-              : null;
-            return (
-              <SeatCard
-                key={seat.id}
-                seat={seat}
-                parent={parent ?? null}
-                onAdd={openAddDialog}
-                onEdit={openEditDialog}
-                onDelete={handleDelete}
-              />
-            );
-          })}
-        </div>
+        (() => {
+          // Compute depth (tier) for each seat via BFS from roots.
+          const depthOf = new Map<number, number>();
+          const queue: { id: number; depth: number }[] = roots.map((r) => ({
+            id: r.id,
+            depth: 0,
+          }));
+          while (queue.length > 0) {
+            const { id, depth } = queue.shift()!;
+            if (depthOf.has(id)) continue;
+            depthOf.set(id, depth);
+            for (const c of childrenOf.get(id) ?? []) {
+              queue.push({ id: c.id, depth: depth + 1 });
+            }
+          }
+          // Any orphaned seats (shouldn't happen) default to depth 0.
+          for (const s of seats) {
+            if (!depthOf.has(s.id)) depthOf.set(s.id, 0);
+          }
+          const tiers = new Map<number, Seat[]>();
+          for (const s of seats) {
+            const d = depthOf.get(s.id) ?? 0;
+            const arr = tiers.get(d) ?? [];
+            arr.push(s);
+            tiers.set(d, arr);
+          }
+          const sortedDepths = Array.from(tiers.keys()).sort((a, b) => a - b);
+          return (
+            <div className="space-y-8 overflow-x-auto pb-4">
+              {sortedDepths.map((d, idx) => (
+                <div key={d} className="relative">
+                  {idx > 0 && (
+                    <div
+                      aria-hidden
+                      className="absolute -top-8 left-1/2 -translate-x-1/2 w-px h-4 bg-border"
+                    />
+                  )}
+                  <div className="flex flex-wrap justify-center gap-4">
+                    {(tiers.get(d) ?? []).map((seat) => {
+                      const parent = seat.parentSeatId
+                        ? seats.find((s) => s.id === seat.parentSeatId)
+                        : null;
+                      return (
+                        <div
+                          key={seat.id}
+                          className="relative w-72 max-w-full"
+                        >
+                          {idx > 0 && (
+                            <div
+                              aria-hidden
+                              className="absolute -top-4 left-1/2 -translate-x-1/2 w-px h-4 bg-border"
+                            />
+                          )}
+                          <SeatCard
+                            seat={seat}
+                            parent={parent ?? null}
+                            onAdd={openAddDialog}
+                            onEdit={openEditDialog}
+                            onDelete={handleDelete}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          );
+        })()
       )}
 
       <Dialog
