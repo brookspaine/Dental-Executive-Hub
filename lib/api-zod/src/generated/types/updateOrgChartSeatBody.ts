@@ -11,5 +11,6 @@ export interface UpdateOrgChartSeatBody {
   name?: string | null;
   parentSeatId?: number | null;
   accountabilities?: string[];
+  keyResultsArea?: string[];
   sortOrder?: number;
 }

@@ -20,6 +20,7 @@ function mapSeat(s: any) {
     name: s.name ?? undefined,
     parentSeatId: s.parentSeatId ?? undefined,
     accountabilities: Array.isArray(s.accountabilities) ? s.accountabilities : [],
+    keyResultsArea: Array.isArray(s.keyResultsArea) ? s.keyResultsArea : [],
   };
 }
 
@@ -114,6 +115,7 @@ router.post("/organizations/:organizationId/seats", async (req, res): Promise<vo
         name: parsed.data.name ?? null,
         parentSeatId: parsed.data.parentSeatId ?? null,
         accountabilities: parsed.data.accountabilities ?? [],
+        keyResultsArea: parsed.data.keyResultsArea ?? [],
         sortOrder: parsed.data.sortOrder ?? 0,
       })
       .returning();
@@ -183,6 +185,8 @@ router.patch("/seats/:id", async (req, res): Promise<void> => {
       updates.parentSeatId = parsed.data.parentSeatId;
     if (parsed.data.accountabilities !== undefined)
       updates.accountabilities = parsed.data.accountabilities;
+    if (parsed.data.keyResultsArea !== undefined)
+      updates.keyResultsArea = parsed.data.keyResultsArea;
     if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
 
     const [seat] = await db

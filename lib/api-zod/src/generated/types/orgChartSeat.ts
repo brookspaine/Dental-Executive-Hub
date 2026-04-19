@@ -13,6 +13,7 @@ export interface OrgChartSeat {
   title: string;
   name?: string | null;
   accountabilities: string[];
+  keyResultsArea: string[];
   sortOrder: number;
   createdAt: Date;
 }

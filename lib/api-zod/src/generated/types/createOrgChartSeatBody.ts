@@ -11,5 +11,6 @@ export interface CreateOrgChartSeatBody {
   name?: string | null;
   parentSeatId?: number | null;
   accountabilities?: string[];
+  keyResultsArea?: string[];
   sortOrder?: number;
 }

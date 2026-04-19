@@ -550,6 +550,7 @@ export const ListOrgChartSeatsResponseItem = zod.object({
   title: zod.string(),
   name: zod.string().nullish(),
   accountabilities: zod.array(zod.string()),
+  keyResultsArea: zod.array(zod.string()),
   sortOrder: zod.number(),
   createdAt: zod.coerce.date(),
 });
@@ -569,6 +570,7 @@ export const CreateOrgChartSeatBody = zod.object({
   name: zod.string().nullish(),
   parentSeatId: zod.number().nullish(),
   accountabilities: zod.array(zod.string()).optional(),
+  keyResultsArea: zod.array(zod.string()).optional(),
   sortOrder: zod.number().optional(),
 });
 
@@ -586,6 +588,7 @@ export const GetOrgChartSeatResponse = zod.object({
   title: zod.string(),
   name: zod.string().nullish(),
   accountabilities: zod.array(zod.string()),
+  keyResultsArea: zod.array(zod.string()),
   sortOrder: zod.number(),
   createdAt: zod.coerce.date(),
 });
@@ -602,6 +605,7 @@ export const UpdateOrgChartSeatBody = zod.object({
   name: zod.string().nullish(),
   parentSeatId: zod.number().nullish(),
   accountabilities: zod.array(zod.string()).optional(),
+  keyResultsArea: zod.array(zod.string()).optional(),
   sortOrder: zod.number().optional(),
 });
 
@@ -612,6 +616,7 @@ export const UpdateOrgChartSeatResponse = zod.object({
   title: zod.string(),
   name: zod.string().nullish(),
   accountabilities: zod.array(zod.string()),
+  keyResultsArea: zod.array(zod.string()),
   sortOrder: zod.number(),
   createdAt: zod.coerce.date(),
 });
