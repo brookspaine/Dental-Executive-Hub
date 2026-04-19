@@ -333,7 +333,7 @@ export function OrgChart() {
                       return (
                         <div
                           key={seat.id}
-                          className={`relative max-w-full ${isOwnerTier ? "w-48" : "w-56"}`}
+                          className={`relative max-w-full ${isOwnerTier ? "w-48" : "w-44"}`}
                         >
                           {idx > 0 && (
                             <div
