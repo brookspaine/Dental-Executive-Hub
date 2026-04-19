@@ -384,6 +384,36 @@ export interface UpdateOrgChartSeatBody {
   sortOrder?: number;
 }
 
+export interface SeatTask {
+  id: number;
+  seatId: number;
+  title: string;
+  description?: string | null;
+  status: string;
+  dueDate?: string | null;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSeatTaskBody {
+  title: string;
+  description?: string | null;
+  status?: string;
+  dueDate?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateSeatTaskBody {
+  title?: string;
+  description?: string | null;
+  status?: string;
+  dueDate?: string | null;
+  completed?: boolean;
+  sortOrder?: number;
+}
+
 export type GetRecentActivityParams = {
   limit?: number;
 };

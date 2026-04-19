@@ -25,6 +25,7 @@ import type {
   CreateOrgChartSeatBody,
   CreateOrganizationBody,
   CreateScheduleBlockBody,
+  CreateSeatTaskBody,
   CreateWisdomQuoteBody,
   DailyTop3Item,
   DashboardSummary,
@@ -38,6 +39,7 @@ import type {
   OrgPerformance,
   Organization,
   ScheduleBlock,
+  SeatTask,
   ToggleIdealWeekCompletionBody,
   UpdateDailyTop3Body,
   UpdateDirectReportBody,
@@ -45,6 +47,7 @@ import type {
   UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
   UpdateScheduleBlockBody,
+  UpdateSeatTaskBody,
   WisdomQuote,
 } from "./api.schemas";
 
@@ -2979,6 +2982,93 @@ export const useCreateOrgChartSeat = <
 };
 
 /**
+ * @summary Get a single seat
+ */
+export const getGetOrgChartSeatUrl = (id: number) => {
+  return `/api/seats/${id}`;
+};
+
+export const getOrgChartSeat = async (
+  id: number,
+  options?: RequestInit,
+): Promise<OrgChartSeat> => {
+  return customFetch<OrgChartSeat>(getGetOrgChartSeatUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetOrgChartSeatQueryKey = (id: number) => {
+  return [`/api/seats/${id}`] as const;
+};
+
+export const getGetOrgChartSeatQueryOptions = <
+  TData = Awaited<ReturnType<typeof getOrgChartSeat>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgChartSeat>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetOrgChartSeatQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getOrgChartSeat>>> = ({
+    signal,
+  }) => getOrgChartSeat(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getOrgChartSeat>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetOrgChartSeatQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getOrgChartSeat>>
+>;
+export type GetOrgChartSeatQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a single seat
+ */
+
+export function useGetOrgChartSeat<
+  TData = Awaited<ReturnType<typeof getOrgChartSeat>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getOrgChartSeat>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetOrgChartSeatQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary Update a seat
  */
 export const getUpdateOrgChartSeatUrl = (id: number) => {
@@ -3147,4 +3237,349 @@ export const useDeleteOrgChartSeat = <
   TContext
 > => {
   return useMutation(getDeleteOrgChartSeatMutationOptions(options));
+};
+
+/**
+ * @summary List tasks for a seat
+ */
+export const getListSeatTasksUrl = (seatId: number) => {
+  return `/api/seats/${seatId}/tasks`;
+};
+
+export const listSeatTasks = async (
+  seatId: number,
+  options?: RequestInit,
+): Promise<SeatTask[]> => {
+  return customFetch<SeatTask[]>(getListSeatTasksUrl(seatId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSeatTasksQueryKey = (seatId: number) => {
+  return [`/api/seats/${seatId}/tasks`] as const;
+};
+
+export const getListSeatTasksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSeatTasks>>,
+  TError = ErrorType<unknown>,
+>(
+  seatId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSeatTasks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListSeatTasksQueryKey(seatId);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listSeatTasks>>> = ({
+    signal,
+  }) => listSeatTasks(seatId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!seatId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSeatTasks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSeatTasksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSeatTasks>>
+>;
+export type ListSeatTasksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List tasks for a seat
+ */
+
+export function useListSeatTasks<
+  TData = Awaited<ReturnType<typeof listSeatTasks>>,
+  TError = ErrorType<unknown>,
+>(
+  seatId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSeatTasks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSeatTasksQueryOptions(seatId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a task for a seat
+ */
+export const getCreateSeatTaskUrl = (seatId: number) => {
+  return `/api/seats/${seatId}/tasks`;
+};
+
+export const createSeatTask = async (
+  seatId: number,
+  createSeatTaskBody: CreateSeatTaskBody,
+  options?: RequestInit,
+): Promise<SeatTask> => {
+  return customFetch<SeatTask>(getCreateSeatTaskUrl(seatId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSeatTaskBody),
+  });
+};
+
+export const getCreateSeatTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSeatTask>>,
+    TError,
+    { seatId: number; data: BodyType<CreateSeatTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSeatTask>>,
+  TError,
+  { seatId: number; data: BodyType<CreateSeatTaskBody> },
+  TContext
+> => {
+  const mutationKey = ["createSeatTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSeatTask>>,
+    { seatId: number; data: BodyType<CreateSeatTaskBody> }
+  > = (props) => {
+    const { seatId, data } = props ?? {};
+
+    return createSeatTask(seatId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSeatTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSeatTask>>
+>;
+export type CreateSeatTaskMutationBody = BodyType<CreateSeatTaskBody>;
+export type CreateSeatTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a task for a seat
+ */
+export const useCreateSeatTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSeatTask>>,
+    TError,
+    { seatId: number; data: BodyType<CreateSeatTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSeatTask>>,
+  TError,
+  { seatId: number; data: BodyType<CreateSeatTaskBody> },
+  TContext
+> => {
+  return useMutation(getCreateSeatTaskMutationOptions(options));
+};
+
+/**
+ * @summary Update a task
+ */
+export const getUpdateSeatTaskUrl = (id: number) => {
+  return `/api/seat-tasks/${id}`;
+};
+
+export const updateSeatTask = async (
+  id: number,
+  updateSeatTaskBody: UpdateSeatTaskBody,
+  options?: RequestInit,
+): Promise<SeatTask> => {
+  return customFetch<SeatTask>(getUpdateSeatTaskUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSeatTaskBody),
+  });
+};
+
+export const getUpdateSeatTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSeatTask>>,
+    TError,
+    { id: number; data: BodyType<UpdateSeatTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSeatTask>>,
+  TError,
+  { id: number; data: BodyType<UpdateSeatTaskBody> },
+  TContext
+> => {
+  const mutationKey = ["updateSeatTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSeatTask>>,
+    { id: number; data: BodyType<UpdateSeatTaskBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSeatTask(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSeatTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSeatTask>>
+>;
+export type UpdateSeatTaskMutationBody = BodyType<UpdateSeatTaskBody>;
+export type UpdateSeatTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a task
+ */
+export const useUpdateSeatTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSeatTask>>,
+    TError,
+    { id: number; data: BodyType<UpdateSeatTaskBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSeatTask>>,
+  TError,
+  { id: number; data: BodyType<UpdateSeatTaskBody> },
+  TContext
+> => {
+  return useMutation(getUpdateSeatTaskMutationOptions(options));
+};
+
+/**
+ * @summary Delete a task
+ */
+export const getDeleteSeatTaskUrl = (id: number) => {
+  return `/api/seat-tasks/${id}`;
+};
+
+export const deleteSeatTask = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteSeatTaskUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSeatTaskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSeatTask>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSeatTask>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSeatTask"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSeatTask>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSeatTask(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSeatTaskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSeatTask>>
+>;
+
+export type DeleteSeatTaskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a task
+ */
+export const useDeleteSeatTask = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSeatTask>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSeatTask>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSeatTaskMutationOptions(options));
 };

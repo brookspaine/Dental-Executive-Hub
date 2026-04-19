@@ -639,6 +639,25 @@ paths:
                 $ref: "#/components/schemas/OrgChartSeat"
 
   /seats/{id}:
+    get:
+      operationId: getOrgChartSeat
+      tags: [orgChart]
+      summary: Get a single seat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Seat
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrgChartSeat"
+        "404":
+          description: Not found
     patch:
       operationId: updateOrgChartSeat
       tags: [orgChart]
@@ -666,6 +685,88 @@ paths:
       operationId: deleteOrgChartSeat
       tags: [orgChart]
       summary: Delete a seat
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /seats/{seatId}/tasks:
+    get:
+      operationId: listSeatTasks
+      tags: [seatTasks]
+      summary: List tasks for a seat
+      parameters:
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/SeatTask"
+    post:
+      operationId: createSeatTask
+      tags: [seatTasks]
+      summary: Create a task for a seat
+      parameters:
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSeatTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeatTask"
+
+  /seat-tasks/{id}:
+    patch:
+      operationId: updateSeatTask
+      tags: [seatTasks]
+      summary: Update a task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSeatTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SeatTask"
+    delete:
+      operationId: deleteSeatTask
+      tags: [seatTasks]
+      summary: Delete a task
       parameters:
         - name: id
           in: path
@@ -1279,5 +1380,78 @@ components:
           type: array
           items:
             type: string
+        sortOrder:
+          type: integer
+
+    SeatTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        seatId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        dueDate:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - seatId
+        - title
+        - status
+        - completed
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateSeatTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        dueDate:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - title
+
+    UpdateSeatTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        dueDate:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
         sortOrder:
           type: integer

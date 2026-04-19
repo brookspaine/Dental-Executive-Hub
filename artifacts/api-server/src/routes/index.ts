@@ -9,6 +9,7 @@ import idealWeekRouter from "./idealWeek";
 import devotionalRouter from "./devotional";
 import wisdomQuotesRouter from "./wisdomQuotes";
 import orgChartRouter from "./orgChart";
+import seatTasksRouter from "./seatTasks";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(idealWeekRouter);
 router.use(devotionalRouter);
 router.use(wisdomQuotesRouter);
 router.use(orgChartRouter);
+router.use(seatTasksRouter);
 
 export default router;

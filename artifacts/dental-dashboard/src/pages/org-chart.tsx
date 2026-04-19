@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useListOrganizations,
@@ -500,8 +501,22 @@ function SeatCard({
   onEdit: (seat: Seat) => void;
   onDelete: (seat: Seat) => void;
 }) {
+  const [, setLocation] = useLocation();
+  const handleCardClick = () => {
+    if (!editMode) setLocation(`/org-chart/seats/${seat.id}`);
+  };
   return (
-    <Card className="h-full flex flex-col">
+    <Card
+      className={`h-full flex flex-col ${
+        editMode ? "" : "cursor-pointer hover:shadow-md transition-shadow"
+      }`}
+      onClick={handleCardClick}
+      role={editMode ? undefined : "button"}
+      tabIndex={editMode ? undefined : 0}
+      onKeyDown={(e) => {
+        if (!editMode && e.key === "Enter") handleCardClick();
+      }}
+    >
       <CardContent
         className={`flex flex-col h-full ${compact ? "p-2.5" : "p-3"}`}
       >

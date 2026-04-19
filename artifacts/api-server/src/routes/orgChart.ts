@@ -123,6 +123,27 @@ router.post("/organizations/:organizationId/seats", async (req, res): Promise<vo
   }
 });
 
+router.get("/seats/:id", async (req, res): Promise<void> => {
+  const seatId = parseIntParam(req.params.id);
+  if (seatId === null) {
+    res.status(400).json({ error: "Invalid seat id" });
+    return;
+  }
+  try {
+    const [seat] = await db
+      .select()
+      .from(orgChartSeatsTable)
+      .where(eq(orgChartSeatsTable.id, seatId));
+    if (!seat) {
+      res.status(404).json({ error: "Seat not found" });
+      return;
+    }
+    res.json(mapSeat(seat));
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Failed to load seat" });
+  }
+});
+
 router.patch("/seats/:id", async (req, res): Promise<void> => {
   const seatId = parseIntParam(req.params.id);
   if (seatId === null) {

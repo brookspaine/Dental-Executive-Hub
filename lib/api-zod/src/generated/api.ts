@@ -573,6 +573,24 @@ export const CreateOrgChartSeatBody = zod.object({
 });
 
 /**
+ * @summary Get a single seat
+ */
+export const GetOrgChartSeatParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetOrgChartSeatResponse = zod.object({
+  id: zod.number(),
+  organizationId: zod.number(),
+  parentSeatId: zod.number().nullish(),
+  title: zod.string(),
+  name: zod.string().nullish(),
+  accountabilities: zod.array(zod.string()),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+
+/**
  * @summary Update a seat
  */
 export const UpdateOrgChartSeatParams = zod.object({
@@ -602,5 +620,77 @@ export const UpdateOrgChartSeatResponse = zod.object({
  * @summary Delete a seat
  */
 export const DeleteOrgChartSeatParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List tasks for a seat
+ */
+export const ListSeatTasksParams = zod.object({
+  seatId: zod.coerce.number(),
+});
+
+export const ListSeatTasksResponseItem = zod.object({
+  id: zod.number(),
+  seatId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.string(),
+  dueDate: zod.string().nullish(),
+  completed: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSeatTasksResponse = zod.array(ListSeatTasksResponseItem);
+
+/**
+ * @summary Create a task for a seat
+ */
+export const CreateSeatTaskParams = zod.object({
+  seatId: zod.coerce.number(),
+});
+
+export const CreateSeatTaskBody = zod.object({
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.string().optional(),
+  dueDate: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a task
+ */
+export const UpdateSeatTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateSeatTaskBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  status: zod.string().optional(),
+  dueDate: zod.string().nullish(),
+  completed: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateSeatTaskResponse = zod.object({
+  id: zod.number(),
+  seatId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.string(),
+  dueDate: zod.string().nullish(),
+  completed: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a task
+ */
+export const DeleteSeatTaskParams = zod.object({
   id: zod.coerce.number(),
 });
