@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { ReplitConnectors } from "@replit/connectors-sdk";
-import { eq, and, gte, lte } from "drizzle-orm";
+import { eq, and, gte, lte, desc } from "drizzle-orm";
 import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable, readingListTable } from "@workspace/db";
 import type { ScheduleBlock } from "@workspace/db";
 import { asc } from "drizzle-orm";
@@ -405,11 +405,21 @@ router.get("/ideal-week/journal", async (req, res): Promise<void> => {
     res.status(400).json({ error: "date query parameter is required" });
     return;
   }
-  const responses = await db
+  // Return one response per promptKey: today's value if it exists,
+  // otherwise the most recent prior response (carried-forward until edited).
+  const rows = await db
     .select()
     .from(journalResponsesTable)
-    .where(eq(journalResponsesTable.date, date));
-  res.json(responses);
+    .where(lte(journalResponsesTable.date, date))
+    .orderBy(desc(journalResponsesTable.date), desc(journalResponsesTable.id));
+  const seen = new Set<string>();
+  const latest: typeof rows = [];
+  for (const r of rows) {
+    if (seen.has(r.promptKey)) continue;
+    seen.add(r.promptKey);
+    latest.push(r);
+  }
+  res.json(latest);
 });
 
 router.post("/ideal-week/journal", async (req, res): Promise<void> => {
