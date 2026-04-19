@@ -287,18 +287,22 @@ export function OrgChart() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
-          {roots.map((seat) => (
-            <SeatNode
-              key={seat.id}
-              seat={seat}
-              childrenOf={childrenOf}
-              depth={0}
-              onAdd={openAddDialog}
-              onEdit={openEditDialog}
-              onDelete={handleDelete}
-            />
-          ))}
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          {seats.map((seat) => {
+            const parent = seat.parentSeatId
+              ? seats.find((s) => s.id === seat.parentSeatId)
+              : null;
+            return (
+              <SeatCard
+                key={seat.id}
+                seat={seat}
+                parent={parent ?? null}
+                onAdd={openAddDialog}
+                onEdit={openEditDialog}
+                onDelete={handleDelete}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -413,106 +417,92 @@ export function OrgChart() {
   );
 }
 
-function SeatNode({
+function SeatCard({
   seat,
-  childrenOf,
-  depth,
+  parent,
   onAdd,
   onEdit,
   onDelete,
 }: {
   seat: Seat;
-  childrenOf: Map<number | null, Seat[]>;
-  depth: number;
+  parent: Seat | null;
   onAdd: (parentId: number | null) => void;
   onEdit: (seat: Seat) => void;
   onDelete: (seat: Seat) => void;
 }) {
-  const children = childrenOf.get(seat.id) ?? [];
-
   return (
-    <div className="space-y-3">
-      <Card>
-        <CardContent className="p-4">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="h-9 w-9 shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-                <UserCircle2 className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="font-semibold leading-tight">{seat.title}</div>
-                <div className="text-xs text-muted-foreground mt-0.5">
-                  {seat.name ? seat.name : (
-                    <span className="italic">Vacant</span>
-                  )}
-                </div>
-              </div>
+    <Card className="h-full flex flex-col">
+      <CardContent className="p-4 flex flex-col h-full">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2 min-w-0">
+            <div className="h-9 w-9 shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center">
+              <UserCircle2 className="h-5 w-5" />
             </div>
-            <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-8 px-2 text-xs"
-                onClick={() => onAdd(seat.id)}
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                Direct report
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8"
-                onClick={() => onEdit(seat)}
-                aria-label="Edit seat"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </Button>
-              <Button
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 text-destructive"
-                onClick={() => onDelete(seat)}
-                aria-label="Delete seat"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
+            <div className="min-w-0">
+              <div className="font-semibold leading-tight truncate">
+                {seat.title}
+              </div>
+              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                {seat.name ? seat.name : <span className="italic">Vacant</span>}
+              </div>
             </div>
           </div>
-
-          {seat.accountabilities && seat.accountabilities.length > 0 && (
-            <ul className="mt-3 ml-12 space-y-1">
-              {seat.accountabilities.map((a, i) => (
-                <li
-                  key={i}
-                  className="text-xs text-muted-foreground flex items-center gap-2"
-                >
-                  <span className="h-1 w-1 rounded-full bg-muted-foreground leading-none" />
-                  {a}
-                </li>
-              ))}
-            </ul>
-          )}
-        </CardContent>
-      </Card>
-
-      {children.length > 0 && (
-        <div
-          className="ml-6 pl-4 border-l-2 border-dashed border-muted space-y-3"
-          style={{ marginLeft: depth === 0 ? 24 : undefined }}
-        >
-          {children.map((c) => (
-            <SeatNode
-              key={c.id}
-              seat={c}
-              childrenOf={childrenOf}
-              depth={depth + 1}
-              onAdd={onAdd}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ))}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7"
+              onClick={() => onEdit(seat)}
+              aria-label="Edit seat"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-7 w-7 text-destructive"
+              onClick={() => onDelete(seat)}
+              aria-label="Delete seat"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
-      )}
-    </div>
+
+        {parent && (
+          <div className="mt-2 text-[11px] text-muted-foreground">
+            Reports to:{" "}
+            <span className="font-medium text-foreground">{parent.title}</span>
+            {parent.name ? ` (${parent.name})` : ""}
+          </div>
+        )}
+
+        {seat.accountabilities && seat.accountabilities.length > 0 && (
+          <ul className="mt-3 space-y-1 flex-1">
+            {seat.accountabilities.map((a, i) => (
+              <li
+                key={i}
+                className="text-xs text-muted-foreground flex items-start gap-2"
+              >
+                <span className="h-1 w-1 mt-1.5 shrink-0 rounded-full bg-muted-foreground" />
+                <span className="leading-snug">{a}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="mt-3 pt-2 border-t">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2 text-xs w-full justify-start"
+            onClick={() => onAdd(seat.id)}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add direct report
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
