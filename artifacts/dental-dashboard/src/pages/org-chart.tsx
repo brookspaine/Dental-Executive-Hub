@@ -329,10 +329,11 @@ export function OrgChart() {
                       const parent = seat.parentSeatId
                         ? seats.find((s) => s.id === seat.parentSeatId)
                         : null;
+                      const isOwnerTier = d === 0;
                       return (
                         <div
                           key={seat.id}
-                          className="relative w-72 max-w-full"
+                          className={`relative max-w-full ${isOwnerTier ? "w-48" : "w-56"}`}
                         >
                           {idx > 0 && (
                             <div
@@ -343,6 +344,7 @@ export function OrgChart() {
                           <SeatCard
                             seat={seat}
                             parent={parent ?? null}
+                            compact={isOwnerTier}
                             onAdd={openAddDialog}
                             onEdit={openEditDialog}
                             onDelete={handleDelete}
@@ -472,85 +474,106 @@ export function OrgChart() {
 function SeatCard({
   seat,
   parent,
+  compact = false,
   onAdd,
   onEdit,
   onDelete,
 }: {
   seat: Seat;
   parent: Seat | null;
+  compact?: boolean;
   onAdd: (parentId: number | null) => void;
   onEdit: (seat: Seat) => void;
   onDelete: (seat: Seat) => void;
 }) {
   return (
     <Card className="h-full flex flex-col">
-      <CardContent className="p-4 flex flex-col h-full">
-        <div className="flex items-start justify-between gap-2">
+      <CardContent
+        className={`flex flex-col h-full ${compact ? "p-2.5" : "p-3"}`}
+      >
+        <div className="flex items-start justify-between gap-1.5">
           <div className="flex items-start gap-2 min-w-0">
-            <div className="h-9 w-9 shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-              <UserCircle2 className="h-5 w-5" />
+            <div
+              className={`shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center ${
+                compact ? "h-6 w-6" : "h-7 w-7"
+              }`}
+            >
+              <UserCircle2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
             </div>
             <div className="min-w-0">
-              <div className="font-semibold leading-tight truncate">
+              <div
+                className={`font-semibold leading-tight truncate ${
+                  compact ? "text-xs" : "text-sm"
+                }`}
+              >
                 {seat.title}
               </div>
-              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">
                 {seat.name ? seat.name : <span className="italic">Vacant</span>}
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-0.5 shrink-0">
+          <div className="flex items-center gap-0 shrink-0">
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7"
+              className="h-6 w-6"
               onClick={() => onEdit(seat)}
               aria-label="Edit seat"
             >
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="h-3 w-3" />
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="h-7 w-7 text-destructive"
+              className="h-6 w-6 text-destructive"
               onClick={() => onDelete(seat)}
               aria-label="Delete seat"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="h-3 w-3" />
             </Button>
           </div>
         </div>
 
-        {parent && (
-          <div className="mt-2 text-[11px] text-muted-foreground">
+        {!compact && parent && (
+          <div className="mt-1.5 text-[10px] text-muted-foreground truncate">
             Reports to:{" "}
             <span className="font-medium text-foreground">{parent.title}</span>
-            {parent.name ? ` (${parent.name})` : ""}
           </div>
         )}
 
-        {seat.accountabilities && seat.accountabilities.length > 0 && (
-          <ul className="mt-3 space-y-1 flex-1">
-            {seat.accountabilities.map((a, i) => (
-              <li
-                key={i}
-                className="text-xs text-muted-foreground flex items-start gap-2"
-              >
-                <span className="h-1 w-1 mt-1.5 shrink-0 rounded-full bg-muted-foreground" />
-                <span className="leading-snug">{a}</span>
-              </li>
-            ))}
-          </ul>
-        )}
+        {!compact &&
+          seat.accountabilities &&
+          seat.accountabilities.length > 0 && (
+            <ul className="mt-2 space-y-0.5 flex-1">
+              {seat.accountabilities.map((a, i) => (
+                <li
+                  key={i}
+                  className="text-[11px] text-muted-foreground flex items-start gap-1.5"
+                >
+                  <span className="h-1 w-1 mt-1.5 shrink-0 rounded-full bg-muted-foreground" />
+                  <span className="leading-snug">{a}</span>
+                </li>
+              ))}
+            </ul>
+          )}
 
-        <div className="mt-3 pt-2 border-t">
+        {compact &&
+          seat.accountabilities &&
+          seat.accountabilities.length > 0 && (
+            <div className="mt-1.5 text-[10px] text-muted-foreground leading-snug line-clamp-2">
+              {seat.accountabilities.join(" · ")}
+            </div>
+          )}
+
+        <div className={`${compact ? "mt-1.5" : "mt-2"} pt-1.5 border-t`}>
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-xs w-full justify-start"
+            className="h-6 px-1.5 text-[10px] w-full justify-start"
             onClick={() => onAdd(seat.id)}
           >
-            <Plus className="h-3.5 w-3.5 mr-1" />
+            <Plus className="h-3 w-3 mr-1" />
             Add direct report
           </Button>
         </div>
