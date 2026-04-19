@@ -91,9 +91,9 @@ export function OrgChart() {
   const { data: orgs } = useListOrganizations();
   const [selectedOrgId, setSelectedOrgId] = useState<number | null>(null);
 
-  // Locations to choose from: EDGE locations + Urgent Dental (exclude DSO holding org)
+  // Only Urgent Dental for now
   const locationOrgs = useMemo(
-    () => (orgs ?? []).filter((o: any) => o.category !== "edge_dso"),
+    () => (orgs ?? []).filter((o: any) => o.category === "urgent_dental"),
     [orgs]
   );
 
