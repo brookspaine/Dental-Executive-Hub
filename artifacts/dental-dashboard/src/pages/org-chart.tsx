@@ -479,20 +479,6 @@ export function OrgChart() {
                 One accountability per line
               </p>
             </div>
-            <div className="grid gap-2">
-              <Label>Key Results Area (KRA)</Label>
-              <Textarea
-                value={form.keyResultsAreaText}
-                onChange={(e) =>
-                  setForm({ ...form, keyResultsAreaText: e.target.value })
-                }
-                placeholder={"One per line, e.g.\nNew patient conversion rate ≥ 80%\nMonthly collections ≥ $150k\nStaff retention ≥ 90%"}
-                rows={5}
-              />
-              <p className="text-xs text-muted-foreground">
-                One measurable result per line — the outcomes this role is judged by
-              </p>
-            </div>
           </div>
           <div className="flex justify-end gap-2">
             <Button
@@ -617,41 +603,11 @@ function SeatCard({
             </ul>
           )}
 
-        {!compact &&
-          seat.keyResultsArea &&
-          seat.keyResultsArea.length > 0 && (
-            <div className="mt-2 pt-2 border-t flex-1">
-              <div className="text-[9px] font-semibold uppercase tracking-wide text-primary mb-1">
-                KRA
-              </div>
-              <ul className="space-y-0.5">
-                {seat.keyResultsArea.map((k, i) => (
-                  <li
-                    key={i}
-                    className="text-[11px] text-foreground/80 flex items-start gap-1.5"
-                  >
-                    <span className="h-1 w-1 mt-1.5 shrink-0 rounded-full bg-primary" />
-                    <span className="leading-snug">{k}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
         {compact &&
           seat.accountabilities &&
           seat.accountabilities.length > 0 && (
             <div className="mt-1.5 text-[10px] text-muted-foreground leading-snug line-clamp-2">
               {seat.accountabilities.join(" · ")}
-            </div>
-          )}
-
-        {compact &&
-          seat.keyResultsArea &&
-          seat.keyResultsArea.length > 0 && (
-            <div className="mt-1 text-[10px] text-primary/80 leading-snug line-clamp-2">
-              <span className="font-semibold">KRA: </span>
-              {seat.keyResultsArea.join(" · ")}
             </div>
           )}
 
