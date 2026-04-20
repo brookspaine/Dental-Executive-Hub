@@ -136,9 +136,16 @@ export function SeatDetail() {
     ? allSeats.find((s) => s.id === seat.parentSeatId) ?? null
     : null;
 
-  // Direct reports of this seat are the people who can be accountable for tasks here.
+  // Anyone in this practice (location) can be assigned a task — not just direct reports.
   const directReports = useMemo(
-    () => allSeats.filter((s) => s.parentSeatId === seat?.id && s.name && s.name.trim()),
+    () =>
+      allSeats
+        .filter((s) => s.id !== seat?.id && s.name && s.name.trim())
+        .sort((a, b) =>
+          (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+            sensitivity: "base",
+          })
+        ),
     [allSeats, seat?.id]
   );
 
@@ -364,7 +371,7 @@ export function SeatDetail() {
               />
             </div>
             <div className="grid gap-2">
-              <Label>Direct report</Label>
+              <Label>Assignee</Label>
               <Select
                 value={form.assignee.trim() ? form.assignee : UNASSIGNED}
                 onValueChange={(v) =>
@@ -372,13 +379,13 @@ export function SeatDetail() {
                 }
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Choose a direct report" />
+                  <SelectValue placeholder="Choose someone in this practice" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value={UNASSIGNED}>— Unassigned —</SelectItem>
                   {directReports.length === 0 && (
                     <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                      No direct reports yet
+                      No one in this practice yet
                     </div>
                   )}
                   {directReports.map((s) => (
@@ -562,7 +569,7 @@ function TaskCard({
           >
             <Select value={currentValue} onValueChange={onAssigneeChange}>
               <SelectTrigger className="h-7 text-xs w-full max-w-[260px]">
-                <SelectValue placeholder="Assign direct report" />
+                <SelectValue placeholder="Assign someone" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value={UNASSIGNED}>— Unassigned —</SelectItem>
@@ -575,13 +582,13 @@ function TaskCard({
                         className="h-5 w-5 rounded-full object-cover bg-muted"
                       />
                       {currentAssigneeName}
-                      <span className="text-xs text-muted-foreground">· not a direct report</span>
+                      <span className="text-xs text-muted-foreground">· not in this practice</span>
                     </span>
                   </SelectItem>
                 )}
                 {directReports.length === 0 && !showLegacyOption && (
                   <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                    No direct reports yet
+                    No one in this practice yet
                   </div>
                 )}
                 {directReports.map((s) => (
