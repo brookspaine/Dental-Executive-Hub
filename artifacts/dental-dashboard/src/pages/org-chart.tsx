@@ -29,12 +29,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Network, Plus, Pencil, Trash2 } from "lucide-react";
-
-function seatPhotoUrl(seat: { name?: string | null; photoUrl?: string | null; title?: string }): string {
-  if (seat.photoUrl && seat.photoUrl.trim()) return seat.photoUrl.trim();
-  const seed = seat.name?.trim() || seat.title || "vacant";
-  return `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(seed)}`;
-}
+import { EditablePhoto } from "@/components/editable-photo";
 import { useToast } from "@/hooks/use-toast";
 
 type Seat = {
@@ -580,13 +575,7 @@ function SeatCard({
       >
         <div className="flex items-start justify-between gap-1.5">
           <div className="flex items-start gap-2 min-w-0">
-            <img
-              src={seatPhotoUrl(seat)}
-              alt=""
-              className={`shrink-0 rounded-full object-cover bg-muted border ${
-                compact ? "h-6 w-6" : "h-8 w-8"
-              }`}
-            />
+            <EditablePhoto seat={seat} size={compact ? "xs" : "sm"} />
             <div className="min-w-0">
               <div
                 className={`font-semibold leading-tight truncate ${

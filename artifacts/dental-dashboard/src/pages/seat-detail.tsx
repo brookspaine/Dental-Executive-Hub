@@ -37,6 +37,11 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  EditablePhoto,
+  resolvePhotoUrl,
+  dicebearUrl,
+} from "@/components/editable-photo";
 
 type Seat = {
   id: number;
@@ -76,14 +81,7 @@ function statusMeta(s: string) {
   return STATUSES.find((x) => x.key === s) ?? STATUSES[0];
 }
 
-function dicebearUrl(seed: string): string {
-  return `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(seed || "vacant")}`;
-}
-
-function photoFor(seat: { name?: string | null; photoUrl?: string | null; title?: string }): string {
-  if (seat.photoUrl && seat.photoUrl.trim()) return seat.photoUrl.trim();
-  return dicebearUrl(seat.name?.trim() || seat.title || "vacant");
-}
+const photoFor = resolvePhotoUrl;
 
 function formatDueDate(d: string): string {
   return new Date(d + "T00:00:00").toLocaleDateString(undefined, {
@@ -275,11 +273,7 @@ export function SeatDetail() {
             </Button>
           </Link>
           <div className="flex items-start gap-3">
-            <img
-              src={photoFor(seat)}
-              alt={seat.name ?? seat.title}
-              className="h-14 w-14 shrink-0 rounded-full object-cover bg-muted border"
-            />
+            <EditablePhoto seat={seat} size="lg" />
             <div>
               <h2 className="text-2xl font-bold tracking-tight leading-tight">
                 {seat.title}
@@ -518,14 +512,7 @@ function StatusPill({ status }: { status: string }) {
 
 function PersonAvatar({ seat, fallbackName }: { seat: Seat | null; fallbackName?: string | null }) {
   if (seat) {
-    return (
-      <img
-        src={photoFor(seat)}
-        alt=""
-        className="h-9 w-9 rounded-full object-cover bg-muted border shrink-0"
-        title={seat.name ?? undefined}
-      />
-    );
+    return <EditablePhoto seat={seat} size="md" />;
   }
   if (fallbackName && fallbackName.trim()) {
     return (
