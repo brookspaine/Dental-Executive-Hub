@@ -18,6 +18,7 @@ function mapTask(t: any) {
   return {
     ...t,
     description: t.description ?? undefined,
+    assignee: t.assignee ?? undefined,
     dueDate: t.dueDate ?? undefined,
   };
 }
@@ -67,6 +68,8 @@ router.post("/seats/:seatId/tasks", async (req, res): Promise<void> => {
         title: parsed.data.title,
         description: parsed.data.description ?? null,
         status: parsed.data.status ?? "todo",
+        priority: parsed.data.priority ?? "medium",
+        assignee: parsed.data.assignee ?? null,
         dueDate: parsed.data.dueDate ?? null,
         sortOrder: parsed.data.sortOrder ?? 0,
       })
@@ -94,6 +97,8 @@ router.patch("/seat-tasks/:id", async (req, res): Promise<void> => {
     if (parsed.data.description !== undefined)
       updates.description = parsed.data.description;
     if (parsed.data.status !== undefined) updates.status = parsed.data.status;
+    if (parsed.data.priority !== undefined) updates.priority = parsed.data.priority;
+    if (parsed.data.assignee !== undefined) updates.assignee = parsed.data.assignee;
     if (parsed.data.dueDate !== undefined) updates.dueDate = parsed.data.dueDate;
     if (parsed.data.completed !== undefined)
       updates.completed = parsed.data.completed;

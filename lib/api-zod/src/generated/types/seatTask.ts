@@ -12,6 +12,8 @@ export interface SeatTask {
   title: string;
   description?: string | null;
   status: string;
+  priority: string;
+  assignee?: string | null;
   dueDate?: string | null;
   completed: boolean;
   sortOrder: number;

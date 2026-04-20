@@ -1410,6 +1410,11 @@ components:
           nullable: true
         status:
           type: string
+        priority:
+          type: string
+        assignee:
+          type: string
+          nullable: true
         dueDate:
           type: string
           nullable: true
@@ -1428,6 +1433,7 @@ components:
         - seatId
         - title
         - status
+        - priority
         - completed
         - sortOrder
         - createdAt
@@ -1443,6 +1449,11 @@ components:
           nullable: true
         status:
           type: string
+        priority:
+          type: string
+        assignee:
+          type: string
+          nullable: true
         dueDate:
           type: string
           nullable: true
@@ -1461,6 +1472,11 @@ components:
           nullable: true
         status:
           type: string
+        priority:
+          type: string
+        assignee:
+          type: string
+          nullable: true
         dueDate:
           type: string
           nullable: true

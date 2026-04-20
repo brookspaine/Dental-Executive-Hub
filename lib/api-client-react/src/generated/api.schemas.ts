@@ -393,6 +393,8 @@ export interface SeatTask {
   title: string;
   description?: string | null;
   status: string;
+  priority: string;
+  assignee?: string | null;
   dueDate?: string | null;
   completed: boolean;
   sortOrder: number;
@@ -404,6 +406,8 @@ export interface CreateSeatTaskBody {
   title: string;
   description?: string | null;
   status?: string;
+  priority?: string;
+  assignee?: string | null;
   dueDate?: string | null;
   sortOrder?: number;
 }
@@ -412,6 +416,8 @@ export interface UpdateSeatTaskBody {
   title?: string;
   description?: string | null;
   status?: string;
+  priority?: string;
+  assignee?: string | null;
   dueDate?: string | null;
   completed?: boolean;
   sortOrder?: number;

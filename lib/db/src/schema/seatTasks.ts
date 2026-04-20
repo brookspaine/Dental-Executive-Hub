@@ -9,6 +9,8 @@ export const seatTasksTable = pgTable("seat_tasks", {
   title: text("title").notNull(),
   description: text("description"),
   status: text("status").notNull().default("todo"),
+  priority: text("priority").notNull().default("medium"),
+  assignee: text("assignee"),
   dueDate: text("due_date"),
   completed: boolean("completed").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
