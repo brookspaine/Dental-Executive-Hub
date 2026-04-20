@@ -12,6 +12,7 @@ export interface OrgChartSeat {
   parentSeatId?: number | null;
   title: string;
   name?: string | null;
+  photoUrl?: string | null;
   accountabilities: string[];
   keyResultsArea: string[];
   sortOrder: number;

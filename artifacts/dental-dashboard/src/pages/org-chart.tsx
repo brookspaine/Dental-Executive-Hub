@@ -28,7 +28,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Network, Plus, Pencil, Trash2, UserCircle2 } from "lucide-react";
+import { Network, Plus, Pencil, Trash2 } from "lucide-react";
+
+function seatPhotoUrl(seat: { name?: string | null; photoUrl?: string | null; title?: string }): string {
+  if (seat.photoUrl && seat.photoUrl.trim()) return seat.photoUrl.trim();
+  const seed = seat.name?.trim() || seat.title || "vacant";
+  return `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(seed)}`;
+}
 import { useToast } from "@/hooks/use-toast";
 
 type Seat = {
@@ -37,6 +43,7 @@ type Seat = {
   parentSeatId?: number | null;
   title: string;
   name?: string | null;
+  photoUrl?: string | null;
   accountabilities: string[];
   keyResultsArea: string[];
   sortOrder: number;
@@ -45,6 +52,7 @@ type Seat = {
 type SeatFormState = {
   title: string;
   name: string;
+  photoUrl: string;
   accountabilitiesText: string;
   keyResultsAreaText: string;
   parentSeatId: number | null;
@@ -53,6 +61,7 @@ type SeatFormState = {
 const emptyForm: SeatFormState = {
   title: "",
   name: "",
+  photoUrl: "",
   accountabilitiesText: "",
   keyResultsAreaText: "",
   parentSeatId: null,
@@ -169,6 +178,7 @@ export function OrgChart() {
     setForm({
       title: "",
       name: "",
+      photoUrl: "",
       accountabilitiesText: "",
       keyResultsAreaText: "",
       parentSeatId: parentId,
@@ -182,6 +192,7 @@ export function OrgChart() {
     setForm({
       title: seat.title,
       name: seat.name ?? "",
+      photoUrl: seat.photoUrl ?? "",
       accountabilitiesText: (seat.accountabilities ?? []).join("\n"),
       keyResultsAreaText: (seat.keyResultsArea ?? []).join("\n"),
       parentSeatId: seat.parentSeatId ?? null,
@@ -202,6 +213,7 @@ export function OrgChart() {
     const payload = {
       title: form.title.trim(),
       name: form.name.trim() ? form.name.trim() : null,
+      photoUrl: form.photoUrl.trim() ? form.photoUrl.trim() : null,
       parentSeatId: form.parentSeatId,
       accountabilities,
       keyResultsArea,
@@ -417,6 +429,28 @@ export function OrgChart() {
               />
             </div>
             <div className="grid gap-2">
+              <Label>Photo URL</Label>
+              <div className="flex items-center gap-3">
+                <img
+                  src={
+                    form.photoUrl.trim() ||
+                    `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(
+                      form.name.trim() || form.title || "vacant"
+                    )}`
+                  }
+                  alt=""
+                  className="h-12 w-12 rounded-full object-cover bg-muted shrink-0 border"
+                />
+                <Input
+                  value={form.photoUrl}
+                  onChange={(e) =>
+                    setForm({ ...form, photoUrl: e.target.value })
+                  }
+                  placeholder="Paste a photo URL — leave blank for an auto-generated avatar"
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
               <Label>Reports to</Label>
               <Select
                 value={
@@ -546,13 +580,13 @@ function SeatCard({
       >
         <div className="flex items-start justify-between gap-1.5">
           <div className="flex items-start gap-2 min-w-0">
-            <div
-              className={`shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center ${
-                compact ? "h-6 w-6" : "h-7 w-7"
+            <img
+              src={seatPhotoUrl(seat)}
+              alt=""
+              className={`shrink-0 rounded-full object-cover bg-muted border ${
+                compact ? "h-6 w-6" : "h-8 w-8"
               }`}
-            >
-              <UserCircle2 className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} />
-            </div>
+            />
             <div className="min-w-0">
               <div
                 className={`font-semibold leading-tight truncate ${

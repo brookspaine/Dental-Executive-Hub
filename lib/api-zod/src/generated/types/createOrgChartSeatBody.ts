@@ -9,6 +9,7 @@
 export interface CreateOrgChartSeatBody {
   title: string;
   name?: string | null;
+  photoUrl?: string | null;
   parentSeatId?: number | null;
   accountabilities?: string[];
   keyResultsArea?: string[];

@@ -12,6 +12,7 @@ export const orgChartSeatsTable = pgTable("org_chart_seats", {
   ),
   title: text("title").notNull(),
   name: text("name"),
+  photoUrl: text("photo_url"),
   accountabilities: jsonb("accountabilities").$type<string[]>().notNull().default([]),
   keyResultsArea: jsonb("key_results_area").$type<string[]>().notNull().default([]),
   sortOrder: integer("sort_order").notNull().default(0),

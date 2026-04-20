@@ -18,6 +18,7 @@ function mapSeat(s: any) {
   return {
     ...s,
     name: s.name ?? undefined,
+    photoUrl: s.photoUrl ?? undefined,
     parentSeatId: s.parentSeatId ?? undefined,
     accountabilities: Array.isArray(s.accountabilities) ? s.accountabilities : [],
     keyResultsArea: Array.isArray(s.keyResultsArea) ? s.keyResultsArea : [],
@@ -113,6 +114,7 @@ router.post("/organizations/:organizationId/seats", async (req, res): Promise<vo
         organizationId: orgId,
         title: parsed.data.title,
         name: parsed.data.name ?? null,
+        photoUrl: parsed.data.photoUrl ?? null,
         parentSeatId: parsed.data.parentSeatId ?? null,
         accountabilities: parsed.data.accountabilities ?? [],
         keyResultsArea: parsed.data.keyResultsArea ?? [],
@@ -181,6 +183,7 @@ router.patch("/seats/:id", async (req, res): Promise<void> => {
     const updates: Record<string, unknown> = {};
     if (parsed.data.title !== undefined) updates.title = parsed.data.title;
     if (parsed.data.name !== undefined) updates.name = parsed.data.name;
+    if (parsed.data.photoUrl !== undefined) updates.photoUrl = parsed.data.photoUrl;
     if (parsed.data.parentSeatId !== undefined)
       updates.parentSeatId = parsed.data.parentSeatId;
     if (parsed.data.accountabilities !== undefined)

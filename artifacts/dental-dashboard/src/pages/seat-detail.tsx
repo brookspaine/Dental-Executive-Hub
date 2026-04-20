@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -34,7 +34,6 @@ import {
   Plus,
   Calendar,
   Trash2,
-  UserCircle2,
   AlertCircle,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -45,6 +44,7 @@ type Seat = {
   parentSeatId?: number | null;
   title: string;
   name?: string | null;
+  photoUrl?: string | null;
   accountabilities: string[];
   keyResultsArea: string[];
   sortOrder: number;
@@ -70,32 +70,19 @@ const STATUSES = [
   { key: "done", label: "Done", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
 ] as const;
 
+const UNASSIGNED = "__unassigned__";
+
 function statusMeta(s: string) {
   return STATUSES.find((x) => x.key === s) ?? STATUSES[0];
 }
 
-function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+function dicebearUrl(seed: string): string {
+  return `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(seed || "vacant")}`;
 }
 
-// Pick a stable color for each assignee so avatars feel like distinct people.
-const AVATAR_PALETTES = [
-  "bg-rose-200 text-rose-800",
-  "bg-amber-200 text-amber-800",
-  "bg-emerald-200 text-emerald-800",
-  "bg-sky-200 text-sky-800",
-  "bg-violet-200 text-violet-800",
-  "bg-fuchsia-200 text-fuchsia-800",
-  "bg-teal-200 text-teal-800",
-  "bg-orange-200 text-orange-800",
-];
-function paletteFor(name: string): string {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
-  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
+function photoFor(seat: { name?: string | null; photoUrl?: string | null; title?: string }): string {
+  if (seat.photoUrl && seat.photoUrl.trim()) return seat.photoUrl.trim();
+  return dicebearUrl(seat.name?.trim() || seat.title || "vacant");
 }
 
 function formatDueDate(d: string): string {
@@ -150,6 +137,21 @@ export function SeatDetail() {
   const parent = seat?.parentSeatId
     ? allSeats.find((s) => s.id === seat.parentSeatId) ?? null
     : null;
+
+  // Direct reports of this seat are the people who can be accountable for tasks here.
+  const directReports = useMemo(
+    () => allSeats.filter((s) => s.parentSeatId === seat?.id && s.name && s.name.trim()),
+    [allSeats, seat?.id]
+  );
+
+  // Lookup table by name for resolving an assignee → seat (so we can show photos).
+  const seatByName = useMemo(() => {
+    const m = new Map<string, Seat>();
+    for (const s of allSeats) {
+      if (s.name && s.name.trim()) m.set(s.name.trim(), s);
+    }
+    return m;
+  }, [allSeats]);
 
   const tasksQuery = useQuery({
     queryKey: seatId ? getListSeatTasksQueryKey(seatId) : ["tasks", "none"],
@@ -237,6 +239,11 @@ export function SeatDetail() {
     }
   };
 
+  const handleInlineAssigneeChange = (task: Task, value: string) => {
+    const assignee = value === UNASSIGNED ? null : value;
+    updateMut.mutate({ id: task.id, data: { assignee } });
+  };
+
   if (seatQuery.isLoading) {
     return <div className="text-sm text-muted-foreground">Loading…</div>;
   }
@@ -268,9 +275,11 @@ export function SeatDetail() {
             </Button>
           </Link>
           <div className="flex items-start gap-3">
-            <div className="h-11 w-11 shrink-0 rounded-md bg-primary/10 text-primary flex items-center justify-center">
-              <UserCircle2 className="h-6 w-6" />
-            </div>
+            <img
+              src={photoFor(seat)}
+              alt={seat.name ?? seat.title}
+              className="h-14 w-14 shrink-0 rounded-full object-cover bg-muted border"
+            />
             <div>
               <h2 className="text-2xl font-bold tracking-tight leading-tight">
                 {seat.title}
@@ -363,8 +372,11 @@ export function SeatDetail() {
             <TaskCard
               key={t.id}
               task={t}
+              assigneeSeat={t.assignee ? seatByName.get(t.assignee.trim()) ?? null : null}
+              directReports={directReports}
               onClick={() => openEdit(t)}
               onDelete={() => deleteMut.mutate(t.id)}
+              onAssigneeChange={(v) => handleInlineAssigneeChange(t, v)}
             />
           ))}
         </div>
@@ -392,16 +404,39 @@ export function SeatDetail() {
             </div>
             <div className="grid gap-2">
               <Label>Direct report</Label>
-              <div className="flex items-center gap-2">
-                {form.assignee.trim() && (
-                  <AssigneeAvatar name={form.assignee} size="md" />
-                )}
-                <Input
-                  value={form.assignee}
-                  onChange={(e) => setForm({ ...form, assignee: e.target.value })}
-                  placeholder="Person responsible"
-                />
-              </div>
+              <Select
+                value={form.assignee.trim() ? form.assignee : UNASSIGNED}
+                onValueChange={(v) =>
+                  setForm({ ...form, assignee: v === UNASSIGNED ? "" : v })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a direct report" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={UNASSIGNED}>— Unassigned —</SelectItem>
+                  {directReports.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                      No direct reports yet
+                    </div>
+                  )}
+                  {directReports.map((s) => (
+                    <SelectItem key={s.id} value={s.name as string}>
+                      <span className="inline-flex items-center gap-2">
+                        <img
+                          src={photoFor(s)}
+                          alt=""
+                          className="h-5 w-5 rounded-full object-cover bg-muted"
+                        />
+                        {s.name}
+                        <span className="text-xs text-muted-foreground">
+                          · {s.title}
+                        </span>
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -470,20 +505,6 @@ export function SeatDetail() {
   );
 }
 
-function AssigneeAvatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" }) {
-  const dim = size === "md" ? "h-9 w-9 text-sm" : "h-7 w-7 text-xs";
-  const palette = paletteFor(name);
-  return (
-    <span
-      className={`${dim} ${palette} inline-flex items-center justify-center rounded-full font-semibold shrink-0`}
-      title={name}
-      aria-label={name}
-    >
-      {initialsOf(name)}
-    </span>
-  );
-}
-
 function StatusPill({ status }: { status: string }) {
   const meta = statusMeta(status);
   return (
@@ -495,17 +516,58 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+function PersonAvatar({ seat, fallbackName }: { seat: Seat | null; fallbackName?: string | null }) {
+  if (seat) {
+    return (
+      <img
+        src={photoFor(seat)}
+        alt=""
+        className="h-9 w-9 rounded-full object-cover bg-muted border shrink-0"
+        title={seat.name ?? undefined}
+      />
+    );
+  }
+  if (fallbackName && fallbackName.trim()) {
+    return (
+      <img
+        src={dicebearUrl(fallbackName.trim())}
+        alt=""
+        className="h-9 w-9 rounded-full object-cover bg-muted border shrink-0"
+        title={fallbackName}
+      />
+    );
+  }
+  return (
+    <div className="h-9 w-9 rounded-full bg-muted border shrink-0 flex items-center justify-center text-muted-foreground">
+      <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <circle cx="12" cy="8" r="4" />
+        <path d="M4 21c0-4 4-7 8-7s8 3 8 7" />
+      </svg>
+    </div>
+  );
+}
+
 function TaskCard({
   task,
+  assigneeSeat,
+  directReports,
   onClick,
   onDelete,
+  onAssigneeChange,
 }: {
   task: Task;
+  assigneeSeat: Seat | null;
+  directReports: Seat[];
   onClick: () => void;
   onDelete: () => void;
+  onAssigneeChange: (value: string) => void;
 }) {
   const dueDateFmt = task.dueDate ? formatDueDate(task.dueDate) : null;
   const overdue = isOverdue(task.dueDate, task.completed);
+  const currentValue = task.assignee && task.assignee.trim() ? task.assignee : UNASSIGNED;
+  const currentAssigneeName = task.assignee?.trim() ?? "";
+  const currentInList = directReports.some((s) => s.name === currentAssigneeName);
+  const showLegacyOption = currentAssigneeName !== "" && !currentInList;
 
   return (
     <div
@@ -518,13 +580,7 @@ function TaskCard({
       className="group bg-background rounded-md border p-3 cursor-pointer hover:shadow-sm transition-shadow"
     >
       <div className="flex items-center gap-3">
-        {task.assignee && task.assignee.trim() ? (
-          <AssigneeAvatar name={task.assignee} size="md" />
-        ) : (
-          <span className="h-9 w-9 rounded-full bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0">
-            <UserCircle2 className="h-5 w-5" />
-          </span>
-        )}
+        <PersonAvatar seat={assigneeSeat} fallbackName={task.assignee ?? null} />
         <div className="flex-1 min-w-0">
           <div className="text-sm font-medium leading-snug truncate">
             {task.title}
@@ -545,6 +601,52 @@ function TaskCard({
                 {dueDateFmt}
               </span>
             )}
+          </div>
+          <div
+            className="mt-2"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Select value={currentValue} onValueChange={onAssigneeChange}>
+              <SelectTrigger className="h-7 text-xs w-full max-w-[260px]">
+                <SelectValue placeholder="Assign direct report" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={UNASSIGNED}>— Unassigned —</SelectItem>
+                {showLegacyOption && (
+                  <SelectItem value={currentAssigneeName}>
+                    <span className="inline-flex items-center gap-2">
+                      <img
+                        src={dicebearUrl(currentAssigneeName)}
+                        alt=""
+                        className="h-5 w-5 rounded-full object-cover bg-muted"
+                      />
+                      {currentAssigneeName}
+                      <span className="text-xs text-muted-foreground">· not a direct report</span>
+                    </span>
+                  </SelectItem>
+                )}
+                {directReports.length === 0 && !showLegacyOption && (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                    No direct reports yet
+                  </div>
+                )}
+                {directReports.map((s) => (
+                  <SelectItem key={s.id} value={s.name as string}>
+                    <span className="inline-flex items-center gap-2">
+                      <img
+                        src={photoFor(s)}
+                        alt=""
+                        className="h-5 w-5 rounded-full object-cover bg-muted"
+                      />
+                      {s.name}
+                      <span className="text-xs text-muted-foreground">
+                        · {s.title}
+                      </span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
         <div onClick={(e) => e.stopPropagation()}>

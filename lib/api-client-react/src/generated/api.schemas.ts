@@ -363,6 +363,7 @@ export interface OrgChartSeat {
   parentSeatId?: number | null;
   title: string;
   name?: string | null;
+  photoUrl?: string | null;
   accountabilities: string[];
   keyResultsArea: string[];
   sortOrder: number;
@@ -372,6 +373,7 @@ export interface OrgChartSeat {
 export interface CreateOrgChartSeatBody {
   title: string;
   name?: string | null;
+  photoUrl?: string | null;
   parentSeatId?: number | null;
   accountabilities?: string[];
   keyResultsArea?: string[];
@@ -381,6 +383,7 @@ export interface CreateOrgChartSeatBody {
 export interface UpdateOrgChartSeatBody {
   title?: string;
   name?: string | null;
+  photoUrl?: string | null;
   parentSeatId?: number | null;
   accountabilities?: string[];
   keyResultsArea?: string[];

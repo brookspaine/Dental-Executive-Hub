@@ -1328,6 +1328,9 @@ components:
         name:
           type: string
           nullable: true
+        photoUrl:
+          type: string
+          nullable: true
         accountabilities:
           type: array
           items:
@@ -1358,6 +1361,9 @@ components:
         name:
           type: string
           nullable: true
+        photoUrl:
+          type: string
+          nullable: true
         parentSeatId:
           type: integer
           nullable: true
@@ -1380,6 +1386,9 @@ components:
         title:
           type: string
         name:
+          type: string
+          nullable: true
+        photoUrl:
           type: string
           nullable: true
         parentSeatId:
