@@ -1,21 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   updateOrgChartSeat,
   getListOrgChartSeatsQueryKey,
   getGetOrgChartSeatQueryKey,
 } from "@workspace/api-client-react";
+import { useUpload } from "@workspace/object-storage-web";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Camera } from "lucide-react";
+import { Camera, Upload, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+
+const MAX_BYTES = 10 * 1024 * 1024;
 
 export function dicebearUrl(seed: string): string {
   return `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(seed || "vacant")}`;
@@ -26,7 +27,11 @@ export function resolvePhotoUrl(seat: {
   photoUrl?: string | null;
   title?: string;
 }): string {
-  if (seat.photoUrl && seat.photoUrl.trim()) return seat.photoUrl.trim();
+  if (seat.photoUrl && seat.photoUrl.trim()) {
+    const u = seat.photoUrl.trim();
+    if (u.startsWith("/objects/")) return `/api/storage${u}`;
+    return u;
+  }
   return dicebearUrl(seat.name?.trim() || seat.title || "vacant");
 }
 
@@ -63,13 +68,14 @@ export function EditablePhoto({
   }[size];
 
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(seat.photoUrl ?? "");
+  const [pendingPath, setPendingPath] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open) setValue(seat.photoUrl ?? "");
-  }, [open, seat.photoUrl]);
+    if (open) setPendingPath(null);
+  }, [open]);
 
   const mutation = useMutation({
     mutationFn: (photoUrl: string | null) =>
@@ -82,6 +88,7 @@ export function EditablePhoto({
         queryKey: getGetOrgChartSeatQueryKey(seat.id),
       });
       setOpen(false);
+      setPendingPath(null);
     },
     onError: (err: any) => {
       toast({
@@ -92,11 +99,49 @@ export function EditablePhoto({
     },
   });
 
-  const previewUrl =
-    value.trim() ||
-    dicebearUrl(seat.name?.trim() || seat.title || "vacant");
+  const { uploadFile, isUploading } = useUpload({
+    onSuccess: (response) => {
+      setPendingPath(response.objectPath);
+    },
+    onError: (err) => {
+      toast({
+        title: "Upload failed",
+        description: err.message,
+        variant: "destructive",
+      });
+    },
+  });
 
+  const onFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({
+        title: "Not an image",
+        description: "Please choose a JPG, PNG, GIF, or WebP file.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (file.size > MAX_BYTES) {
+      toast({
+        title: "Image too large",
+        description: "Please choose an image under 10 MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+    await uploadFile(file);
+  };
+
+  const previewSeat = pendingPath
+    ? { ...seat, photoUrl: pendingPath }
+    : seat;
+  const previewUrl = resolvePhotoUrl(previewSeat);
   const currentUrl = resolvePhotoUrl(seat);
+
+  const busy = isUploading || mutation.isPending;
 
   return (
     <>
@@ -133,23 +178,37 @@ export function EditablePhoto({
             </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
-            <div className="flex justify-center">
-              <img
-                src={previewUrl}
-                alt=""
-                className="h-24 w-24 rounded-full object-cover bg-muted border"
+            <div className="flex flex-col items-center gap-3">
+              <div className="relative h-32 w-32 rounded-full overflow-hidden bg-muted border">
+                <img
+                  src={previewUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+                {isUploading && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  </div>
+                )}
+              </div>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                className="hidden"
+                onChange={onFilePicked}
               />
-            </div>
-            <div className="grid gap-2">
-              <Label>Photo URL</Label>
-              <Input
-                autoFocus
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder="Paste a photo URL — leave blank for an auto-generated avatar"
-              />
-              <p className="text-xs text-muted-foreground">
-                Tip: right-click any image online and copy its address.
+              <Button
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {pendingPath ? "Choose a different photo" : "Choose photo"}
+              </Button>
+              <p className="text-xs text-muted-foreground text-center">
+                JPG, PNG, GIF, or WebP — up to 10 MB.
               </p>
             </div>
           </div>
@@ -157,22 +216,26 @@ export function EditablePhoto({
             <Button
               variant="ghost"
               onClick={() => mutation.mutate(null)}
-              disabled={mutation.isPending || !seat.photoUrl}
+              disabled={busy || !seat.photoUrl}
               title="Use the auto-generated avatar"
             >
               Reset to default
             </Button>
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setOpen(false)}>
+              <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>
                 Cancel
               </Button>
               <Button
-                onClick={() =>
-                  mutation.mutate(value.trim() ? value.trim() : null)
-                }
-                disabled={mutation.isPending}
+                onClick={() => pendingPath && mutation.mutate(pendingPath)}
+                disabled={busy || !pendingPath}
               >
-                Save
+                {mutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" /> Saving…
+                  </>
+                ) : (
+                  "Save photo"
+                )}
               </Button>
             </div>
           </div>

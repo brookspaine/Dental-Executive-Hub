@@ -423,28 +423,9 @@ export function OrgChart() {
                 placeholder="Leave blank if vacant"
               />
             </div>
-            <div className="grid gap-2">
-              <Label>Photo URL</Label>
-              <div className="flex items-center gap-3">
-                <img
-                  src={
-                    form.photoUrl.trim() ||
-                    `https://api.dicebear.com/9.x/personas/svg?seed=${encodeURIComponent(
-                      form.name.trim() || form.title || "vacant"
-                    )}`
-                  }
-                  alt=""
-                  className="h-12 w-12 rounded-full object-cover bg-muted shrink-0 border"
-                />
-                <Input
-                  value={form.photoUrl}
-                  onChange={(e) =>
-                    setForm({ ...form, photoUrl: e.target.value })
-                  }
-                  placeholder="Paste a photo URL — leave blank for an auto-generated avatar"
-                />
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground -mt-1">
+              Tip: hover the photo on a seat card to upload or change the picture.
+            </p>
             <div className="grid gap-2">
               <Label>Reports to</Label>
               <Select
