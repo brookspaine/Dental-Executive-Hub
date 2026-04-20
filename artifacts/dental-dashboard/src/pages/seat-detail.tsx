@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRoute, Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getOrgChartSeat,
   listOrgChartSeats,
+  updateOrgChartSeat,
   getGetOrgChartSeatQueryKey,
   getListOrgChartSeatsQueryKey,
   listSeatTasks,
@@ -182,6 +183,34 @@ export function SeatDetail() {
     });
   };
 
+  const updateSeatMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      updateOrgChartSeat(id, data),
+    onSuccess: (_data, variables) => {
+      if (seat) {
+        queryClient.invalidateQueries({
+          queryKey: getListOrgChartSeatsQueryKey(seat.organizationId),
+        });
+      }
+      queryClient.invalidateQueries({
+        queryKey: getGetOrgChartSeatQueryKey(variables.id),
+      });
+    },
+    onError: errToast("Could not update seat"),
+  });
+
+  const updateSeatField = (
+    target: Seat,
+    field: "title" | "name",
+    value: string | null,
+  ) => {
+    const nextValue =
+      field === "title" ? (value ?? "").trim() : value;
+    if (field === "title" && !nextValue) return;
+    if ((target[field] ?? null) === (nextValue ?? null)) return;
+    updateSeatMut.mutate({ id: target.id, data: { [field]: nextValue } });
+  };
+
   const createMut = useMutation({
     mutationFn: (data: any) => createSeatTask(seatId as number, data),
     onSuccess: invalidateTasks,
@@ -282,11 +311,25 @@ export function SeatDetail() {
           <div className="flex items-start gap-3">
             <EditablePhoto seat={seat} size="lg" />
             <div>
-              <h2 className="text-2xl font-bold tracking-tight leading-tight">
-                {seat.title}
-              </h2>
-              <div className="text-sm text-muted-foreground mt-0.5">
-                {seat.name ?? <span className="italic">Vacant</span>}
+              <InlineEditableText
+                value={seat.title}
+                placeholder="Untitled role"
+                ariaLabel="Edit role title"
+                required
+                className="text-2xl font-bold tracking-tight leading-tight"
+                onSave={(v) => updateSeatField(seat, "title", v)}
+              />
+              <div className="text-sm text-muted-foreground mt-0.5 flex items-center gap-1 flex-wrap">
+                <InlineEditableText
+                  value={seat.name ?? ""}
+                  placeholder="Vacant"
+                  emptyDisplay={<span className="italic">Vacant</span>}
+                  ariaLabel="Edit person's name"
+                  className="text-sm"
+                  onSave={(v) =>
+                    updateSeatField(seat, "name", v.trim() ? v : null)
+                  }
+                />
                 {parent && (
                   <>
                     {" · Reports to "}
@@ -621,5 +664,87 @@ function TaskCard({
         </div>
       </div>
     </div>
+  );
+}
+
+function InlineEditableText({
+  value,
+  onSave,
+  placeholder,
+  emptyDisplay,
+  ariaLabel,
+  className = "",
+  required = false,
+}: {
+  value: string;
+  onSave: (next: string) => void;
+  placeholder?: string;
+  emptyDisplay?: React.ReactNode;
+  ariaLabel?: string;
+  className?: string;
+  required?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  useEffect(() => {
+    if (editing) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      });
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const trimmed = draft;
+    if (required && !trimmed.trim()) {
+      setDraft(value);
+      setEditing(false);
+      return;
+    }
+    if (trimmed !== value) onSave(trimmed);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className={`bg-background border border-input rounded px-1.5 py-0.5 outline-none focus:ring-2 focus:ring-primary/40 ${className}`}
+      />
+    );
+  }
+
+  const isEmpty = !value || !value.trim();
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={ariaLabel}
+      className={`text-left rounded px-1 -mx-1 hover:bg-muted/60 cursor-text ${className}`}
+    >
+      {isEmpty ? emptyDisplay ?? <span className="italic text-muted-foreground">{placeholder}</span> : value}
+    </button>
   );
 }
