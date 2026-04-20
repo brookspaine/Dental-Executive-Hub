@@ -325,7 +325,7 @@ export function SeatDetail() {
 
       <div>
         <div className="flex items-baseline justify-between mb-3">
-          <h3 className="text-lg font-semibold">Action Items</h3>
+          <h3 className="text-lg font-semibold">Tasks</h3>
           <span className="text-xs text-muted-foreground">
             {tasks.length} total ·{" "}
             {tasks.filter((t) => t.completed).length} completed
@@ -346,7 +346,7 @@ export function SeatDetail() {
                 {tasksByStatus(col.key).length === 0 &&
                   quickAddCol !== col.key && (
                     <div className="text-xs text-muted-foreground italic text-center py-4">
-                      No action items yet
+                      No tasks yet
                     </div>
                   )}
                 {tasksByStatus(col.key).map((t) => (
@@ -367,7 +367,7 @@ export function SeatDetail() {
                       autoFocus
                       value={quickAddTitle}
                       onChange={(e) => setQuickAddTitle(e.target.value)}
-                      placeholder="Action item…"
+                      placeholder="Task title…"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleQuickAdd(col.key);
                         if (e.key === "Escape") {
@@ -410,7 +410,7 @@ export function SeatDetail() {
                     }}
                   >
                     <Plus className="h-3.5 w-3.5 mr-1" />
-                    Add action item
+                    Add task
                   </Button>
                 )}
               </div>
@@ -427,7 +427,7 @@ export function SeatDetail() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit action item</DialogTitle>
+            <DialogTitle>Edit task</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
@@ -486,7 +486,7 @@ export function SeatDetail() {
               onClick={() => {
                 if (
                   editingTask &&
-                  window.confirm("Delete this action item?")
+                  window.confirm("Delete this task?")
                 ) {
                   deleteMut.mutate(editingTask.id, {
                     onSuccess: () => setEditingTask(null),
@@ -607,7 +607,7 @@ function TaskCard({
           </select>
           <button
             onClick={onDelete}
-            aria-label="Delete action item"
+            aria-label="Delete task"
             className="text-destructive hover:text-destructive"
           >
             <Trash2 className="h-3.5 w-3.5" />
