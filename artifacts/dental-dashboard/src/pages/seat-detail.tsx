@@ -391,24 +391,6 @@ export function SeatDetail() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {seat.accountabilities && seat.accountabilities.length > 0 && (
-          <Card>
-            <CardContent className="p-4">
-              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
-                Accountabilities
-              </div>
-              <ul className="space-y-1">
-                {seat.accountabilities.map((a, i) => (
-                  <li key={i} className="text-sm flex items-start gap-2">
-                    <span className="h-1.5 w-1.5 mt-2 shrink-0 rounded-full bg-muted-foreground" />
-                    <span>{a}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
-
         <Card className="border-primary/30">
           <CardContent className="p-4">
             <div className="flex items-baseline justify-between mb-2">
@@ -439,6 +421,24 @@ export function SeatDetail() {
             )}
           </CardContent>
         </Card>
+
+        {seat.accountabilities && seat.accountabilities.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                Accountabilities
+              </div>
+              <ul className="space-y-1">
+                {seat.accountabilities.map((a, i) => (
+                  <li key={i} className="text-sm flex items-start gap-2">
+                    <span className="h-1.5 w-1.5 mt-2 shrink-0 rounded-full bg-muted-foreground" />
+                    <span>{a}</span>
+                  </li>
+                ))}
+              </ul>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       <div className="space-y-3">
