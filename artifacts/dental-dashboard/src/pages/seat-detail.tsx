@@ -15,9 +15,7 @@ import {
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -66,14 +64,14 @@ type Task = {
   createdAt?: string;
 };
 
-const PRIORITIES = [
-  { key: "high", label: "High", className: "bg-red-100 text-red-700 border-red-200", dot: "bg-red-500" },
-  { key: "medium", label: "Medium", className: "bg-amber-100 text-amber-700 border-amber-200", dot: "bg-amber-500" },
-  { key: "low", label: "Low", className: "bg-slate-100 text-slate-600 border-slate-200", dot: "bg-slate-400" },
+const STATUSES = [
+  { key: "todo", label: "To Do", className: "bg-slate-100 text-slate-700 border-slate-200" },
+  { key: "in_progress", label: "In Progress", className: "bg-blue-100 text-blue-700 border-blue-200" },
+  { key: "done", label: "Done", className: "bg-emerald-100 text-emerald-700 border-emerald-200" },
 ] as const;
 
-function priorityMeta(p: string) {
-  return PRIORITIES.find((x) => x.key === p) ?? PRIORITIES[1];
+function statusMeta(s: string) {
+  return STATUSES.find((x) => x.key === s) ?? STATUSES[0];
 }
 
 function initialsOf(name: string): string {
@@ -81,6 +79,23 @@ function initialsOf(name: string): string {
   if (parts.length === 0) return "?";
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+// Pick a stable color for each assignee so avatars feel like distinct people.
+const AVATAR_PALETTES = [
+  "bg-rose-200 text-rose-800",
+  "bg-amber-200 text-amber-800",
+  "bg-emerald-200 text-emerald-800",
+  "bg-sky-200 text-sky-800",
+  "bg-violet-200 text-violet-800",
+  "bg-fuchsia-200 text-fuchsia-800",
+  "bg-teal-200 text-teal-800",
+  "bg-orange-200 text-orange-800",
+];
+function paletteFor(name: string): string {
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) hash = (hash * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_PALETTES[Math.abs(hash) % AVATAR_PALETTES.length];
 }
 
 function formatDueDate(d: string): string {
@@ -95,6 +110,20 @@ function isOverdue(d?: string | null, completed?: boolean): boolean {
   const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00").getTime();
   return new Date(d + "T00:00:00").getTime() < today;
 }
+
+type TaskForm = {
+  title: string;
+  assignee: string;
+  status: string;
+  dueDate: string;
+};
+
+const EMPTY_FORM: TaskForm = {
+  title: "",
+  assignee: "",
+  status: "todo",
+  dueDate: "",
+};
 
 export function SeatDetail() {
   const [match, params] = useRoute<{ id: string }>("/org-chart/seats/:id");
@@ -163,86 +192,49 @@ export function SeatDetail() {
     onError: errToast("Could not delete task"),
   });
 
-  // Quick add state
-  const [quickAddOpen, setQuickAddOpen] = useState(false);
-  const [quickAddTitle, setQuickAddTitle] = useState("");
-
-  // Edit dialog state
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [editForm, setEditForm] = useState<{
-    title: string;
-    description: string;
-    dueDate: string;
-    priority: string;
-    assignee: string;
-  }>({
-    title: "",
-    description: "",
-    dueDate: "",
-    priority: "medium",
-    assignee: "",
-  });
+  const [form, setForm] = useState<TaskForm>(EMPTY_FORM);
 
-  const handleQuickAdd = () => {
-    if (!quickAddTitle.trim()) {
-      setQuickAddOpen(false);
-      return;
-    }
-    createMut.mutate(
-      { title: quickAddTitle.trim(), status: "todo", priority: "medium" },
-      {
-        onSuccess: () => {
-          setQuickAddTitle("");
-          setQuickAddOpen(false);
-        },
-      }
-    );
+  const openAdd = () => {
+    setEditingTask(null);
+    setForm(EMPTY_FORM);
+    setDialogOpen(true);
   };
 
   const openEdit = (t: Task) => {
     setEditingTask(t);
-    setEditForm({
+    setForm({
       title: t.title,
-      description: t.description ?? "",
-      dueDate: t.dueDate ?? "",
-      priority: t.priority ?? "medium",
       assignee: t.assignee ?? "",
+      status: t.status ?? "todo",
+      dueDate: t.dueDate ?? "",
     });
+    setDialogOpen(true);
   };
 
-  const saveEdit = () => {
-    if (!editingTask) return;
-    if (!editForm.title.trim()) return;
-    updateMut.mutate(
-      {
-        id: editingTask.id,
-        data: {
-          title: editForm.title.trim(),
-          description: editForm.description.trim()
-            ? editForm.description.trim()
-            : null,
-          dueDate: editForm.dueDate ? editForm.dueDate : null,
-          priority: editForm.priority,
-          assignee: editForm.assignee.trim() ? editForm.assignee.trim() : null,
-        },
-      },
-      { onSuccess: () => setEditingTask(null) }
-    );
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingTask(null);
   };
 
-  const setPriority = (t: Task, priority: string) => {
-    updateMut.mutate({ id: t.id, data: { priority } });
-  };
-
-  const toggleComplete = (t: Task) => {
-    const completed = !t.completed;
-    updateMut.mutate({
-      id: t.id,
-      data: {
-        completed,
-        status: completed ? "done" : "todo",
-      },
-    });
+  const save = () => {
+    if (!form.title.trim()) return;
+    const payload = {
+      title: form.title.trim(),
+      assignee: form.assignee.trim() ? form.assignee.trim() : null,
+      status: form.status,
+      dueDate: form.dueDate ? form.dueDate : null,
+      completed: form.status === "done",
+    };
+    if (editingTask) {
+      updateMut.mutate(
+        { id: editingTask.id, data: payload },
+        { onSuccess: closeDialog }
+      );
+    } else {
+      createMut.mutate(payload, { onSuccess: closeDialog });
+    }
   };
 
   if (seatQuery.isLoading) {
@@ -356,11 +348,14 @@ export function SeatDetail() {
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
           <h3 className="text-lg font-semibold">Tasks</h3>
+          <Button size="sm" onClick={openAdd}>
+            <Plus className="h-4 w-4 mr-1" /> Add task
+          </Button>
         </div>
 
         <div className="bg-muted/40 rounded-lg p-2 space-y-2 min-h-[120px]">
-          {tasks.length === 0 && !quickAddOpen && (
-            <div className="text-xs text-muted-foreground italic text-center py-4">
+          {tasks.length === 0 && (
+            <div className="text-xs text-muted-foreground italic text-center py-6">
               No tasks yet
             </div>
           )}
@@ -369,169 +364,103 @@ export function SeatDetail() {
               key={t.id}
               task={t}
               onClick={() => openEdit(t)}
-              onToggle={() => toggleComplete(t)}
               onDelete={() => deleteMut.mutate(t.id)}
-              onCyclePriority={() => {
-                const idx = PRIORITIES.findIndex((p) => p.key === t.priority);
-                const next = PRIORITIES[(idx + 1) % PRIORITIES.length].key;
-                setPriority(t, next);
-              }}
             />
           ))}
-
-          {quickAddOpen ? (
-            <div className="bg-background rounded-md border p-2 space-y-2">
-              <Input
-                autoFocus
-                value={quickAddTitle}
-                onChange={(e) => setQuickAddTitle(e.target.value)}
-                placeholder="Task title…"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleQuickAdd();
-                  if (e.key === "Escape") {
-                    setQuickAddOpen(false);
-                    setQuickAddTitle("");
-                  }
-                }}
-                className="h-8 text-sm"
-              />
-              <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  className="h-7"
-                  onClick={handleQuickAdd}
-                  disabled={!quickAddTitle.trim() || createMut.isPending}
-                >
-                  Add
-                </Button>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="h-7"
-                  onClick={() => {
-                    setQuickAddOpen(false);
-                    setQuickAddTitle("");
-                  }}
-                >
-                  Cancel
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="w-full justify-start text-xs h-8 text-muted-foreground"
-              onClick={() => {
-                setQuickAddOpen(true);
-                setQuickAddTitle("");
-              }}
-            >
-              <Plus className="h-3.5 w-3.5 mr-1" />
-              Add task
-            </Button>
-          )}
         </div>
       </div>
 
       <Dialog
-        open={editingTask !== null}
+        open={dialogOpen}
         onOpenChange={(o) => {
-          if (!o) setEditingTask(null);
+          if (!o) closeDialog();
         }}
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit task</DialogTitle>
+            <DialogTitle>{editingTask ? "Edit task" : "Add task"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Title *</Label>
+              <Label>Task name *</Label>
               <Input
-                value={editForm.title}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, title: e.target.value })
-                }
+                autoFocus
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="What needs to be done?"
               />
             </div>
             <div className="grid gap-2">
-              <Label>Description / notes</Label>
-              <Textarea
-                value={editForm.description}
-                onChange={(e) =>
-                  setEditForm({ ...editForm, description: e.target.value })
-                }
-                rows={4}
-                placeholder="Add details, context, links…"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Assignee</Label>
+              <Label>Direct report</Label>
+              <div className="flex items-center gap-2">
+                {form.assignee.trim() && (
+                  <AssigneeAvatar name={form.assignee} size="md" />
+                )}
                 <Input
-                  value={editForm.assignee}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, assignee: e.target.value })
-                  }
+                  value={form.assignee}
+                  onChange={(e) => setForm({ ...form, assignee: e.target.value })}
                   placeholder="Person responsible"
                 />
               </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Due date</Label>
+                <Label>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm({ ...form, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUSES.map((s) => (
+                      <SelectItem key={s.key} value={s.key}>
+                        {s.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Deadline</Label>
                 <Input
                   type="date"
-                  value={editForm.dueDate}
-                  onChange={(e) =>
-                    setEditForm({ ...editForm, dueDate: e.target.value })
-                  }
+                  value={form.dueDate}
+                  onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Priority</Label>
-              <Select
-                value={editForm.priority}
-                onValueChange={(v) => setEditForm({ ...editForm, priority: v })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PRIORITIES.map((p) => (
-                    <SelectItem key={p.key} value={p.key}>
-                      <span className="inline-flex items-center gap-2">
-                        <span className={`h-2 w-2 rounded-full ${p.dot}`} />
-                        {p.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
           </div>
           <div className="flex justify-between gap-2">
-            <Button
-              variant="ghost"
-              className="text-destructive"
-              onClick={() => {
-                if (editingTask && window.confirm("Delete this task?")) {
-                  deleteMut.mutate(editingTask.id, {
-                    onSuccess: () => setEditingTask(null),
-                  });
-                }
-              }}
-            >
-              <Trash2 className="h-4 w-4 mr-2" /> Delete
-            </Button>
+            {editingTask ? (
+              <Button
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => {
+                  if (window.confirm("Delete this task?")) {
+                    deleteMut.mutate(editingTask.id, { onSuccess: closeDialog });
+                  }
+                }}
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Delete
+              </Button>
+            ) : (
+              <span />
+            )}
             <div className="flex gap-2">
-              <Button variant="ghost" onClick={() => setEditingTask(null)}>
+              <Button variant="ghost" onClick={closeDialog}>
                 Cancel
               </Button>
               <Button
-                onClick={saveEdit}
-                disabled={!editForm.title.trim() || updateMut.isPending}
+                onClick={save}
+                disabled={
+                  !form.title.trim() ||
+                  createMut.isPending ||
+                  updateMut.isPending
+                }
               >
-                Save
+                {editingTask ? "Save" : "Add"}
               </Button>
             </div>
           </div>
@@ -541,51 +470,39 @@ export function SeatDetail() {
   );
 }
 
-function AssigneeAvatar({ name }: { name: string }) {
+function AssigneeAvatar({ name, size = "sm" }: { name: string; size?: "sm" | "md" }) {
+  const dim = size === "md" ? "h-9 w-9 text-sm" : "h-7 w-7 text-xs";
+  const palette = paletteFor(name);
   return (
     <span
-      className="h-5 w-5 inline-flex items-center justify-center rounded-full bg-primary/15 text-primary font-semibold text-[10px]"
+      className={`${dim} ${palette} inline-flex items-center justify-center rounded-full font-semibold shrink-0`}
       title={name}
+      aria-label={name}
     >
       {initialsOf(name)}
     </span>
   );
 }
 
-function PriorityPill({ priority, onClick }: { priority: string; onClick?: () => void }) {
-  const meta = priorityMeta(priority);
-  const Comp = onClick ? "button" : "span";
+function StatusPill({ status }: { status: string }) {
+  const meta = statusMeta(status);
   return (
-    <Comp
-      onClick={
-        onClick
-          ? (e: any) => {
-              e.stopPropagation();
-              onClick();
-            }
-          : undefined
-      }
-      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${meta.className} ${onClick ? "hover:opacity-80 cursor-pointer" : ""}`}
-      title={`Priority: ${meta.label}${onClick ? " (click to change)" : ""}`}
+    <span
+      className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium ${meta.className}`}
     >
-      <span className={`h-1.5 w-1.5 rounded-full ${meta.dot}`} />
       {meta.label}
-    </Comp>
+    </span>
   );
 }
 
 function TaskCard({
   task,
   onClick,
-  onToggle,
   onDelete,
-  onCyclePriority,
 }: {
   task: Task;
   onClick: () => void;
-  onToggle: () => void;
   onDelete: () => void;
-  onCyclePriority: () => void;
 }) {
   const dueDateFmt = task.dueDate ? formatDueDate(task.dueDate) : null;
   const overdue = isOverdue(task.dueDate, task.completed);
@@ -598,31 +515,22 @@ function TaskCard({
       onKeyDown={(e) => {
         if (e.key === "Enter") onClick();
       }}
-      className="group bg-background rounded-md border p-2.5 cursor-pointer hover:shadow-sm transition-shadow"
+      className="group bg-background rounded-md border p-3 cursor-pointer hover:shadow-sm transition-shadow"
     >
-      <div className="flex items-start gap-2">
-        <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
-          <Checkbox
-            checked={task.completed}
-            onCheckedChange={() => onToggle()}
-            aria-label="Toggle complete"
-          />
-        </div>
-        <div className="flex-1 min-w-0 space-y-1">
-          <div
-            className={`text-sm font-medium leading-snug ${
-              task.completed ? "line-through text-muted-foreground" : ""
-            }`}
-          >
+      <div className="flex items-center gap-3">
+        {task.assignee && task.assignee.trim() ? (
+          <AssigneeAvatar name={task.assignee} size="md" />
+        ) : (
+          <span className="h-9 w-9 rounded-full bg-muted text-muted-foreground inline-flex items-center justify-center shrink-0">
+            <UserCircle2 className="h-5 w-5" />
+          </span>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium leading-snug truncate">
             {task.title}
           </div>
-          {task.description && (
-            <div className="text-xs text-muted-foreground line-clamp-2">
-              {task.description}
-            </div>
-          )}
-          <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
-            <PriorityPill priority={task.priority} onClick={onCyclePriority} />
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <StatusPill status={task.status} />
             {dueDateFmt && (
               <span
                 className={`text-[11px] inline-flex items-center gap-1 ${
@@ -637,23 +545,15 @@ function TaskCard({
                 {dueDateFmt}
               </span>
             )}
-            {task.assignee && task.assignee.trim() && (
-              <span className="ml-auto">
-                <AssigneeAvatar name={task.assignee} />
-              </span>
-            )}
           </div>
         </div>
-        <div
-          onClick={(e) => e.stopPropagation()}
-          className="opacity-0 group-hover:opacity-100"
-        >
+        <div onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onDelete}
             aria-label="Delete task"
-            className="text-destructive hover:text-destructive"
+            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
           >
-            <Trash2 className="h-3.5 w-3.5" />
+            <Trash2 className="h-4 w-4" />
           </button>
         </div>
       </div>
