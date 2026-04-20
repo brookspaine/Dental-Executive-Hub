@@ -53,7 +53,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <AvatarFallback>JD</AvatarFallback>
             </Avatar>
             <div className="flex flex-col">
-              <span className="text-sm font-semibold">Jane Doe</span>
+              <span className="text-sm font-semibold">Brooks Paine</span>
               <span className="text-xs text-muted-foreground">Chief Executive Officer</span>
             </div>
           </div>
