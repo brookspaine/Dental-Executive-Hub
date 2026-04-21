@@ -20,6 +20,7 @@ function mapTask(t: any) {
     description: t.description ?? undefined,
     assignee: t.assignee ?? undefined,
     dueDate: t.dueDate ?? undefined,
+    keyResultId: t.keyResultId ?? null,
   };
 }
 
@@ -65,6 +66,7 @@ router.post("/seats/:seatId/tasks", async (req, res): Promise<void> => {
       .insert(seatTasksTable)
       .values({
         seatId,
+        keyResultId: parsed.data.keyResultId ?? null,
         title: parsed.data.title,
         description: parsed.data.description ?? null,
         status: parsed.data.status ?? "todo",
@@ -103,6 +105,8 @@ router.patch("/seat-tasks/:id", async (req, res): Promise<void> => {
     if (parsed.data.completed !== undefined)
       updates.completed = parsed.data.completed;
     if (parsed.data.sortOrder !== undefined) updates.sortOrder = parsed.data.sortOrder;
+    if (parsed.data.keyResultId !== undefined)
+      updates.keyResultId = parsed.data.keyResultId;
 
     const [task] = await db
       .update(seatTasksTable)
