@@ -794,7 +794,13 @@ function TaskCard({
             aria-label="Mark action item complete"
           />
         </div>
-        <PersonAvatar seat={assigneeSeat} fallbackName={task.assignee ?? null} />
+        {assigneeSeat && photoFor(assigneeSeat) && (
+          <img
+            src={photoFor(assigneeSeat) as string}
+            alt=""
+            className="h-7 w-7 rounded-full object-cover bg-muted shrink-0"
+          />
+        )}
         <span
           className={`text-xs text-muted-foreground truncate max-w-[140px] ${
             task.assignee ? "" : "italic"
