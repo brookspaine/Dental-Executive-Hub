@@ -12,6 +12,7 @@ import {
   updateSeatTask,
   deleteSeatTask,
   getListSeatTasksQueryKey,
+  listOrganizations,
   listVendorPasswords as vpList,
   createVendorPassword as vpCreate,
   updateVendorPassword as vpUpdate,
@@ -151,27 +152,56 @@ export function SeatDetail() {
     ? allSeats.find((s) => s.id === seat.parentSeatId) ?? null
     : null;
 
-  // Anyone in this practice (location) can be assigned a task — not just direct reports.
-  const directReports = useMemo(
-    () =>
-      allSeats
-        .filter((s) => s.id !== seat?.id && s.name && s.name.trim())
-        .sort((a, b) =>
-          (a.name ?? "").localeCompare(b.name ?? "", undefined, {
-            sensitivity: "base",
-          })
-        ),
-    [allSeats, seat?.id]
-  );
+  // For assignee dropdowns: anyone with a name across the entire org chart
+  // (every practice/location), so tasks can be assigned to any team member.
+  const allOrgsQuery = useQuery({
+    queryKey: ["organizations", "all-for-assignees"],
+    queryFn: () => listOrganizations(),
+  });
+  const allOrgs = (allOrgsQuery.data as Array<{ id: number }> | undefined) ?? [];
+  const allSeatsAcrossOrgsQuery = useQuery({
+    queryKey: ["org-chart-seats", "all", allOrgs.map((o) => o.id).sort()],
+    queryFn: async () => {
+      const lists = await Promise.all(
+        allOrgs.map((o) => listOrgChartSeats(o.id) as Promise<Seat[]>),
+      );
+      return lists.flat();
+    },
+    enabled: allOrgs.length > 0,
+  });
+  const everyoneSeats: Seat[] =
+    (allSeatsAcrossOrgsQuery.data as Seat[] | undefined) ?? [];
+
+  const directReports = useMemo(() => {
+    const seen = new Set<string>();
+    return everyoneSeats
+      .filter((s) => {
+        if (s.id === seat?.id) return false;
+        const name = s.name?.trim();
+        if (!name) return false;
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          sensitivity: "base",
+        }),
+      );
+  }, [everyoneSeats, seat?.id]);
 
   // Lookup table by name for resolving an assignee → seat (so we can show photos).
+  // Uses everyone across the org chart so legacy/cross-practice assignees still resolve.
   const seatByName = useMemo(() => {
     const m = new Map<string, Seat>();
-    for (const s of allSeats) {
-      if (s.name && s.name.trim()) m.set(s.name.trim(), s);
+    for (const s of everyoneSeats) {
+      if (s.name && s.name.trim() && !m.has(s.name.trim())) {
+        m.set(s.name.trim(), s);
+      }
     }
     return m;
-  }, [allSeats]);
+  }, [everyoneSeats]);
 
   const tasksQuery = useQuery({
     queryKey: seatId ? getListSeatTasksQueryKey(seatId) : ["tasks", "none"],
