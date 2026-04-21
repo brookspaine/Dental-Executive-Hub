@@ -860,6 +860,88 @@ paths:
         "204":
           description: Deleted
 
+  /seats/{seatId}/vendor-passwords:
+    get:
+      operationId: listVendorPasswords
+      tags: [vendorPasswords]
+      summary: List vendor passwords for a seat
+      parameters:
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Vendor passwords
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/VendorPassword"
+    post:
+      operationId: createVendorPassword
+      tags: [vendorPasswords]
+      summary: Create a vendor password entry
+      parameters:
+        - name: seatId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateVendorPasswordBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorPassword"
+
+  /vendor-passwords/{id}:
+    patch:
+      operationId: updateVendorPassword
+      tags: [vendorPasswords]
+      summary: Update a vendor password entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateVendorPasswordBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VendorPassword"
+    delete:
+      operationId: deleteVendorPassword
+      tags: [vendorPasswords]
+      summary: Delete a vendor password entry
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     UploadUrlRequest:
@@ -1604,5 +1686,86 @@ components:
           nullable: true
         completed:
           type: boolean
+        sortOrder:
+          type: integer
+
+    VendorPassword:
+      type: object
+      properties:
+        id:
+          type: integer
+        seatId:
+          type: integer
+        vendorName:
+          type: string
+        username:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - seatId
+        - vendorName
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateVendorPasswordBody:
+      type: object
+      properties:
+        vendorName:
+          type: string
+          minLength: 1
+        username:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - vendorName
+
+    UpdateVendorPasswordBody:
+      type: object
+      properties:
+        vendorName:
+          type: string
+          minLength: 1
+        username:
+          type: string
+          nullable: true
+        password:
+          type: string
+          nullable: true
+        url:
+          type: string
+          nullable: true
+        notes:
+          type: string
+          nullable: true
         sortOrder:
           type: integer

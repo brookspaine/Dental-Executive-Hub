@@ -748,3 +748,78 @@ export const UpdateSeatTaskResponse = zod.object({
 export const DeleteSeatTaskParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary List vendor passwords for a seat
+ */
+export const ListVendorPasswordsParams = zod.object({
+  seatId: zod.coerce.number(),
+});
+
+export const ListVendorPasswordsResponseItem = zod.object({
+  id: zod.number(),
+  seatId: zod.number(),
+  vendorName: zod.string(),
+  username: zod.string().nullish(),
+  password: zod.string().nullish(),
+  url: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListVendorPasswordsResponse = zod.array(
+  ListVendorPasswordsResponseItem,
+);
+
+/**
+ * @summary Create a vendor password entry
+ */
+export const CreateVendorPasswordParams = zod.object({
+  seatId: zod.coerce.number(),
+});
+
+export const CreateVendorPasswordBody = zod.object({
+  vendorName: zod.string().min(1),
+  username: zod.string().nullish(),
+  password: zod.string().nullish(),
+  url: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a vendor password entry
+ */
+export const UpdateVendorPasswordParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateVendorPasswordBody = zod.object({
+  vendorName: zod.string().min(1).optional(),
+  username: zod.string().nullish(),
+  password: zod.string().nullish(),
+  url: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateVendorPasswordResponse = zod.object({
+  id: zod.number(),
+  seatId: zod.number(),
+  vendorName: zod.string(),
+  username: zod.string().nullish(),
+  password: zod.string().nullish(),
+  url: zod.string().nullish(),
+  notes: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a vendor password entry
+ */
+export const DeleteVendorPasswordParams = zod.object({
+  id: zod.coerce.number(),
+});

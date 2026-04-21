@@ -26,6 +26,7 @@ import type {
   CreateOrganizationBody,
   CreateScheduleBlockBody,
   CreateSeatTaskBody,
+  CreateVendorPasswordBody,
   CreateWisdomQuoteBody,
   DailyTop3Item,
   DashboardSummary,
@@ -49,8 +50,10 @@ import type {
   UpdateOrganizationBody,
   UpdateScheduleBlockBody,
   UpdateSeatTaskBody,
+  UpdateVendorPasswordBody,
   UploadUrlRequest,
   UploadUrlResponse,
+  VendorPassword,
   WisdomQuote,
 } from "./api.schemas";
 
@@ -3848,4 +3851,353 @@ export const useDeleteSeatTask = <
   TContext
 > => {
   return useMutation(getDeleteSeatTaskMutationOptions(options));
+};
+
+/**
+ * @summary List vendor passwords for a seat
+ */
+export const getListVendorPasswordsUrl = (seatId: number) => {
+  return `/api/seats/${seatId}/vendor-passwords`;
+};
+
+export const listVendorPasswords = async (
+  seatId: number,
+  options?: RequestInit,
+): Promise<VendorPassword[]> => {
+  return customFetch<VendorPassword[]>(getListVendorPasswordsUrl(seatId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListVendorPasswordsQueryKey = (seatId: number) => {
+  return [`/api/seats/${seatId}/vendor-passwords`] as const;
+};
+
+export const getListVendorPasswordsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listVendorPasswords>>,
+  TError = ErrorType<unknown>,
+>(
+  seatId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendorPasswords>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListVendorPasswordsQueryKey(seatId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listVendorPasswords>>
+  > = ({ signal }) =>
+    listVendorPasswords(seatId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!seatId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listVendorPasswords>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListVendorPasswordsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listVendorPasswords>>
+>;
+export type ListVendorPasswordsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List vendor passwords for a seat
+ */
+
+export function useListVendorPasswords<
+  TData = Awaited<ReturnType<typeof listVendorPasswords>>,
+  TError = ErrorType<unknown>,
+>(
+  seatId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listVendorPasswords>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListVendorPasswordsQueryOptions(seatId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a vendor password entry
+ */
+export const getCreateVendorPasswordUrl = (seatId: number) => {
+  return `/api/seats/${seatId}/vendor-passwords`;
+};
+
+export const createVendorPassword = async (
+  seatId: number,
+  createVendorPasswordBody: CreateVendorPasswordBody,
+  options?: RequestInit,
+): Promise<VendorPassword> => {
+  return customFetch<VendorPassword>(getCreateVendorPasswordUrl(seatId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createVendorPasswordBody),
+  });
+};
+
+export const getCreateVendorPasswordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorPassword>>,
+    TError,
+    { seatId: number; data: BodyType<CreateVendorPasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createVendorPassword>>,
+  TError,
+  { seatId: number; data: BodyType<CreateVendorPasswordBody> },
+  TContext
+> => {
+  const mutationKey = ["createVendorPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createVendorPassword>>,
+    { seatId: number; data: BodyType<CreateVendorPasswordBody> }
+  > = (props) => {
+    const { seatId, data } = props ?? {};
+
+    return createVendorPassword(seatId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateVendorPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createVendorPassword>>
+>;
+export type CreateVendorPasswordMutationBody =
+  BodyType<CreateVendorPasswordBody>;
+export type CreateVendorPasswordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a vendor password entry
+ */
+export const useCreateVendorPassword = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createVendorPassword>>,
+    TError,
+    { seatId: number; data: BodyType<CreateVendorPasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createVendorPassword>>,
+  TError,
+  { seatId: number; data: BodyType<CreateVendorPasswordBody> },
+  TContext
+> => {
+  return useMutation(getCreateVendorPasswordMutationOptions(options));
+};
+
+/**
+ * @summary Update a vendor password entry
+ */
+export const getUpdateVendorPasswordUrl = (id: number) => {
+  return `/api/vendor-passwords/${id}`;
+};
+
+export const updateVendorPassword = async (
+  id: number,
+  updateVendorPasswordBody: UpdateVendorPasswordBody,
+  options?: RequestInit,
+): Promise<VendorPassword> => {
+  return customFetch<VendorPassword>(getUpdateVendorPasswordUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateVendorPasswordBody),
+  });
+};
+
+export const getUpdateVendorPasswordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVendorPassword>>,
+    TError,
+    { id: number; data: BodyType<UpdateVendorPasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateVendorPassword>>,
+  TError,
+  { id: number; data: BodyType<UpdateVendorPasswordBody> },
+  TContext
+> => {
+  const mutationKey = ["updateVendorPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateVendorPassword>>,
+    { id: number; data: BodyType<UpdateVendorPasswordBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateVendorPassword(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateVendorPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateVendorPassword>>
+>;
+export type UpdateVendorPasswordMutationBody =
+  BodyType<UpdateVendorPasswordBody>;
+export type UpdateVendorPasswordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a vendor password entry
+ */
+export const useUpdateVendorPassword = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateVendorPassword>>,
+    TError,
+    { id: number; data: BodyType<UpdateVendorPasswordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateVendorPassword>>,
+  TError,
+  { id: number; data: BodyType<UpdateVendorPasswordBody> },
+  TContext
+> => {
+  return useMutation(getUpdateVendorPasswordMutationOptions(options));
+};
+
+/**
+ * @summary Delete a vendor password entry
+ */
+export const getDeleteVendorPasswordUrl = (id: number) => {
+  return `/api/vendor-passwords/${id}`;
+};
+
+export const deleteVendorPassword = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteVendorPasswordUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteVendorPasswordMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorPassword>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteVendorPassword>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteVendorPassword"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteVendorPassword>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteVendorPassword(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteVendorPasswordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteVendorPassword>>
+>;
+
+export type DeleteVendorPasswordMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a vendor password entry
+ */
+export const useDeleteVendorPassword = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteVendorPassword>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteVendorPassword>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteVendorPasswordMutationOptions(options));
 };

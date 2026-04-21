@@ -445,6 +445,39 @@ export interface UpdateSeatTaskBody {
   sortOrder?: number;
 }
 
+export interface VendorPassword {
+  id: number;
+  seatId: number;
+  vendorName: string;
+  username?: string | null;
+  password?: string | null;
+  url?: string | null;
+  notes?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateVendorPasswordBody {
+  /** @minLength 1 */
+  vendorName: string;
+  username?: string | null;
+  password?: string | null;
+  url?: string | null;
+  notes?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateVendorPasswordBody {
+  /** @minLength 1 */
+  vendorName?: string;
+  username?: string | null;
+  password?: string | null;
+  url?: string | null;
+  notes?: string | null;
+  sortOrder?: number;
+}
+
 export type GetRecentActivityParams = {
   limit?: number;
 };

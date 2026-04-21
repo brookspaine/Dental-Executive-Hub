@@ -10,6 +10,7 @@ import devotionalRouter from "./devotional";
 import wisdomQuotesRouter from "./wisdomQuotes";
 import orgChartRouter from "./orgChart";
 import seatTasksRouter from "./seatTasks";
+import vendorPasswordsRouter from "./vendorPasswords";
 import storageRouter from "./storage";
 
 const router: IRouter = Router();
@@ -25,6 +26,7 @@ router.use(devotionalRouter);
 router.use(wisdomQuotesRouter);
 router.use(orgChartRouter);
 router.use(seatTasksRouter);
+router.use(vendorPasswordsRouter);
 router.use(storageRouter);
 
 export default router;

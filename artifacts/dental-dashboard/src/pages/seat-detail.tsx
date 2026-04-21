@@ -12,6 +12,10 @@ import {
   updateSeatTask,
   deleteSeatTask,
   getListSeatTasksQueryKey,
+  listVendorPasswords as vpList,
+  createVendorPassword as vpCreate,
+  updateVendorPassword as vpUpdate,
+  deleteVendorPassword as vpDelete,
 } from "@workspace/api-client-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -36,7 +40,17 @@ import {
   Calendar,
   Trash2,
   AlertCircle,
+  KeyRound,
+  ChevronDown,
+  Copy,
+  Eye,
+  EyeOff,
 } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useToast } from "@/hooks/use-toast";
 import {
   EditablePhoto,
@@ -346,6 +360,10 @@ export function SeatDetail() {
           </div>
         </div>
       </div>
+
+      {seat.title.toLowerCase().includes("lead assistant") && (
+        <VendorPasswordsSection seatId={seat.id} />
+      )}
 
       {seat.accountabilities && seat.accountabilities.length > 0 && (
         <Card>
@@ -746,5 +764,435 @@ function InlineEditableText({
     >
       {isEmpty ? emptyDisplay ?? <span className="italic text-muted-foreground">{placeholder}</span> : value}
     </button>
+  );
+}
+
+function VendorPasswordsSection({ seatId }: { seatId: number }) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [open, setOpen] = useState(false);
+
+  const queryKey = ["vendor-passwords", seatId];
+  const listQuery = useQuery({
+    queryKey,
+    queryFn: () => vpList(seatId),
+    enabled: open,
+  });
+  const entries = (listQuery.data ?? []) as VPRow[];
+
+  const invalidate = () => queryClient.invalidateQueries({ queryKey });
+
+  const errToast = (label: string) => (err: any) => {
+    const msg =
+      err?.response?.data?.error ?? err?.message ?? "Something went wrong";
+    toast({
+      title: label,
+      description: typeof msg === "string" ? msg : "Something went wrong",
+      variant: "destructive",
+    });
+  };
+
+  const createMut = useMutation({
+    mutationFn: (data: any) => vpCreate(seatId, data),
+    onSuccess: invalidate,
+    onError: errToast("Could not save vendor"),
+  });
+  const updateMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) => vpUpdate(id, data),
+    onSuccess: invalidate,
+    onError: errToast("Could not update vendor"),
+  });
+  const deleteMut = useMutation({
+    mutationFn: (id: number) => vpDelete(id),
+    onSuccess: invalidate,
+    onError: errToast("Could not delete vendor"),
+  });
+
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState<VPDraft>({
+    vendorName: "",
+    username: "",
+    password: "",
+    url: "",
+    notes: "",
+  });
+
+  const submitNew = () => {
+    if (!draft.vendorName.trim()) return;
+    createMut.mutate(
+      {
+        vendorName: draft.vendorName.trim(),
+        username: draft.username.trim() || null,
+        password: draft.password || null,
+        url: draft.url.trim() || null,
+        notes: draft.notes.trim() || null,
+      },
+      {
+        onSuccess: () => {
+          setDraft({
+            vendorName: "",
+            username: "",
+            password: "",
+            url: "",
+            notes: "",
+          });
+          setAdding(false);
+        },
+      },
+    );
+  };
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between p-4 hover:bg-muted/50 rounded-lg text-left"
+            >
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold">Vendor Passwords</span>
+                <span className="text-xs text-muted-foreground">
+                  {open && entries.length > 0
+                    ? `· ${entries.length}`
+                    : ""}
+                </span>
+              </div>
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  open ? "rotate-180" : ""
+                }`}
+              />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="px-4 pb-4 space-y-3 border-t pt-3">
+              {listQuery.isLoading && (
+                <div className="text-xs text-muted-foreground italic py-2">
+                  Loading…
+                </div>
+              )}
+              {!listQuery.isLoading && entries.length === 0 && !adding && (
+                <div className="text-xs text-muted-foreground italic py-2">
+                  No vendor logins saved yet.
+                </div>
+              )}
+              {entries.map((e) => (
+                <VendorPasswordRow
+                  key={e.id}
+                  entry={e}
+                  onSave={(data) => updateMut.mutate({ id: e.id, data })}
+                  onDelete={() => {
+                    if (
+                      window.confirm(
+                        `Delete vendor login for "${e.vendorName}"?`,
+                      )
+                    ) {
+                      deleteMut.mutate(e.id);
+                    }
+                  }}
+                />
+              ))}
+
+              {adding ? (
+                <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+                  <div className="grid sm:grid-cols-2 gap-2">
+                    <Input
+                      placeholder="Vendor name *"
+                      value={draft.vendorName}
+                      onChange={(e) =>
+                        setDraft({ ...draft, vendorName: e.target.value })
+                      }
+                    />
+                    <Input
+                      placeholder="Website URL"
+                      value={draft.url}
+                      onChange={(e) =>
+                        setDraft({ ...draft, url: e.target.value })
+                      }
+                    />
+                    <Input
+                      placeholder="Username / email"
+                      value={draft.username}
+                      onChange={(e) =>
+                        setDraft({ ...draft, username: e.target.value })
+                      }
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Password"
+                      value={draft.password}
+                      onChange={(e) =>
+                        setDraft({ ...draft, password: e.target.value })
+                      }
+                    />
+                  </div>
+                  <Input
+                    placeholder="Notes (optional)"
+                    value={draft.notes}
+                    onChange={(e) =>
+                      setDraft({ ...draft, notes: e.target.value })
+                    }
+                  />
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => {
+                        setAdding(false);
+                        setDraft({
+                          vendorName: "",
+                          username: "",
+                          password: "",
+                          url: "",
+                          notes: "",
+                        });
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={submitNew}
+                      disabled={!draft.vendorName.trim() || createMut.isPending}
+                    >
+                      Save
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => setAdding(true)}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add vendor login
+                </Button>
+              )}
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </CardContent>
+    </Card>
+  );
+}
+
+type VPRow = {
+  id: number;
+  seatId: number;
+  vendorName: string;
+  username: string | null;
+  password: string | null;
+  url: string | null;
+  notes: string | null;
+};
+
+type VPDraft = {
+  vendorName: string;
+  username: string;
+  password: string;
+  url: string;
+  notes: string;
+};
+
+function VendorPasswordRow({
+  entry,
+  onSave,
+  onDelete,
+}: {
+  entry: VPRow;
+  onSave: (data: Partial<VPRow>) => void;
+  onDelete: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [show, setShow] = useState(false);
+  const [draft, setDraft] = useState<VPDraft>({
+    vendorName: entry.vendorName,
+    username: entry.username ?? "",
+    password: entry.password ?? "",
+    url: entry.url ?? "",
+    notes: entry.notes ?? "",
+  });
+
+  useEffect(() => {
+    setDraft({
+      vendorName: entry.vendorName,
+      username: entry.username ?? "",
+      password: entry.password ?? "",
+      url: entry.url ?? "",
+      notes: entry.notes ?? "",
+    });
+  }, [entry]);
+
+  const copy = async (val: string | null, label: string) => {
+    if (!val) return;
+    try {
+      await navigator.clipboard.writeText(val);
+    } catch {}
+  };
+
+  if (editing) {
+    return (
+      <div className="rounded-md border bg-muted/30 p-3 space-y-2">
+        <div className="grid sm:grid-cols-2 gap-2">
+          <Input
+            placeholder="Vendor name *"
+            value={draft.vendorName}
+            onChange={(e) => setDraft({ ...draft, vendorName: e.target.value })}
+          />
+          <Input
+            placeholder="Website URL"
+            value={draft.url}
+            onChange={(e) => setDraft({ ...draft, url: e.target.value })}
+          />
+          <Input
+            placeholder="Username / email"
+            value={draft.username}
+            onChange={(e) => setDraft({ ...draft, username: e.target.value })}
+          />
+          <Input
+            placeholder="Password"
+            value={draft.password}
+            onChange={(e) => setDraft({ ...draft, password: e.target.value })}
+          />
+        </div>
+        <Input
+          placeholder="Notes (optional)"
+          value={draft.notes}
+          onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
+        />
+        <div className="flex justify-end gap-2">
+          <Button size="sm" variant="ghost" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => {
+              if (!draft.vendorName.trim()) return;
+              onSave({
+                vendorName: draft.vendorName.trim(),
+                username: draft.username.trim() || null,
+                password: draft.password || null,
+                url: draft.url.trim() || null,
+                notes: draft.notes.trim() || null,
+              });
+              setEditing(false);
+            }}
+          >
+            Save
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const masked = entry.password ? "•".repeat(Math.min(entry.password.length, 12)) : "";
+
+  return (
+    <div className="rounded-md border bg-card p-3 text-sm space-y-1">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div className="font-semibold truncate">{entry.vendorName}</div>
+          {entry.url && (
+            <a
+              href={
+                entry.url.startsWith("http")
+                  ? entry.url
+                  : `https://${entry.url}`
+              }
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-xs text-primary hover:underline break-all"
+            >
+              {entry.url}
+            </a>
+          )}
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 px-2"
+            onClick={() => setEditing(true)}
+          >
+            Edit
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+            onClick={onDelete}
+            aria-label="Delete vendor login"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+
+      {(entry.username || entry.password) && (
+        <div className="grid sm:grid-cols-2 gap-x-4 gap-y-1 mt-2">
+          {entry.username && (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs text-muted-foreground w-16 shrink-0">
+                Username
+              </span>
+              <span className="font-mono text-xs truncate">
+                {entry.username}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 ml-auto shrink-0"
+                onClick={() => copy(entry.username, "Username")}
+                aria-label="Copy username"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+          {entry.password && (
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-xs text-muted-foreground w-16 shrink-0">
+                Password
+              </span>
+              <span className="font-mono text-xs truncate">
+                {show ? entry.password : masked}
+              </span>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 ml-auto shrink-0"
+                onClick={() => setShow((s) => !s)}
+                aria-label={show ? "Hide password" : "Show password"}
+              >
+                {show ? (
+                  <EyeOff className="h-3 w-3" />
+                ) : (
+                  <Eye className="h-3 w-3" />
+                )}
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 w-6 p-0 shrink-0"
+                onClick={() => copy(entry.password, "Password")}
+                aria-label="Copy password"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {entry.notes && (
+        <div className="text-xs text-muted-foreground mt-2 whitespace-pre-wrap">
+          {entry.notes}
+        </div>
+      )}
+    </div>
   );
 }
