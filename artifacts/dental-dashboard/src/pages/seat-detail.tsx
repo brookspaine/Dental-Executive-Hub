@@ -63,6 +63,7 @@ import {
   EditablePhoto,
   resolvePhotoUrl,
 } from "@/components/editable-photo";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Seat = {
   id: number;
@@ -532,7 +533,12 @@ export function SeatDetail() {
               onAddTask={() => openAdd(kr.id)}
               onOpenTask={openEdit}
               onDeleteTask={(id) => deleteMut.mutate(id)}
-              onAssigneeChange={handleInlineAssigneeChange}
+              onToggleCompleted={(t, c) =>
+                updateMut.mutate({
+                  id: t.id,
+                  data: { completed: c, status: c ? "done" : "todo" },
+                })
+              }
             />
           );
         })}
@@ -558,11 +564,16 @@ export function SeatDetail() {
                           ? seatByName.get(t.assignee.trim()) ?? null
                           : null
                       }
-                      directReports={directReports}
                       onClick={() => openEdit(t)}
                       onDelete={() => deleteMut.mutate(t.id)}
-                      onAssigneeChange={(v) =>
-                        handleInlineAssigneeChange(t, v)
+                      onToggleCompleted={(c) =>
+                        updateMut.mutate({
+                          id: t.id,
+                          data: {
+                            completed: c,
+                            status: c ? "done" : "todo",
+                          },
+                        })
                       }
                     />
                   ))}
@@ -747,24 +758,20 @@ function SmallAssigneeAvatar({
 function TaskCard({
   task,
   assigneeSeat,
-  directReports,
   onClick,
   onDelete,
-  onAssigneeChange,
+  onToggleCompleted,
 }: {
   task: Task;
   assigneeSeat: Seat | null;
-  directReports: Seat[];
   onClick: () => void;
   onDelete: () => void;
-  onAssigneeChange: (value: string) => void;
+  onToggleCompleted: (completed: boolean) => void;
 }) {
   const dueDateFmt = task.dueDate ? formatDueDate(task.dueDate) : null;
-  const overdue = isOverdue(task.dueDate, task.completed);
-  const currentValue = task.assignee && task.assignee.trim() ? task.assignee : UNASSIGNED;
-  const currentAssigneeName = task.assignee?.trim() ?? "";
-  const currentInList = directReports.some((s) => s.name === currentAssigneeName);
-  const showLegacyOption = currentAssigneeName !== "" && !currentInList;
+  const completed = task.completed || task.status === "done";
+  const overdue = isOverdue(task.dueDate, completed);
+  const ownerName = task.assignee?.trim() || "Unassigned";
 
   return (
     <div
@@ -774,71 +781,52 @@ function TaskCard({
       onKeyDown={(e) => {
         if (e.key === "Enter") onClick();
       }}
-      className="group bg-background rounded-md border p-3 cursor-pointer hover:shadow-sm transition-shadow"
+      className="group bg-background rounded-md border px-3 py-2 cursor-pointer hover:shadow-sm transition-shadow"
     >
       <div className="flex items-center gap-3">
-        <PersonAvatar seat={assigneeSeat} fallbackName={task.assignee ?? null} />
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium leading-snug truncate">
-            {task.title}
-          </div>
-          <div className="flex items-center gap-2 mt-1 flex-wrap">
-            <StatusPill status={task.status} />
-            {dueDateFmt && (
-              <span
-                className={`text-[11px] inline-flex items-center gap-1 ${
-                  overdue ? "text-destructive font-medium" : "text-muted-foreground"
-                }`}
-              >
-                {overdue ? (
-                  <AlertCircle className="h-3 w-3" />
-                ) : (
-                  <Calendar className="h-3 w-3" />
-                )}
-                {dueDateFmt}
-              </span>
-            )}
-          </div>
-          <div
-            className="mt-2"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Select value={currentValue} onValueChange={onAssigneeChange}>
-              <SelectTrigger className="h-7 text-xs w-full max-w-[260px]">
-                <SelectValue placeholder="Assign someone" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={UNASSIGNED}>— Unassigned —</SelectItem>
-                {showLegacyOption && (
-                  <SelectItem value={currentAssigneeName}>
-                    <span className="inline-flex items-center gap-2">
-                      <SmallAssigneeAvatar url={null} showFallbackIcon />
-                      {currentAssigneeName}
-                      <span className="text-xs text-muted-foreground">· not in this practice</span>
-                    </span>
-                  </SelectItem>
-                )}
-                {directReports.length === 0 && !showLegacyOption && (
-                  <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
-                    No one in this practice yet
-                  </div>
-                )}
-                {directReports.map((s) => (
-                  <SelectItem key={s.id} value={s.name as string}>
-                    <span className="inline-flex items-center gap-2">
-                      <SmallAssigneeAvatar url={photoFor(s)} />
-                      {s.name}
-                      <span className="text-xs text-muted-foreground">
-                        · {s.title}
-                      </span>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center"
+        >
+          <Checkbox
+            checked={completed}
+            onCheckedChange={(v) => onToggleCompleted(Boolean(v))}
+            aria-label="Mark action item complete"
+          />
         </div>
-        <div onClick={(e) => e.stopPropagation()}>
+        <PersonAvatar seat={assigneeSeat} fallbackName={task.assignee ?? null} />
+        <span
+          className={`text-xs text-muted-foreground truncate max-w-[140px] ${
+            task.assignee ? "" : "italic"
+          }`}
+          title={ownerName}
+        >
+          {ownerName}
+        </span>
+        <div
+          className={`flex-1 min-w-0 text-sm font-medium leading-snug truncate ${
+            completed ? "line-through text-muted-foreground" : ""
+          }`}
+        >
+          {task.title}
+        </div>
+        {dueDateFmt && (
+          <span
+            className={`text-[11px] inline-flex items-center gap-1 shrink-0 ${
+              overdue
+                ? "text-destructive font-medium"
+                : "text-muted-foreground"
+            }`}
+          >
+            {overdue ? (
+              <AlertCircle className="h-3 w-3" />
+            ) : (
+              <Calendar className="h-3 w-3" />
+            )}
+            {dueDateFmt}
+          </span>
+        )}
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
           <button
             onClick={onDelete}
             aria-label="Delete action item"
@@ -938,24 +926,22 @@ function KeyResultCard({
   kr,
   tasks,
   seatByName,
-  directReports,
   onRename,
   onDelete,
   onAddTask,
   onOpenTask,
   onDeleteTask,
-  onAssigneeChange,
+  onToggleCompleted,
 }: {
   kr: KeyResult;
   tasks: Task[];
   seatByName: Map<string, Seat>;
-  directReports: Seat[];
   onRename: (title: string) => void;
   onDelete: () => void;
   onAddTask: () => void;
   onOpenTask: (t: Task) => void;
   onDeleteTask: (id: number) => void;
-  onAssigneeChange: (t: Task, v: string) => void;
+  onToggleCompleted: (t: Task, completed: boolean) => void;
 }) {
   const done = tasks.filter((t) => t.completed || t.status === "done").length;
   const [open, setOpen] = useState(false);
@@ -1033,10 +1019,9 @@ function KeyResultCard({
                       ? seatByName.get(t.assignee.trim()) ?? null
                       : null
                   }
-                  directReports={directReports}
                   onClick={() => onOpenTask(t)}
                   onDelete={() => onDeleteTask(t.id)}
-                  onAssigneeChange={(v) => onAssigneeChange(t, v)}
+                  onToggleCompleted={(c) => onToggleCompleted(t, c)}
                 />
               ))}
             </div>
