@@ -176,7 +176,6 @@ export function SeatDetail() {
     const seen = new Set<string>();
     return everyoneSeats
       .filter((s) => {
-        if (s.id === seat?.id) return false;
         const name = s.name?.trim();
         if (!name) return false;
         const key = name.toLowerCase();
