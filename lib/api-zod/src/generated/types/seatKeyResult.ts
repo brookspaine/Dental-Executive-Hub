@@ -6,17 +6,11 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface SeatTask {
+export interface SeatKeyResult {
   id: number;
   seatId: number;
-  keyResultId?: number | null;
   title: string;
   description?: string | null;
-  status: string;
-  priority: string;
-  assignee?: string | null;
-  dueDate?: string | null;
-  completed: boolean;
   sortOrder: number;
   createdAt: Date;
   updatedAt: Date;

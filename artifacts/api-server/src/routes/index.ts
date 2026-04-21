@@ -10,6 +10,7 @@ import devotionalRouter from "./devotional";
 import wisdomQuotesRouter from "./wisdomQuotes";
 import orgChartRouter from "./orgChart";
 import seatTasksRouter from "./seatTasks";
+import seatKeyResultsRouter from "./seatKeyResults";
 import vendorPasswordsRouter from "./vendorPasswords";
 import storageRouter from "./storage";
 
@@ -26,6 +27,7 @@ router.use(devotionalRouter);
 router.use(wisdomQuotesRouter);
 router.use(orgChartRouter);
 router.use(seatTasksRouter);
+router.use(seatKeyResultsRouter);
 router.use(vendorPasswordsRouter);
 router.use(storageRouter);
 

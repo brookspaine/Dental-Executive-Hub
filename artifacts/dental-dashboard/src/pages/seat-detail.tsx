@@ -13,6 +13,11 @@ import {
   deleteSeatTask,
   getListSeatTasksQueryKey,
   listOrganizations,
+  listSeatKeyResults,
+  createSeatKeyResult,
+  updateSeatKeyResult,
+  deleteSeatKeyResult,
+  getListSeatKeyResultsQueryKey,
   listVendorPasswords as vpList,
   createVendorPassword as vpCreate,
   updateVendorPassword as vpUpdate,
@@ -74,6 +79,7 @@ type Seat = {
 type Task = {
   id: number;
   seatId: number;
+  keyResultId?: number | null;
   title: string;
   description?: string | null;
   status: string;
@@ -117,6 +123,7 @@ type TaskForm = {
   assignee: string;
   status: string;
   dueDate: string;
+  keyResultId: number | null;
 };
 
 const EMPTY_FORM: TaskForm = {
@@ -124,6 +131,15 @@ const EMPTY_FORM: TaskForm = {
   assignee: "",
   status: "todo",
   dueDate: "",
+  keyResultId: null,
+};
+
+type KeyResult = {
+  id: number;
+  seatId: number;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
 };
 
 export function SeatDetail() {
@@ -209,10 +225,39 @@ export function SeatDetail() {
   });
   const tasks: Task[] = (tasksQuery.data as Task[] | undefined) ?? [];
 
+  const keyResultsQuery = useQuery({
+    queryKey: seatId
+      ? getListSeatKeyResultsQueryKey(seatId)
+      : ["key-results", "none"],
+    queryFn: () => listSeatKeyResults(seatId as number),
+    enabled: seatId !== null,
+  });
+  const keyResults: KeyResult[] =
+    (keyResultsQuery.data as KeyResult[] | undefined) ?? [];
+
+  const tasksByKra = useMemo(() => {
+    const m = new Map<number | "none", Task[]>();
+    for (const t of tasks) {
+      const key = (t.keyResultId ?? null) === null ? "none" : (t.keyResultId as number);
+      const arr = m.get(key) ?? [];
+      arr.push(t);
+      m.set(key, arr);
+    }
+    return m;
+  }, [tasks]);
+
   const invalidateTasks = () => {
     if (seatId !== null) {
       queryClient.invalidateQueries({
         queryKey: getListSeatTasksQueryKey(seatId),
+      });
+    }
+  };
+
+  const invalidateKras = () => {
+    if (seatId !== null) {
+      queryClient.invalidateQueries({
+        queryKey: getListSeatKeyResultsQueryKey(seatId),
       });
     }
   };
@@ -271,13 +316,35 @@ export function SeatDetail() {
     onError: errToast("Could not delete task"),
   });
 
+  const createKraMut = useMutation({
+    mutationFn: (data: any) => createSeatKeyResult(seatId as number, data),
+    onSuccess: invalidateKras,
+    onError: errToast("Could not add key result"),
+  });
+  const updateKraMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      updateSeatKeyResult(id, data),
+    onSuccess: () => {
+      invalidateKras();
+    },
+    onError: errToast("Could not save key result"),
+  });
+  const deleteKraMut = useMutation({
+    mutationFn: (id: number) => deleteSeatKeyResult(id),
+    onSuccess: () => {
+      invalidateKras();
+      invalidateTasks();
+    },
+    onError: errToast("Could not delete key result"),
+  });
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [form, setForm] = useState<TaskForm>(EMPTY_FORM);
 
-  const openAdd = () => {
+  const openAdd = (keyResultId: number | null = null) => {
     setEditingTask(null);
-    setForm(EMPTY_FORM);
+    setForm({ ...EMPTY_FORM, keyResultId });
     setDialogOpen(true);
   };
 
@@ -288,6 +355,7 @@ export function SeatDetail() {
       assignee: t.assignee ?? "",
       status: t.status ?? "todo",
       dueDate: t.dueDate ?? "",
+      keyResultId: t.keyResultId ?? null,
     });
     setDialogOpen(true);
   };
@@ -305,6 +373,7 @@ export function SeatDetail() {
       status: form.status,
       dueDate: form.dueDate ? form.dueDate : null,
       completed: form.status === "done",
+      keyResultId: form.keyResultId,
     };
     if (editingTask) {
       updateMut.mutate(
@@ -413,31 +482,95 @@ export function SeatDetail() {
       )}
 
       <div className="space-y-3">
-        <div className="flex items-center justify-between gap-3">
-          <h3 className="text-lg font-semibold">Tasks</h3>
-          <Button size="sm" onClick={openAdd}>
-            <Plus className="h-4 w-4 mr-1" /> Add task
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div>
+            <h3 className="text-lg font-semibold">Key Results Area</h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              What this role is accountable to deliver. Break each Key Result
+              into action items.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            onClick={() =>
+              createKraMut.mutate({ title: "New Key Result", sortOrder: keyResults.length })
+            }
+            disabled={createKraMut.isPending}
+          >
+            <Plus className="h-4 w-4 mr-1" /> Add Key Result
           </Button>
         </div>
 
-        <div className="bg-muted/40 rounded-lg p-2 space-y-2 min-h-[120px]">
-          {tasks.length === 0 && (
-            <div className="text-xs text-muted-foreground italic text-center py-6">
-              No tasks yet
-            </div>
-          )}
-          {tasks.map((t) => (
-            <TaskCard
-              key={t.id}
-              task={t}
-              assigneeSeat={t.assignee ? seatByName.get(t.assignee.trim()) ?? null : null}
+        {keyResults.length === 0 && (tasksByKra.get("none") ?? []).length === 0 && (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              No Key Results yet. Click <strong>Add Key Result</strong> to define
+              what this seat owns.
+            </CardContent>
+          </Card>
+        )}
+
+        {keyResults.map((kr) => {
+          const krTasks = tasksByKra.get(kr.id) ?? [];
+          return (
+            <KeyResultCard
+              key={kr.id}
+              kr={kr}
+              tasks={krTasks}
+              seatByName={seatByName}
               directReports={directReports}
-              onClick={() => openEdit(t)}
-              onDelete={() => deleteMut.mutate(t.id)}
-              onAssigneeChange={(v) => handleInlineAssigneeChange(t, v)}
+              onRename={(title) =>
+                updateKraMut.mutate({ id: kr.id, data: { title } })
+              }
+              onDelete={() => {
+                const hasTasks = krTasks.length > 0;
+                const msg = hasTasks
+                  ? `Delete this Key Result? Its ${krTasks.length} action item(s) will be kept and moved to "Unfiled action items".`
+                  : "Delete this Key Result?";
+                if (confirm(msg)) deleteKraMut.mutate(kr.id);
+              }}
+              onAddTask={() => openAdd(kr.id)}
+              onOpenTask={openEdit}
+              onDeleteTask={(id) => deleteMut.mutate(id)}
+              onAssigneeChange={handleInlineAssigneeChange}
             />
-          ))}
-        </div>
+          );
+        })}
+
+        {(() => {
+          const unfiled = tasksByKra.get("none") ?? [];
+          if (unfiled.length === 0) return null;
+          return (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    Unfiled action items
+                  </div>
+                </div>
+                <div className="bg-muted/40 rounded-lg p-2 space-y-2">
+                  {unfiled.map((t) => (
+                    <TaskCard
+                      key={t.id}
+                      task={t}
+                      assigneeSeat={
+                        t.assignee
+                          ? seatByName.get(t.assignee.trim()) ?? null
+                          : null
+                      }
+                      directReports={directReports}
+                      onClick={() => openEdit(t)}
+                      onDelete={() => deleteMut.mutate(t.id)}
+                      onAssigneeChange={(v) =>
+                        handleInlineAssigneeChange(t, v)
+                      }
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
       </div>
 
       <Dialog
@@ -798,6 +931,97 @@ function InlineEditableText({
     >
       {isEmpty ? emptyDisplay ?? <span className="italic text-muted-foreground">{placeholder}</span> : value}
     </button>
+  );
+}
+
+function KeyResultCard({
+  kr,
+  tasks,
+  seatByName,
+  directReports,
+  onRename,
+  onDelete,
+  onAddTask,
+  onOpenTask,
+  onDeleteTask,
+  onAssigneeChange,
+}: {
+  kr: KeyResult;
+  tasks: Task[];
+  seatByName: Map<string, Seat>;
+  directReports: Seat[];
+  onRename: (title: string) => void;
+  onDelete: () => void;
+  onAddTask: () => void;
+  onOpenTask: (t: Task) => void;
+  onDeleteTask: (id: number) => void;
+  onAssigneeChange: (t: Task, v: string) => void;
+}) {
+  const done = tasks.filter((t) => t.completed || t.status === "done").length;
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
+                Key Result
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {done}/{tasks.length} done
+              </span>
+            </div>
+            <div className="mt-1.5 text-base font-semibold leading-snug">
+              <InlineEditableText
+                value={kr.title}
+                onSave={(next) => {
+                  const t = next.trim();
+                  if (t && t !== kr.title) onRename(t);
+                }}
+                placeholder="Name this Key Result…"
+                ariaLabel="Edit Key Result title"
+                required
+              />
+            </div>
+          </div>
+          <button
+            onClick={onDelete}
+            aria-label="Delete Key Result"
+            className="text-muted-foreground hover:text-destructive shrink-0"
+            title="Delete Key Result"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="bg-muted/40 rounded-lg p-2 space-y-2">
+          {tasks.length === 0 && (
+            <div className="text-xs text-muted-foreground italic text-center py-4">
+              No action items yet for this Key Result.
+            </div>
+          )}
+          {tasks.map((t) => (
+            <TaskCard
+              key={t.id}
+              task={t}
+              assigneeSeat={
+                t.assignee ? seatByName.get(t.assignee.trim()) ?? null : null
+              }
+              directReports={directReports}
+              onClick={() => onOpenTask(t)}
+              onDelete={() => onDeleteTask(t.id)}
+              onAssigneeChange={(v) => onAssigneeChange(t, v)}
+            />
+          ))}
+        </div>
+
+        <div>
+          <Button size="sm" variant="outline" onClick={onAddTask}>
+            <Plus className="h-4 w-4 mr-1" /> Add action item
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 

@@ -6,13 +6,9 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface CreateSeatTaskBody {
+export interface CreateSeatKeyResultBody {
+  /** @minLength 1 */
   title: string;
   description?: string | null;
-  status?: string;
-  priority?: string;
-  assignee?: string | null;
-  dueDate?: string | null;
   sortOrder?: number;
-  keyResultId?: number | null;
 }

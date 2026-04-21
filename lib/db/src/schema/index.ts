@@ -12,4 +12,5 @@ export * from "./readingList";
 export * from "./wisdomQuotes";
 export * from "./orgChartSeats";
 export * from "./seatTasks";
+export * from "./seatKeyResults";
 export * from "./vendorPasswords";

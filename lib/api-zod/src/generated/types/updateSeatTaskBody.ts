@@ -15,4 +15,5 @@ export interface UpdateSeatTaskBody {
   dueDate?: string | null;
   completed?: boolean;
   sortOrder?: number;
+  keyResultId?: number | null;
 }

@@ -25,6 +25,7 @@ import type {
   CreateOrgChartSeatBody,
   CreateOrganizationBody,
   CreateScheduleBlockBody,
+  CreateSeatKeyResultBody,
   CreateSeatTaskBody,
   CreateVendorPasswordBody,
   CreateWisdomQuoteBody,
@@ -41,6 +42,7 @@ import type {
   OrgPerformance,
   Organization,
   ScheduleBlock,
+  SeatKeyResult,
   SeatTask,
   ToggleIdealWeekCompletionBody,
   UpdateDailyTop3Body,
@@ -49,6 +51,7 @@ import type {
   UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
   UpdateScheduleBlockBody,
+  UpdateSeatKeyResultBody,
   UpdateSeatTaskBody,
   UpdateVendorPasswordBody,
   UploadUrlRequest,
@@ -3851,6 +3854,352 @@ export const useDeleteSeatTask = <
   TContext
 > => {
   return useMutation(getDeleteSeatTaskMutationOptions(options));
+};
+
+/**
+ * @summary List key results for a seat
+ */
+export const getListSeatKeyResultsUrl = (seatId: number) => {
+  return `/api/seats/${seatId}/key-results`;
+};
+
+export const listSeatKeyResults = async (
+  seatId: number,
+  options?: RequestInit,
+): Promise<SeatKeyResult[]> => {
+  return customFetch<SeatKeyResult[]>(getListSeatKeyResultsUrl(seatId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListSeatKeyResultsQueryKey = (seatId: number) => {
+  return [`/api/seats/${seatId}/key-results`] as const;
+};
+
+export const getListSeatKeyResultsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listSeatKeyResults>>,
+  TError = ErrorType<unknown>,
+>(
+  seatId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSeatKeyResults>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListSeatKeyResultsQueryKey(seatId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listSeatKeyResults>>
+  > = ({ signal }) => listSeatKeyResults(seatId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!seatId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listSeatKeyResults>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListSeatKeyResultsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listSeatKeyResults>>
+>;
+export type ListSeatKeyResultsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List key results for a seat
+ */
+
+export function useListSeatKeyResults<
+  TData = Awaited<ReturnType<typeof listSeatKeyResults>>,
+  TError = ErrorType<unknown>,
+>(
+  seatId: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listSeatKeyResults>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListSeatKeyResultsQueryOptions(seatId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a key result for a seat
+ */
+export const getCreateSeatKeyResultUrl = (seatId: number) => {
+  return `/api/seats/${seatId}/key-results`;
+};
+
+export const createSeatKeyResult = async (
+  seatId: number,
+  createSeatKeyResultBody: CreateSeatKeyResultBody,
+  options?: RequestInit,
+): Promise<SeatKeyResult> => {
+  return customFetch<SeatKeyResult>(getCreateSeatKeyResultUrl(seatId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createSeatKeyResultBody),
+  });
+};
+
+export const getCreateSeatKeyResultMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSeatKeyResult>>,
+    TError,
+    { seatId: number; data: BodyType<CreateSeatKeyResultBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createSeatKeyResult>>,
+  TError,
+  { seatId: number; data: BodyType<CreateSeatKeyResultBody> },
+  TContext
+> => {
+  const mutationKey = ["createSeatKeyResult"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createSeatKeyResult>>,
+    { seatId: number; data: BodyType<CreateSeatKeyResultBody> }
+  > = (props) => {
+    const { seatId, data } = props ?? {};
+
+    return createSeatKeyResult(seatId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateSeatKeyResultMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createSeatKeyResult>>
+>;
+export type CreateSeatKeyResultMutationBody = BodyType<CreateSeatKeyResultBody>;
+export type CreateSeatKeyResultMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a key result for a seat
+ */
+export const useCreateSeatKeyResult = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createSeatKeyResult>>,
+    TError,
+    { seatId: number; data: BodyType<CreateSeatKeyResultBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createSeatKeyResult>>,
+  TError,
+  { seatId: number; data: BodyType<CreateSeatKeyResultBody> },
+  TContext
+> => {
+  return useMutation(getCreateSeatKeyResultMutationOptions(options));
+};
+
+/**
+ * @summary Update a key result
+ */
+export const getUpdateSeatKeyResultUrl = (id: number) => {
+  return `/api/seat-key-results/${id}`;
+};
+
+export const updateSeatKeyResult = async (
+  id: number,
+  updateSeatKeyResultBody: UpdateSeatKeyResultBody,
+  options?: RequestInit,
+): Promise<SeatKeyResult> => {
+  return customFetch<SeatKeyResult>(getUpdateSeatKeyResultUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateSeatKeyResultBody),
+  });
+};
+
+export const getUpdateSeatKeyResultMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSeatKeyResult>>,
+    TError,
+    { id: number; data: BodyType<UpdateSeatKeyResultBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateSeatKeyResult>>,
+  TError,
+  { id: number; data: BodyType<UpdateSeatKeyResultBody> },
+  TContext
+> => {
+  const mutationKey = ["updateSeatKeyResult"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateSeatKeyResult>>,
+    { id: number; data: BodyType<UpdateSeatKeyResultBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateSeatKeyResult(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateSeatKeyResultMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateSeatKeyResult>>
+>;
+export type UpdateSeatKeyResultMutationBody = BodyType<UpdateSeatKeyResultBody>;
+export type UpdateSeatKeyResultMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a key result
+ */
+export const useUpdateSeatKeyResult = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateSeatKeyResult>>,
+    TError,
+    { id: number; data: BodyType<UpdateSeatKeyResultBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateSeatKeyResult>>,
+  TError,
+  { id: number; data: BodyType<UpdateSeatKeyResultBody> },
+  TContext
+> => {
+  return useMutation(getUpdateSeatKeyResultMutationOptions(options));
+};
+
+/**
+ * @summary Delete a key result
+ */
+export const getDeleteSeatKeyResultUrl = (id: number) => {
+  return `/api/seat-key-results/${id}`;
+};
+
+export const deleteSeatKeyResult = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteSeatKeyResultUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteSeatKeyResultMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSeatKeyResult>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteSeatKeyResult>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteSeatKeyResult"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteSeatKeyResult>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteSeatKeyResult(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteSeatKeyResultMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteSeatKeyResult>>
+>;
+
+export type DeleteSeatKeyResultMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a key result
+ */
+export const useDeleteSeatKeyResult = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteSeatKeyResult>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteSeatKeyResult>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteSeatKeyResultMutationOptions(options));
 };
 
 /**

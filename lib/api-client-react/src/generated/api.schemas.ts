@@ -412,6 +412,7 @@ export interface UpdateOrgChartSeatBody {
 export interface SeatTask {
   id: number;
   seatId: number;
+  keyResultId?: number | null;
   title: string;
   description?: string | null;
   status: string;
@@ -432,6 +433,7 @@ export interface CreateSeatTaskBody {
   assignee?: string | null;
   dueDate?: string | null;
   sortOrder?: number;
+  keyResultId?: number | null;
 }
 
 export interface UpdateSeatTaskBody {
@@ -442,6 +444,31 @@ export interface UpdateSeatTaskBody {
   assignee?: string | null;
   dueDate?: string | null;
   completed?: boolean;
+  sortOrder?: number;
+  keyResultId?: number | null;
+}
+
+export interface SeatKeyResult {
+  id: number;
+  seatId: number;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateSeatKeyResultBody {
+  /** @minLength 1 */
+  title: string;
+  description?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateSeatKeyResultBody {
+  /** @minLength 1 */
+  title?: string;
+  description?: string | null;
   sortOrder?: number;
 }
 

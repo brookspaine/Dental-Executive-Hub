@@ -679,6 +679,7 @@ export const ListSeatTasksParams = zod.object({
 export const ListSeatTasksResponseItem = zod.object({
   id: zod.number(),
   seatId: zod.number(),
+  keyResultId: zod.number().nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   status: zod.string(),
@@ -707,6 +708,7 @@ export const CreateSeatTaskBody = zod.object({
   assignee: zod.string().nullish(),
   dueDate: zod.string().nullish(),
   sortOrder: zod.number().optional(),
+  keyResultId: zod.number().nullish(),
 });
 
 /**
@@ -725,11 +727,13 @@ export const UpdateSeatTaskBody = zod.object({
   dueDate: zod.string().nullish(),
   completed: zod.boolean().optional(),
   sortOrder: zod.number().optional(),
+  keyResultId: zod.number().nullish(),
 });
 
 export const UpdateSeatTaskResponse = zod.object({
   id: zod.number(),
   seatId: zod.number(),
+  keyResultId: zod.number().nullish(),
   title: zod.string(),
   description: zod.string().nullish(),
   status: zod.string(),
@@ -746,6 +750,69 @@ export const UpdateSeatTaskResponse = zod.object({
  * @summary Delete a task
  */
 export const DeleteSeatTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List key results for a seat
+ */
+export const ListSeatKeyResultsParams = zod.object({
+  seatId: zod.coerce.number(),
+});
+
+export const ListSeatKeyResultsResponseItem = zod.object({
+  id: zod.number(),
+  seatId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListSeatKeyResultsResponse = zod.array(
+  ListSeatKeyResultsResponseItem,
+);
+
+/**
+ * @summary Create a key result for a seat
+ */
+export const CreateSeatKeyResultParams = zod.object({
+  seatId: zod.coerce.number(),
+});
+
+export const CreateSeatKeyResultBody = zod.object({
+  title: zod.string().min(1),
+  description: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a key result
+ */
+export const UpdateSeatKeyResultParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateSeatKeyResultBody = zod.object({
+  title: zod.string().min(1).optional(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateSeatKeyResultResponse = zod.object({
+  id: zod.number(),
+  seatId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a key result
+ */
+export const DeleteSeatKeyResultParams = zod.object({
   id: zod.coerce.number(),
 });
 
