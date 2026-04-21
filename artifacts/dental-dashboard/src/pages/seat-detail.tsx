@@ -581,11 +581,11 @@ export function SeatDetail() {
       >
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingTask ? "Edit task" : "Add task"}</DialogTitle>
+            <DialogTitle>{editingTask ? "Edit action item" : "Add action item"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-2">
             <div className="grid gap-2">
-              <Label>Task name *</Label>
+              <Label>Action item name *</Label>
               <Input
                 autoFocus
                 value={form.title}
@@ -660,7 +660,7 @@ export function SeatDetail() {
                 variant="ghost"
                 className="text-destructive"
                 onClick={() => {
-                  if (window.confirm("Delete this task?")) {
+                  if (window.confirm("Delete this action item?")) {
                     deleteMut.mutate(editingTask.id, { onSuccess: closeDialog });
                   }
                 }}
@@ -841,7 +841,7 @@ function TaskCard({
         <div onClick={(e) => e.stopPropagation()}>
           <button
             onClick={onDelete}
-            aria-label="Delete task"
+            aria-label="Delete action item"
             className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
           >
             <Trash2 className="h-4 w-4" />
