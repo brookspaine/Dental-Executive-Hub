@@ -26,13 +26,13 @@ export function resolvePhotoUrl(seat: {
   name?: string | null;
   photoUrl?: string | null;
   title?: string;
-}): string {
+}): string | null {
   if (seat.photoUrl && seat.photoUrl.trim()) {
     const u = seat.photoUrl.trim();
     if (u.startsWith("/objects/")) return `/api/storage${u}`;
     return u;
   }
-  return dicebearUrl(seat.name?.trim() || seat.title || "vacant");
+  return null;
 }
 
 type EditablePhotoSeat = {
@@ -154,11 +154,20 @@ export function EditablePhoto({
         }}
         className={`group relative shrink-0 rounded-full overflow-hidden border bg-muted hover:ring-2 hover:ring-primary/40 transition ${sizeClass} ${className}`}
       >
-        <img
-          src={currentUrl}
-          alt=""
-          className="h-full w-full object-cover"
-        />
+        {currentUrl ? (
+          <img
+            src={currentUrl}
+            alt=""
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <span
+            className="flex h-full w-full items-center justify-center text-muted-foreground"
+            aria-hidden
+          >
+            <Camera className={iconSize} />
+          </span>
+        )}
         <span
           className="absolute inset-0 hidden group-hover:flex items-center justify-center bg-black/40 text-white"
           aria-hidden
@@ -180,11 +189,17 @@ export function EditablePhoto({
           <div className="grid gap-4 py-2">
             <div className="flex flex-col items-center gap-3">
               <div className="relative h-32 w-32 rounded-full overflow-hidden bg-muted border">
-                <img
-                  src={previewUrl}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                {previewUrl ? (
+                  <img
+                    src={previewUrl}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <Camera className="h-10 w-10" />
+                  </div>
+                )}
                 {isUploading && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 text-white">
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -217,9 +232,9 @@ export function EditablePhoto({
               variant="ghost"
               onClick={() => mutation.mutate(null)}
               disabled={busy || !seat.photoUrl}
-              title="Use the auto-generated avatar"
+              title="Remove the uploaded photo"
             >
-              Reset to default
+              Remove photo
             </Button>
             <div className="flex gap-2">
               <Button variant="ghost" onClick={() => setOpen(false)} disabled={busy}>

@@ -46,6 +46,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  User,
 } from "lucide-react";
 import {
   Collapsible,
@@ -56,7 +57,6 @@ import { useToast } from "@/hooks/use-toast";
 import {
   EditablePhoto,
   resolvePhotoUrl,
-  dicebearUrl,
 } from "@/components/editable-photo";
 
 type Seat = {
@@ -481,11 +481,7 @@ export function SeatDetail() {
                   {directReports.map((s) => (
                     <SelectItem key={s.id} value={s.name as string}>
                       <span className="inline-flex items-center gap-2">
-                        <img
-                          src={photoFor(s)}
-                          alt=""
-                          className="h-5 w-5 rounded-full object-cover bg-muted"
-                        />
+                        <SmallAssigneeAvatar url={photoFor(s)} />
                         {s.name}
                         <span className="text-xs text-muted-foreground">
                           · {s.title}
@@ -578,23 +574,40 @@ function PersonAvatar({ seat, fallbackName }: { seat: Seat | null; fallbackName?
   if (seat) {
     return <EditablePhoto seat={seat} size="md" />;
   }
-  if (fallbackName && fallbackName.trim()) {
-    return (
-      <img
-        src={dicebearUrl(fallbackName.trim())}
-        alt=""
-        className="h-9 w-9 rounded-full object-cover bg-muted border shrink-0"
-        title={fallbackName}
-      />
-    );
-  }
   return (
-    <div className="h-9 w-9 rounded-full bg-muted border shrink-0 flex items-center justify-center text-muted-foreground">
+    <div
+      className="h-9 w-9 rounded-full bg-muted border shrink-0 flex items-center justify-center text-muted-foreground"
+      title={fallbackName ?? undefined}
+    >
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
         <circle cx="12" cy="8" r="4" />
         <path d="M4 21c0-4 4-7 8-7s8 3 8 7" />
       </svg>
     </div>
+  );
+}
+
+function SmallAssigneeAvatar({
+  url,
+  showFallbackIcon = false,
+}: {
+  url: string | null;
+  showFallbackIcon?: boolean;
+}) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt=""
+        className="h-5 w-5 rounded-full object-cover bg-muted"
+      />
+    );
+  }
+  if (!showFallbackIcon) return null;
+  return (
+    <span className="h-5 w-5 rounded-full bg-muted border flex items-center justify-center text-muted-foreground">
+      <User className="h-3 w-3" />
+    </span>
   );
 }
 
@@ -666,11 +679,7 @@ function TaskCard({
                 {showLegacyOption && (
                   <SelectItem value={currentAssigneeName}>
                     <span className="inline-flex items-center gap-2">
-                      <img
-                        src={dicebearUrl(currentAssigneeName)}
-                        alt=""
-                        className="h-5 w-5 rounded-full object-cover bg-muted"
-                      />
+                      <SmallAssigneeAvatar url={null} showFallbackIcon />
                       {currentAssigneeName}
                       <span className="text-xs text-muted-foreground">· not in this practice</span>
                     </span>
@@ -684,11 +693,7 @@ function TaskCard({
                 {directReports.map((s) => (
                   <SelectItem key={s.id} value={s.name as string}>
                     <span className="inline-flex items-center gap-2">
-                      <img
-                        src={photoFor(s)}
-                        alt=""
-                        className="h-5 w-5 rounded-full object-cover bg-muted"
-                      />
+                      <SmallAssigneeAvatar url={photoFor(s)} />
                       {s.name}
                       <span className="text-xs text-muted-foreground">
                         · {s.title}
