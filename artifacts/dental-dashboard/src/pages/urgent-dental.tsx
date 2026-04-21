@@ -203,7 +203,7 @@ export function UrgentDental() {
                   />
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="grid gap-2">
                   <Label>Providers</Label>
                   <Input
