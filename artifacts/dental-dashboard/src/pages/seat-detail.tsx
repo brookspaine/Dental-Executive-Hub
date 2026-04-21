@@ -958,6 +958,7 @@ function KeyResultCard({
   onAssigneeChange: (t: Task, v: string) => void;
 }) {
   const done = tasks.filter((t) => t.completed || t.status === "done").length;
+  const [open, setOpen] = useState(false);
   return (
     <Card>
       <CardContent className="p-4 space-y-3">
@@ -966,9 +967,6 @@ function KeyResultCard({
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-[10px] uppercase tracking-wide font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
                 Key Result
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {done}/{tasks.length} done
               </span>
             </div>
             <div className="mt-1.5 text-base font-semibold leading-snug">
@@ -994,32 +992,61 @@ function KeyResultCard({
           </button>
         </div>
 
-        <div className="bg-muted/40 rounded-lg p-2 space-y-2">
-          {tasks.length === 0 && (
-            <div className="text-xs text-muted-foreground italic text-center py-4">
-              No action items yet for this Key Result.
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between gap-3 rounded-md border bg-muted/40 hover:bg-muted px-3 py-2 text-sm transition-colors"
+              aria-label={`${open ? "Hide" : "Show"} action items`}
+            >
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${open ? "rotate-0" : "-rotate-90"}`}
+                />
+                <span className="font-medium">
+                  {tasks.length} action item{tasks.length === 1 ? "" : "s"}
+                </span>
+                {tasks.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    · {done}/{tasks.length} done
+                  </span>
+                )}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {open ? "Hide" : "Show"}
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            <div className="bg-muted/40 rounded-lg p-2 space-y-2">
+              {tasks.length === 0 && (
+                <div className="text-xs text-muted-foreground italic text-center py-4">
+                  No action items yet for this Key Result.
+                </div>
+              )}
+              {tasks.map((t) => (
+                <TaskCard
+                  key={t.id}
+                  task={t}
+                  assigneeSeat={
+                    t.assignee
+                      ? seatByName.get(t.assignee.trim()) ?? null
+                      : null
+                  }
+                  directReports={directReports}
+                  onClick={() => onOpenTask(t)}
+                  onDelete={() => onDeleteTask(t.id)}
+                  onAssigneeChange={(v) => onAssigneeChange(t, v)}
+                />
+              ))}
             </div>
-          )}
-          {tasks.map((t) => (
-            <TaskCard
-              key={t.id}
-              task={t}
-              assigneeSeat={
-                t.assignee ? seatByName.get(t.assignee.trim()) ?? null : null
-              }
-              directReports={directReports}
-              onClick={() => onOpenTask(t)}
-              onDelete={() => onDeleteTask(t.id)}
-              onAssigneeChange={(v) => onAssigneeChange(t, v)}
-            />
-          ))}
-        </div>
-
-        <div>
-          <Button size="sm" variant="outline" onClick={onAddTask}>
-            <Plus className="h-4 w-4 mr-1" /> Add action item
-          </Button>
-        </div>
+            <div>
+              <Button size="sm" variant="outline" onClick={onAddTask}>
+                <Plus className="h-4 w-4 mr-1" /> Add action item
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
       </CardContent>
     </Card>
   );
