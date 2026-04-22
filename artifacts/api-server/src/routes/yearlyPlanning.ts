@@ -4,7 +4,7 @@ import { db, yearlyPlanningSectionsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
-const VALID_KEYS = new Set([
+const BASE_CATEGORIES = [
   "health-fitness",
   "business",
   "mindset",
@@ -13,6 +13,12 @@ const VALID_KEYS = new Set([
   "faith",
   "lifestyle-travel",
   "relationships",
+];
+
+const VALID_KEYS = new Set<string>([
+  ...BASE_CATEGORIES,
+  ...BASE_CATEGORIES.map((c) => `vb-${c}`),
+  "vb-header",
 ]);
 
 router.get("/yearly-planning", async (_req, res): Promise<void> => {

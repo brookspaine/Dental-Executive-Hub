@@ -1196,6 +1196,7 @@ function EditableRitualItem({
   const isLivingYourBestYearEver = item.label
     .toLowerCase()
     .includes("living your best year ever");
+  const isVisionBoard = item.label.toLowerCase().includes("vision board");
 
   return (
     <div>
@@ -1204,6 +1205,13 @@ function EditableRitualItem({
         {isLivingYourBestYearEver ? (
           <a
             href={`${base}living-your-best-year-ever`}
+            className="text-[11px] leading-tight font-medium flex-1 text-primary underline hover:text-primary/80 cursor-pointer"
+          >
+            {item.label}
+          </a>
+        ) : isVisionBoard ? (
+          <a
+            href={`${base}vision-board`}
             className="text-[11px] leading-tight font-medium flex-1 text-primary underline hover:text-primary/80 cursor-pointer"
           >
             {item.label}

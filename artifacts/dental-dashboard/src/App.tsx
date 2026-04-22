@@ -12,6 +12,7 @@ import { OrgChart } from "@/pages/org-chart";
 import { SeatDetail } from "@/pages/seat-detail";
 import { IdealWeek } from "@/pages/ideal-week";
 import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
+import { VisionBoard } from "@/pages/vision-board";
 import { DirectReports } from "@/pages/direct-reports";
 import { Announcements } from "@/pages/announcements";
 
@@ -24,6 +25,7 @@ function Router() {
         <Route path="/"><Redirect to="/ideal-week" /></Route>
         <Route path="/ideal-week" component={IdealWeek} />
         <Route path="/living-your-best-year-ever" component={LivingYourBestYearEver} />
+        <Route path="/vision-board" component={VisionBoard} />
         <Route path="/dashboard" component={Dashboard} />
         <Route path="/organizations" component={Organizations} />
         <Route path="/organizations/:id" component={OrganizationDetail} />
