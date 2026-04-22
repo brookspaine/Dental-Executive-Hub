@@ -50,3 +50,8 @@ externalPort = 3002
 [[ports]]
 localPort = 23101
 externalPort = 4200
+
+[userenv]
+
+[userenv.production]
+ADMIN_IMPORT_TOKEN = "ed2f791b2aed81e760b7aa0e39e88d627cf61df6b3f07b0163acec70dd06f545"
