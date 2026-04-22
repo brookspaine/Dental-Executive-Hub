@@ -1072,11 +1072,6 @@ function KeyResultCard({
                 <span className="font-medium">
                   {tasks.length} action item{tasks.length === 1 ? "" : "s"}
                 </span>
-                {tasks.length > 0 && (
-                  <span className="text-xs text-muted-foreground">
-                    · {done}/{tasks.length} done
-                  </span>
-                )}
               </span>
               <span className="text-xs text-muted-foreground">
                 {open ? "Hide" : "Show"}
