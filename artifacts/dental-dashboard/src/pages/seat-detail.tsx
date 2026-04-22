@@ -991,12 +991,7 @@ function KeyResultCard({
     : anyDueSoon
     ? "yellow"
     : "green";
-  const barColorClass =
-    statusColor === "red"
-      ? "bg-rose-400"
-      : statusColor === "yellow"
-      ? "bg-amber-300"
-      : "bg-emerald-400";
+  const barColorClass = "bg-slate-700";
 
   const [open, setOpen] = useState(false);
   return (
@@ -1033,7 +1028,7 @@ function KeyResultCard({
               }
               aria-label={`${done} of ${total} action items complete`}
             >
-              <div className="h-2 w-28 bg-muted rounded-full overflow-hidden">
+              <div className="h-2 w-28 bg-white border border-slate-200 rounded-full overflow-hidden">
                 <div
                   className={`h-full ${barColorClass} transition-all`}
                   style={{ width: `${pct}%` }}
@@ -1059,7 +1054,7 @@ function KeyResultCard({
           className="sm:hidden flex items-center gap-2"
           aria-label={`${done} of ${total} action items complete`}
         >
-          <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
+          <div className="h-2 flex-1 bg-white border border-slate-200 rounded-full overflow-hidden">
             <div
               className={`h-full ${barColorClass} transition-all`}
               style={{ width: `${pct}%` }}
