@@ -950,6 +950,37 @@ function KeyResultCard({
   onToggleCompleted: (t: Task, completed: boolean) => void;
 }) {
   const done = tasks.filter((t) => t.completed || t.status === "done").length;
+  const total = tasks.length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  // Deadline-driven status color for the bar.
+  // - Red: at least one open task is overdue, OR (no tasks have deadlines AND none are done)
+  // - Yellow: at least one open task is due within the next 7 days
+  // - Green: everything either done or comfortably ahead of schedule
+  const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00").getTime();
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  let anyOverdue = false;
+  let anyDueSoon = false;
+  for (const t of tasks) {
+    if (t.completed || t.status === "done") continue;
+    if (!t.dueDate) continue;
+    const dueMs = new Date(t.dueDate + "T00:00:00").getTime();
+    if (dueMs < today) anyOverdue = true;
+    else if (dueMs - today <= SEVEN_DAYS) anyDueSoon = true;
+  }
+  const allDone = total > 0 && done === total;
+  const statusColor: "red" | "yellow" | "green" = anyOverdue
+    ? "red"
+    : anyDueSoon
+    ? "yellow"
+    : "green";
+  const barColorClass =
+    statusColor === "red"
+      ? "bg-red-500"
+      : statusColor === "yellow"
+      ? "bg-amber-400"
+      : "bg-emerald-500";
+
   const [open, setOpen] = useState(false);
   return (
     <Card>
@@ -974,14 +1005,57 @@ function KeyResultCard({
               />
             </div>
           </div>
-          <button
-            onClick={onDelete}
-            aria-label="Delete Key Result"
-            className="text-muted-foreground hover:text-destructive shrink-0"
-            title="Delete Key Result"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-3 shrink-0">
+            <div
+              className="hidden sm:flex items-center gap-2"
+              title={
+                total === 0
+                  ? "No action items yet"
+                  : anyOverdue
+                  ? "At least one action item is overdue"
+                  : anyDueSoon
+                  ? "An action item is due within 7 days"
+                  : allDone
+                  ? "All action items complete"
+                  : "On track"
+              }
+              aria-label={`${done} of ${total} action items complete`}
+            >
+              <div className="h-2 w-28 bg-muted rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${barColorClass} transition-all`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+                {done} of {total}
+              </span>
+            </div>
+            <button
+              onClick={onDelete}
+              aria-label="Delete Key Result"
+              className="text-muted-foreground hover:text-destructive"
+              title="Delete Key Result"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile: show progress bar full-width below the title row */}
+        <div
+          className="sm:hidden flex items-center gap-2"
+          aria-label={`${done} of ${total} action items complete`}
+        >
+          <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden">
+            <div
+              className={`h-full ${barColorClass} transition-all`}
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+            {done} of {total}
+          </span>
         </div>
 
         <Collapsible open={open} onOpenChange={setOpen}>
