@@ -52,7 +52,13 @@ import {
   Eye,
   EyeOff,
   User,
+  Info,
 } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import {
   Collapsible,
   CollapsibleContent,
@@ -484,12 +490,23 @@ export function SeatDetail() {
 
       <div className="space-y-3">
         <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <h3 className="text-lg font-semibold">Key Results Area</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              What this role is accountable to deliver. Break each Key Result
-              into action items.
-            </p>
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-lg font-semibold">Key Results</h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="About Key Results"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="max-w-xs">
+                What winning looks like in this role and how you make an impact.
+                Break each Key Result into action items.
+              </TooltipContent>
+            </Tooltip>
           </div>
           <Button
             size="sm"
