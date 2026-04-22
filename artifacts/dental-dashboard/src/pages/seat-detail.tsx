@@ -955,10 +955,10 @@ function KeyResultCard({
 
   // Deadline-driven status color for the bar.
   // - Red: at least one open task is overdue, OR (no tasks have deadlines AND none are done)
-  // - Yellow: at least one open task is due within the next 7 days
+  // - Yellow: at least one open task is due within the next 3 days
   // - Green: everything either done or comfortably ahead of schedule
   const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00").getTime();
-  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
   let anyOverdue = false;
   let anyDueSoon = false;
   for (const t of tasks) {
@@ -966,7 +966,7 @@ function KeyResultCard({
     if (!t.dueDate) continue;
     const dueMs = new Date(t.dueDate + "T00:00:00").getTime();
     if (dueMs < today) anyOverdue = true;
-    else if (dueMs - today <= SEVEN_DAYS) anyDueSoon = true;
+    else if (dueMs - today <= THREE_DAYS) anyDueSoon = true;
   }
   const allDone = total > 0 && done === total;
   const statusColor: "red" | "yellow" | "green" = anyOverdue
@@ -1014,7 +1014,7 @@ function KeyResultCard({
                   : anyOverdue
                   ? "At least one action item is overdue"
                   : anyDueSoon
-                  ? "An action item is due within 7 days"
+                  ? "An action item is due within 3 days"
                   : allDone
                   ? "All action items complete"
                   : "On track"
