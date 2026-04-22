@@ -1115,7 +1115,6 @@ function EditableRitualItem({
   const [value, setValue] = useState(item.label);
   const [dirty, setDirty] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
-  const editorRef = useRef<HTMLDivElement | null>(null);
 
   const labelToHtml = (label: string) =>
     label.replace(
@@ -1123,18 +1122,19 @@ function EditableRitualItem({
       '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>'
     );
 
-  // Imperatively sync the contentEditable HTML when the underlying item.label
-  // changes from the outside and the user is not currently editing. This
-  // avoids React re-rendering the contentEditable mid-typing (which would
-  // jump the cursor to the start).
+  // The HTML used for `dangerouslySetInnerHTML` is intentionally only updated
+  // when the user is NOT actively editing. While `dirty` is true (i.e., the
+  // user is typing), we keep returning the same string so React leaves the
+  // contentEditable's DOM completely alone — otherwise each re-render would
+  // rewrite innerHTML and reset the caret to position 0 (which made letters
+  // appear in reverse order).
+  const [stableHtml, setStableHtml] = useState(() => labelToHtml(item.label));
   useEffect(() => {
-    if (!editorRef.current) return;
-    if (dirty) return;
-    const next = labelToHtml(item.label);
-    if (editorRef.current.innerHTML !== next) {
-      editorRef.current.innerHTML = next;
+    if (!dirty) {
+      const next = labelToHtml(item.label);
+      setStableHtml((prev) => (prev === next ? prev : next));
+      setValue(item.label);
     }
-    setValue(item.label);
   }, [item.label, dirty]);
 
   const updateItem = useMutation({
@@ -1204,12 +1204,12 @@ function EditableRitualItem({
           </a>
         ) : (
           <div
-            ref={editorRef}
             contentEditable
             suppressContentEditableWarning
             className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] whitespace-pre-wrap"
             onInput={(e) => handleChange(e.currentTarget.textContent || "")}
             onBlur={handleBlur}
+            dangerouslySetInnerHTML={{ __html: stableHtml }}
           />
         )}
         {isDailyDevotional && <DailyDevotionalPlayer />}
