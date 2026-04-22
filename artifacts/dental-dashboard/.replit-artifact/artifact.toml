@@ -17,14 +17,15 @@ localPort = 23099
 [services.development]
 run = "pnpm --filter @workspace/dental-dashboard run dev"
 
-[services.production]
-build = [ "pnpm", "--filter", "@workspace/dental-dashboard", "run", "build" ]
-publicDir = "artifacts/dental-dashboard/dist/public"
-serve = "static"
+[services.production.build]
+args = ["pnpm", "--filter", "@workspace/dental-dashboard", "run", "build"]
 
-[[services.production.rewrites]]
-from = "/*"
-to = "/index.html"
+[services.production.run]
+args = ["node", "artifacts/dental-dashboard/server.mjs"]
+
+[services.production.run.env]
+PORT = "23099"
+NODE_ENV = "production"
 
 [services.env]
 PORT = "23099"
