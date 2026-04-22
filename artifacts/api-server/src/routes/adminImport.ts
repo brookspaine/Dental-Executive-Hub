@@ -127,8 +127,6 @@ const handleImport = async (req: import("express").Request, res: import("express
       summary[table] = rows.length;
     }
 
-    await client.query("SET session_replication_role = 'origin'");
-
     // Reset serial sequences
     const seqRes = await client.query(`
       SELECT 'SELECT setval(pg_get_serial_sequence(''' || quote_ident(table_name) || ''', ''' || column_name || '''),
