@@ -1116,25 +1116,11 @@ function EditableRitualItem({
   const [dirty, setDirty] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
-  const labelToHtml = (label: string) =>
-    label.replace(
-      /(https?:\/\/\S+)/g,
-      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>'
-    );
-
-  // The HTML used for `dangerouslySetInnerHTML` is intentionally only updated
-  // when the user is NOT actively editing. While `dirty` is true (i.e., the
-  // user is typing), we keep returning the same string so React leaves the
-  // contentEditable's DOM completely alone — otherwise each re-render would
-  // rewrite innerHTML and reset the caret to position 0 (which made letters
-  // appear in reverse order).
-  const [stableHtml, setStableHtml] = useState(() => labelToHtml(item.label));
+  // Sync local value from the underlying record only when the user is not
+  // actively editing. Otherwise their in-progress text would be overwritten
+  // by stale data coming back from the server.
   useEffect(() => {
-    if (!dirty) {
-      const next = labelToHtml(item.label);
-      setStableHtml((prev) => (prev === next ? prev : next));
-      setValue(item.label);
-    }
+    if (!dirty) setValue(item.label);
   }, [item.label, dirty]);
 
   const updateItem = useMutation({
@@ -1203,13 +1189,12 @@ function EditableRitualItem({
             {item.label}
           </a>
         ) : (
-          <div
-            contentEditable
-            suppressContentEditableWarning
-            className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] whitespace-pre-wrap"
-            onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => handleChange(e.target.value)}
             onBlur={handleBlur}
-            dangerouslySetInnerHTML={{ __html: stableHtml }}
+            className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] bg-transparent border-0 w-full"
           />
         )}
         {isDailyDevotional && <DailyDevotionalPlayer />}
