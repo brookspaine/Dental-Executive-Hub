@@ -442,9 +442,19 @@ function BrainwashingItemRow({
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updated: any) => {
       setDirty(false);
-      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+      // Patch the cached list in place instead of invalidating, to avoid
+      // re-render churn while the user is still editing.
+      queryClient.setQueriesData(
+        { queryKey: ["ritual-items", category] },
+        (prev: any) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((it: any) =>
+            it && it.id === item.id ? { ...it, ...updated } : it
+          );
+        }
+      );
     },
   });
 
@@ -467,15 +477,13 @@ function BrainwashingItemRow({
   return (
     <div className="group flex items-center gap-2 py-0.5 rounded hover:bg-muted/40">
       <span className="text-primary select-none leading-none">•</span>
-      <div
-        contentEditable
-        suppressContentEditableWarning
-        className="text-sm leading-relaxed flex-1 outline-none focus:bg-muted/50 rounded px-1 -mx-1 cursor-text whitespace-pre-wrap"
-        onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => handleChange(e.target.value)}
         onBlur={handleBlur}
-      >
-        {value}
-      </div>
+        className="text-sm leading-relaxed flex-1 outline-none focus:bg-muted/50 rounded px-1 -mx-1 cursor-text bg-transparent border-0 w-full"
+      />
       <Button
         variant="ghost"
         size="icon"
