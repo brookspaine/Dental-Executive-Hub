@@ -993,10 +993,10 @@ function KeyResultCard({
     : "green";
   const barColorClass =
     statusColor === "red"
-      ? "bg-red-500"
+      ? "bg-rose-400"
       : statusColor === "yellow"
-      ? "bg-amber-400"
-      : "bg-emerald-500";
+      ? "bg-amber-300"
+      : "bg-emerald-400";
 
   const [open, setOpen] = useState(false);
   return (
