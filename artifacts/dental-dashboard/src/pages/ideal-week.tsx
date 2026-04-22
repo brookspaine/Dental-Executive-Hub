@@ -2584,7 +2584,7 @@ export function IdealWeek() {
           <ReadingList />
         </div>
 
-        <div className="space-y-2 lg:sticky lg:top-4 min-w-0 overflow-hidden">
+        <div className="space-y-2 min-w-0 overflow-hidden">
           <EditableRitualSection
             category="morning"
             title="Morning Ritual"
