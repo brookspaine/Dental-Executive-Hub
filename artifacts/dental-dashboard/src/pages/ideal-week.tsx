@@ -474,15 +474,27 @@ function BrainwashingItemRow({
     }
   };
 
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const autoSize = () => {
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  };
+  useEffect(() => {
+    autoSize();
+  }, [value]);
+
   return (
-    <div className="group flex items-center gap-2 py-0.5 rounded hover:bg-muted/40">
-      <span className="text-primary select-none leading-none">•</span>
-      <input
-        type="text"
+    <div className="group flex items-start gap-2 py-0.5 rounded hover:bg-muted/40">
+      <span className="text-primary select-none leading-relaxed">•</span>
+      <textarea
+        ref={textareaRef}
+        rows={1}
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={handleBlur}
-        className="text-sm leading-relaxed flex-1 outline-none focus:bg-muted/50 rounded px-1 -mx-1 cursor-text bg-transparent border-0 w-full"
+        className="text-sm leading-relaxed flex-1 outline-none focus:bg-muted/50 rounded px-1 -mx-1 cursor-text bg-transparent border-0 w-full resize-none overflow-hidden"
       />
       <Button
         variant="ghost"
