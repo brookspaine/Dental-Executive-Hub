@@ -15,6 +15,7 @@ import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
 import { VisionBoard } from "@/pages/vision-board";
 import { DirectReports } from "@/pages/direct-reports";
 import { Announcements } from "@/pages/announcements";
+import { WeeklyReview } from "@/pages/weekly-review";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +25,7 @@ function Router() {
       <Switch>
         <Route path="/"><Redirect to="/ideal-week" /></Route>
         <Route path="/ideal-week" component={IdealWeek} />
+        <Route path="/weekly-review" component={WeeklyReview} />
         <Route path="/living-your-best-year-ever" component={LivingYourBestYearEver} />
         <Route path="/vision-board" component={VisionBoard} />
         <Route path="/dashboard" component={Dashboard} />

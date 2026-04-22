@@ -1197,6 +1197,9 @@ function EditableRitualItem({
     .toLowerCase()
     .includes("living your best year ever");
   const isVisionBoard = item.label.toLowerCase().includes("vision board");
+  const isWeeklyReviewLink =
+    category === "weekly_review" &&
+    item.label.trim().toLowerCase() === "weekly review";
 
   return (
     <div>
@@ -1212,6 +1215,14 @@ function EditableRitualItem({
         ) : isVisionBoard ? (
           <a
             href={`${base}vision-board`}
+            className="text-[11px] leading-tight font-medium flex-1 text-primary underline hover:text-primary/80 cursor-pointer"
+          >
+            {item.label}
+          </a>
+        ) : isWeeklyReviewLink ? (
+          <a
+            href={`${base}weekly-review`}
+            data-testid="link-open-weekly-review"
             className="text-[11px] leading-tight font-medium flex-1 text-primary underline hover:text-primary/80 cursor-pointer"
           >
             {item.label}
