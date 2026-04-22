@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -471,15 +471,6 @@ function BulletList({
           </li>
         ))}
       </ul>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 text-xs"
-        onClick={() => onChange([...items, ""])}
-      >
-        <Plus className="h-3.5 w-3.5 mr-1" /> Add
-      </Button>
     </div>
   );
 }
@@ -500,8 +491,6 @@ function GoalsTable({
     onChange(next);
   };
   const remove = (idx: number) => onChange(rows.filter((_, i) => i !== idx));
-  const add = () =>
-    onChange([...rows, { text: "", status: "Not started", nextSteps: "" }]);
 
   return (
     <div className="space-y-2">
@@ -573,15 +562,6 @@ function GoalsTable({
           </div>
         ))}
       </div>
-      <Button
-        type="button"
-        variant="ghost"
-        size="sm"
-        className="h-7 text-xs"
-        onClick={add}
-      >
-        <Plus className="h-3.5 w-3.5 mr-1" /> Add row
-      </Button>
     </div>
   );
 }
@@ -696,15 +676,6 @@ function SectionCard({
               </button>
             </div>
           ))}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => update({ identity: [...data.identity, ""] })}
-          >
-            <Plus className="h-3.5 w-3.5 mr-1" /> Add identity statement
-          </Button>
         </div>
 
         <BulletList
