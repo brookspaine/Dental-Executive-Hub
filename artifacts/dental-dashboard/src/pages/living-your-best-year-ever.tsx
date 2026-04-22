@@ -446,8 +446,8 @@ function BulletList({
       </div>
       <ul className="space-y-1">
         {items.map((it, idx) => (
-          <li key={idx} className="flex items-start gap-2 group">
-            <span className="text-muted-foreground mt-1.5">•</span>
+          <li key={idx} className="flex items-center gap-2 group">
+            <span className="text-muted-foreground leading-none">•</span>
             <div className="flex-1">
               <InlineText
                 value={it}
@@ -464,7 +464,7 @@ function BulletList({
               type="button"
               onClick={() => onChange(items.filter((_, i) => i !== idx))}
               aria-label="Delete bullet"
-              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 mt-1"
+              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
