@@ -502,7 +502,10 @@ export function SeatDetail() {
                   <Info className="h-4 w-4" />
                 </button>
               </TooltipTrigger>
-              <TooltipContent side="right" className="max-w-xs">
+              <TooltipContent
+                side="right"
+                className="max-w-xs bg-slate-700 text-white"
+              >
                 What winning looks like in this role and how you make an impact.
                 Break each Key Result into action items.
               </TooltipContent>
