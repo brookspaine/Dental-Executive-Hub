@@ -76,7 +76,21 @@ const handleImport = async (req: import("express").Request, res: import("express
 
   try {
     await client.query("BEGIN");
-    await client.query("SET session_replication_role = 'replica'");
+
+    // Make all FK constraints deferrable for this transaction so we can
+    // delete + insert in any order without violating FKs mid-transaction.
+    const fkRes = await client.query(`
+      SELECT conrelid::regclass::text AS table_name, conname
+      FROM pg_constraint
+      WHERE contype = 'f'
+        AND connamespace = 'public'::regnamespace
+    `);
+    for (const fk of fkRes.rows) {
+      await client.query(
+        `ALTER TABLE ${fk.table_name} ALTER CONSTRAINT "${fk.conname}" DEFERRABLE INITIALLY DEFERRED`,
+      );
+    }
+    await client.query("SET CONSTRAINTS ALL DEFERRED");
 
     for (const table of SNAPSHOT_TABLES) {
       const rows = snapshot[table];
