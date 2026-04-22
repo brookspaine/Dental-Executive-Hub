@@ -15,3 +15,4 @@ export * from "./seatTasks";
 export * from "./seatKeyResults";
 export * from "./vendorPasswords";
 export * from "./yearlyPlanning";
+export * from "./weeklyReview";

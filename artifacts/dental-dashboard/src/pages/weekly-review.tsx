@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -20,6 +21,13 @@ function getISOWeek(date: Date): number {
     target.setMonth(0, 1 + ((4 - target.getDay()) + 7) % 7);
   }
   return 1 + Math.ceil((firstThursday - target.valueOf()) / (7 * 24 * 3600 * 1000));
+}
+
+function getISOWeekYear(date: Date): number {
+  const target = new Date(date.valueOf());
+  const dayNr = (date.getDay() + 6) % 7;
+  target.setDate(target.getDate() - dayNr + 3);
+  return target.getFullYear();
 }
 
 type FieldDef = { key: string; label: string; helper?: string; minRows?: number };
@@ -69,6 +77,14 @@ const PLANNING_FIELDS: FieldDef[] = [
     label: "Personal Development Materials I'm Studying This Week",
   },
 ];
+
+type WeeklyReviewEntry = {
+  id: number;
+  year: number;
+  week: number;
+  fieldKey: string;
+  content: string;
+};
 
 function FieldBlock({
   field,
@@ -135,20 +151,136 @@ function SectionBlock({
 }
 
 export function WeeklyReview() {
-  const currentWeek = useMemo(() => getISOWeek(new Date()), []);
+  const now = useMemo(() => new Date(), []);
+  const currentWeek = useMemo(() => getISOWeek(now), [now]);
+  const currentYear = useMemo(() => getISOWeekYear(now), [now]);
   const [week, setWeek] = useState<number>(currentWeek);
-  const [byWeek, setByWeek] = useState<Record<number, Record<string, string>>>(
+  const year = currentYear;
+
+  const base = import.meta.env.BASE_URL || "/";
+  const queryClient = useQueryClient();
+
+  const queryKey = ["weekly-review", year, week] as const;
+
+  const { data: entries } = useQuery<WeeklyReviewEntry[]>({
+    queryKey,
+    queryFn: async () => {
+      const res = await fetch(`${base}api/weekly-review/${year}/${week}`);
+      if (!res.ok) throw new Error("Failed to load weekly review");
+      return res.json();
+    },
+  });
+
+  const serverValues = useMemo(() => {
+    const m: Record<string, string> = {};
+    (entries ?? []).forEach((e) => {
+      m[e.fieldKey] = e.content;
+    });
+    return m;
+  }, [entries]);
+
+  // Local edits and pending-save tracking are scoped to (year, week, field)
+  // so switching weeks never bleeds in-flight values into the wrong week.
+  const pendingKey = (y: number, w: number, f: string) => `${y}:${w}:${f}`;
+  const [localByWeek, setLocalByWeek] = useState<
+    Record<string, Record<string, string>>
+  >({});
+  const [pending, setPending] = useState<Set<string>>(new Set());
+
+  const weekKey = `${year}:${week}`;
+
+  // Sync server values into the local store for the current week, but keep
+  // any field that still has a pending unsaved edit to avoid clobbering it.
+  useEffect(() => {
+    setLocalByWeek((prev) => {
+      const prevForWeek = prev[weekKey] ?? {};
+      const next: Record<string, string> = { ...serverValues };
+      Object.keys(prevForWeek).forEach((f) => {
+        if (pending.has(pendingKey(year, week, f))) {
+          next[f] = prevForWeek[f];
+        }
+      });
+      return { ...prev, [weekKey]: next };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverValues, weekKey]);
+
+  const localValues = localByWeek[weekKey] ?? {};
+
+  // Debounce timers keyed by (year, week, field) so a queued save from a
+  // prior week cannot fire after the user switches contexts.
+  const debounceRefs = useRef<Record<string, ReturnType<typeof setTimeout>>>(
     {},
   );
 
-  const weeks = Array.from({ length: 53 }, (_, i) => i + 1);
-  const values = byWeek[week] || {};
+  useEffect(() => {
+    const timers = debounceRefs.current;
+    return () => {
+      Object.values(timers).forEach((t) => clearTimeout(t));
+    };
+  }, []);
+
+  const saveMut = useMutation({
+    mutationFn: async (vars: {
+      year: number;
+      week: number;
+      fieldKey: string;
+      content: string;
+    }) => {
+      const res = await fetch(
+        `${base}api/weekly-review/${vars.year}/${vars.week}/${vars.fieldKey}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: vars.content }),
+        },
+      );
+      if (!res.ok) throw new Error("Failed to save");
+      return (await res.json()) as WeeklyReviewEntry;
+    },
+    onSuccess: (_data, vars) => {
+      setPending((prev) => {
+        const next = new Set(prev);
+        next.delete(pendingKey(vars.year, vars.week, vars.fieldKey));
+        return next;
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["weekly-review", vars.year, vars.week],
+      });
+    },
+  });
+
   const setField = (key: string, v: string) => {
-    setByWeek((prev) => ({
+    // Capture the (year, week) at edit time so the save is guaranteed to
+    // target the week the user was editing, even if they switch weeks
+    // before the debounce fires.
+    const editYear = year;
+    const editWeek = week;
+    const editWeekKey = `${editYear}:${editWeek}`;
+    const pKey = pendingKey(editYear, editWeek, key);
+
+    setLocalByWeek((prev) => ({
       ...prev,
-      [week]: { ...(prev[week] || {}), [key]: v },
+      [editWeekKey]: { ...(prev[editWeekKey] ?? {}), [key]: v },
     }));
+    setPending((prev) => {
+      const next = new Set(prev);
+      next.add(pKey);
+      return next;
+    });
+
+    if (debounceRefs.current[pKey]) clearTimeout(debounceRefs.current[pKey]);
+    debounceRefs.current[pKey] = setTimeout(() => {
+      saveMut.mutate({
+        year: editYear,
+        week: editWeek,
+        fieldKey: key,
+        content: v,
+      });
+    }, 500);
   };
+
+  const weeks = Array.from({ length: 53 }, (_, i) => i + 1);
 
   return (
     <div className="space-y-4" data-testid="page-weekly-review">
@@ -190,7 +322,7 @@ export function WeeklyReview() {
       <SectionBlock
         label="Review"
         fields={REVIEW_FIELDS}
-        values={values}
+        values={localValues}
         onFieldChange={setField}
       />
 
@@ -213,7 +345,7 @@ export function WeeklyReview() {
       <SectionBlock
         label=""
         fields={PLANNING_FIELDS}
-        values={values}
+        values={localValues}
         onFieldChange={setField}
       />
     </div>
