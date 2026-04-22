@@ -77,20 +77,21 @@ const handleImport = async (req: import("express").Request, res: import("express
   try {
     await client.query("BEGIN");
 
-    // Make all FK constraints deferrable for this transaction so we can
+    // Drop all FK constraints, then recreate them after the import so we can
     // delete + insert in any order without violating FKs mid-transaction.
     const fkRes = await client.query(`
-      SELECT conrelid::regclass::text AS table_name, conname
+      SELECT conrelid::regclass::text AS table_name,
+             conname,
+             pg_get_constraintdef(oid) AS def
       FROM pg_constraint
       WHERE contype = 'f'
         AND connamespace = 'public'::regnamespace
     `);
     for (const fk of fkRes.rows) {
       await client.query(
-        `ALTER TABLE ${fk.table_name} ALTER CONSTRAINT "${fk.conname}" DEFERRABLE INITIALLY DEFERRED`,
+        `ALTER TABLE ${fk.table_name} DROP CONSTRAINT "${fk.conname}"`,
       );
     }
-    await client.query("SET CONSTRAINTS ALL DEFERRED");
 
     for (const table of SNAPSHOT_TABLES) {
       const rows = snapshot[table];
@@ -141,6 +142,13 @@ const handleImport = async (req: import("express").Request, res: import("express
       } catch {
         // ignore
       }
+    }
+
+    // Recreate the FK constraints we dropped at the start.
+    for (const fk of fkRes.rows) {
+      await client.query(
+        `ALTER TABLE ${fk.table_name} ADD CONSTRAINT "${fk.conname}" ${fk.def}`,
+      );
     }
 
     await client.query("COMMIT");
