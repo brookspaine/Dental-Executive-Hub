@@ -13,6 +13,7 @@ import seatTasksRouter from "./seatTasks";
 import seatKeyResultsRouter from "./seatKeyResults";
 import vendorPasswordsRouter from "./vendorPasswords";
 import storageRouter from "./storage";
+import yearlyPlanningRouter from "./yearlyPlanning";
 
 const router: IRouter = Router();
 
@@ -30,5 +31,6 @@ router.use(seatTasksRouter);
 router.use(seatKeyResultsRouter);
 router.use(vendorPasswordsRouter);
 router.use(storageRouter);
+router.use(yearlyPlanningRouter);
 
 export default router;

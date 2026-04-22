@@ -1156,19 +1156,31 @@ function EditableRitualItem({
   const isDailyDevotional = item.label
     .toLowerCase()
     .includes("daily devotional");
+  const isLivingYourBestYearEver = item.label
+    .toLowerCase()
+    .includes("living your best year ever");
 
   return (
     <div>
       <div className="flex items-center gap-1.5 px-1 py-0.5 rounded-md">
         <span className="text-muted-foreground text-[10px] leading-none">•</span>
-        <div
-          contentEditable
-          suppressContentEditableWarning
-          className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] whitespace-pre-wrap"
-          onInput={(e) => handleChange(e.currentTarget.textContent || "")}
-          onBlur={handleBlur}
-          dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>') }}
-        />
+        {isLivingYourBestYearEver ? (
+          <a
+            href={`${base}living-your-best-year-ever`}
+            className="text-[11px] leading-tight font-medium flex-1 text-primary underline hover:text-primary/80 cursor-pointer"
+          >
+            {item.label}
+          </a>
+        ) : (
+          <div
+            contentEditable
+            suppressContentEditableWarning
+            className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] whitespace-pre-wrap"
+            onInput={(e) => handleChange(e.currentTarget.textContent || "")}
+            onBlur={handleBlur}
+            dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>') }}
+          />
+        )}
         {isDailyDevotional && <DailyDevotionalPlayer />}
       </div>
       {showJournalPrompts && (
