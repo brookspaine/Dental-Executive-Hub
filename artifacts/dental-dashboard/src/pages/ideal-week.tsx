@@ -1115,6 +1115,27 @@ function EditableRitualItem({
   const [value, setValue] = useState(item.label);
   const [dirty, setDirty] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const editorRef = useRef<HTMLDivElement | null>(null);
+
+  const labelToHtml = (label: string) =>
+    label.replace(
+      /(https?:\/\/\S+)/g,
+      '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>'
+    );
+
+  // Imperatively sync the contentEditable HTML when the underlying item.label
+  // changes from the outside and the user is not currently editing. This
+  // avoids React re-rendering the contentEditable mid-typing (which would
+  // jump the cursor to the start).
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (dirty) return;
+    const next = labelToHtml(item.label);
+    if (editorRef.current.innerHTML !== next) {
+      editorRef.current.innerHTML = next;
+    }
+    setValue(item.label);
+  }, [item.label, dirty]);
 
   const updateItem = useMutation({
     mutationFn: async (label: string) => {
@@ -1125,9 +1146,19 @@ function EditableRitualItem({
       });
       return res.json();
     },
-    onSuccess: () => {
+    onSuccess: (updated: any) => {
       setDirty(false);
-      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+      // Patch the cached list in place instead of invalidating, so the
+      // contentEditable is not torn down/re-rendered while the user types.
+      queryClient.setQueriesData(
+        { queryKey: ["ritual-items", category] },
+        (prev: any) => {
+          if (!Array.isArray(prev)) return prev;
+          return prev.map((it: any) =>
+            it && it.id === item.id ? { ...it, ...updated } : it
+          );
+        }
+      );
     },
   });
 
@@ -1173,12 +1204,12 @@ function EditableRitualItem({
           </a>
         ) : (
           <div
+            ref={editorRef}
             contentEditable
             suppressContentEditableWarning
             className="text-[11px] leading-tight font-medium flex-1 outline-none focus:bg-muted/30 rounded px-0.5 cursor-text min-h-[16px] whitespace-pre-wrap"
             onInput={(e) => handleChange(e.currentTarget.textContent || "")}
             onBlur={handleBlur}
-            dangerouslySetInnerHTML={{ __html: item.label.replace(/(https?:\/\/\S+)/g, '<a href="$1" target="_blank" rel="noopener noreferrer" class="text-[10px] text-primary underline">$1</a>') }}
           />
         )}
         {isDailyDevotional && <DailyDevotionalPlayer />}
