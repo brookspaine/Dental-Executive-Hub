@@ -48,9 +48,11 @@ function findSnapshotPath(): string | null {
   return null;
 }
 
-router.post("/admin/import-snapshot", async (req, res) => {
+const handleImport = async (req: import("express").Request, res: import("express").Response) => {
   const expected = process.env["ADMIN_IMPORT_TOKEN"];
-  const provided = req.header("x-admin-token");
+  const provided =
+    req.header("x-admin-token") ||
+    (typeof req.query["token"] === "string" ? req.query["token"] : undefined);
   if (!expected || !provided || provided !== expected) {
     return res.status(401).json({ error: "unauthorized" });
   }
@@ -140,6 +142,9 @@ router.post("/admin/import-snapshot", async (req, res) => {
   }
 
   return res.json({ ok: true, summary });
-});
+};
+
+router.post("/admin/import-snapshot", handleImport);
+router.get("/admin/import-snapshot", handleImport);
 
 export default router;
