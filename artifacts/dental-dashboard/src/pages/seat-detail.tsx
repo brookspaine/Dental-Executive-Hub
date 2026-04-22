@@ -987,12 +987,7 @@ function KeyResultCard({
       <CardContent className="p-4 space-y-3">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] uppercase tracking-wide font-semibold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                Key Result
-              </span>
-            </div>
-            <div className="mt-1.5 text-base font-semibold leading-snug">
+            <div className="text-base font-semibold leading-snug">
               <InlineEditableText
                 value={kr.title}
                 onSave={(next) => {
