@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { eq, asc, desc, sql } from "drizzle-orm";
+import { eq, asc, desc, sql, and, lt, inArray } from "drizzle-orm";
 import {
   db,
   meetingSeriesTable,
@@ -306,6 +306,64 @@ router.delete("/meeting-key-topics/:id", async (req, res): Promise<void> => {
   await db.delete(meetingKeyTopicsTable).where(eq(meetingKeyTopicsTable.id, id));
   res.sendStatus(204);
 });
+
+// Action items from previous agendas in the same series that are still incomplete
+router.get(
+  "/meeting-agendas/:id/previous-incomplete",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const [current] = await db
+      .select()
+      .from(meetingAgendasTable)
+      .where(eq(meetingAgendasTable.id, id));
+    if (!current) {
+      res.status(404).json({ error: "Not found" });
+      return;
+    }
+    const priorAgendas = await db
+      .select({
+        id: meetingAgendasTable.id,
+        name: meetingAgendasTable.name,
+        createdAt: meetingAgendasTable.createdAt,
+      })
+      .from(meetingAgendasTable)
+      .where(
+        and(
+          eq(meetingAgendasTable.seriesId, current.seriesId),
+          lt(meetingAgendasTable.createdAt, current.createdAt)
+        )
+      );
+    if (priorAgendas.length === 0) {
+      res.json([]);
+      return;
+    }
+    const priorIds = priorAgendas.map((a) => a.id);
+    const items = await db
+      .select()
+      .from(meetingActionItemsTable)
+      .where(
+        and(
+          inArray(meetingActionItemsTable.agendaId, priorIds),
+          eq(meetingActionItemsTable.completed, false)
+        )
+      )
+      .orderBy(desc(meetingActionItemsTable.createdAt));
+    const agendaById = new Map(
+      priorAgendas.map((a) => [a.id, { name: a.name, createdAt: a.createdAt }])
+    );
+    res.json(
+      items.map((it) => ({
+        ...it,
+        fromAgendaName: agendaById.get(it.agendaId)?.name ?? null,
+        fromAgendaCreatedAt: agendaById.get(it.agendaId)?.createdAt ?? null,
+      }))
+    );
+  }
+);
 
 // ----- Action Items -----
 

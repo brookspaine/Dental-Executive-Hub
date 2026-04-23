@@ -154,13 +154,18 @@ export function MeetingsAgenda() {
       </Select>
 
       {current.type === "notes" && agenda && (
-        <NotesSection
-          agendaId={agendaId}
-          sectionKey={current.key}
-          label={current.label}
-          description={current.description}
-          initialValue={agenda.sectionData?.[current.key] ?? ""}
-        />
+        <>
+          {current.key === "closeTheLoop" && (
+            <PreviousIncompleteSection agendaId={agendaId} />
+          )}
+          <NotesSection
+            agendaId={agendaId}
+            sectionKey={current.key}
+            label={current.label}
+            description={current.description}
+            initialValue={agenda.sectionData?.[current.key] ?? ""}
+          />
+        </>
       )}
 
       {current.type === "keyTopics" && (
@@ -239,6 +244,101 @@ function NotesSection({
           <Lock className="w-3 h-3" />
           {savedAt ? "Saved" : "Changes Saved Automatically"}
         </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+type PriorActionItem = ActionItem & {
+  fromAgendaName: string | null;
+  fromAgendaCreatedAt: string | null;
+};
+
+function PreviousIncompleteSection({ agendaId }: { agendaId: number }) {
+  const queryClient = useQueryClient();
+  const { data: items = [], isLoading } = useQuery<PriorActionItem[]>({
+    queryKey: [`/api/meeting-agendas/${agendaId}/previous-incomplete`],
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/meeting-agendas/${agendaId}/previous-incomplete`
+      );
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+  });
+
+  const completeMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/meeting-action-items/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ completed: true }),
+      });
+      if (!res.ok) throw new Error("Failed");
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/meeting-agendas/${agendaId}/previous-incomplete`],
+      });
+    },
+  });
+
+  return (
+    <Card>
+      <CardContent className="p-5 space-y-3">
+        <div>
+          <h2 className="text-lg font-bold">Previous Open Action Items</h2>
+          <p className="text-sm text-muted-foreground">
+            Carryovers from earlier agendas in this series. Check them off as
+            you close the loop.
+          </p>
+        </div>
+        {isLoading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : items.length === 0 ? (
+          <div className="text-sm text-muted-foreground py-4 text-center">
+            Nothing outstanding from previous meetings.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {items.map((a) => (
+              <div
+                key={a.id}
+                className="flex items-start gap-3 p-3 border rounded-md"
+              >
+                <button
+                  onClick={() => completeMutation.mutate(a.id)}
+                  className="mt-0.5 w-5 h-5 rounded border border-muted-foreground/40 flex items-center justify-center shrink-0 hover:bg-muted"
+                  aria-label="Mark complete"
+                >
+                  <Check className="w-3 h-3 opacity-0 hover:opacity-50" />
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium">{a.item}</div>
+                  <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
+                    {a.owner && (
+                      <div className="flex items-center gap-1.5">
+                        <Avatar className="w-5 h-5">
+                          <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
+                            {initials(a.owner)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span>{a.owner}</span>
+                      </div>
+                    )}
+                    {a.dueDate && <span>Due {a.dueDate}</span>}
+                    {a.fromAgendaName && (
+                      <span className="italic">
+                        From: {a.fromAgendaName}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
