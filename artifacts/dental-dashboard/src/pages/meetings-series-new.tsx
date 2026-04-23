@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ChevronLeft, X, Plus, Search } from "lucide-react";
+import { useMeetingOrgOptions } from "@/lib/meeting-orgs";
 
 function initials(name: string): string {
   return name
@@ -29,6 +30,8 @@ export function MeetingsSeriesNew() {
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
+  const [organization, setOrganization] = useState<string>("");
+  const { options: orgOptions } = useMeetingOrgOptions();
   const [memberInput, setMemberInput] = useState("");
   const [members, setMembers] = useState<string[]>(["Brooks Paine"]);
   const [desiredFuture, setDesiredFuture] = useState(
@@ -43,6 +46,7 @@ export function MeetingsSeriesNew() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
+          organization: organization || null,
           members,
           desiredFuture,
           desiredFutureStatus: status,
@@ -97,6 +101,24 @@ export function MeetingsSeriesNew() {
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Weekly Growth Meeting"
               />
+              <div className="pt-2 space-y-1">
+                <p className="text-sm font-medium">Organization</p>
+                <p className="text-xs text-muted-foreground">
+                  Which part of the business is this meeting for?
+                </p>
+                <Select value={organization} onValueChange={setOrganization}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select organization or location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {orgOptions.map((o) => (
+                      <SelectItem key={o.value} value={o.value}>
+                        {o.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -204,7 +226,7 @@ export function MeetingsSeriesNew() {
           <div className="flex justify-center pt-2">
             <Button
               onClick={() => createMutation.mutate()}
-              disabled={!name.trim() || createMutation.isPending}
+              disabled={!name.trim() || !organization || createMutation.isPending}
               size="lg"
             >
               {createMutation.isPending ? "Creating…" : "Create Series"}

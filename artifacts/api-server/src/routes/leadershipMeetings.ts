@@ -51,10 +51,14 @@ router.post("/meeting-series", async (req, res): Promise<void> => {
     typeof req.body?.desiredFutureStatus === "string"
       ? req.body.desiredFutureStatus
       : "on-pace";
+  const organization =
+    typeof req.body?.organization === "string" && req.body.organization.trim()
+      ? req.body.organization.trim()
+      : null;
 
   const [row] = await db
     .insert(meetingSeriesTable)
-    .values({ name, members, desiredFuture, desiredFutureStatus })
+    .values({ name, members, desiredFuture, desiredFutureStatus, organization })
     .returning();
   res.status(201).json(row);
 });
@@ -92,6 +96,9 @@ router.patch("/meeting-series/:id", async (req, res): Promise<void> => {
     updates.desiredFuture = req.body.desiredFuture;
   if (typeof req.body?.desiredFutureStatus === "string")
     updates.desiredFutureStatus = req.body.desiredFutureStatus;
+  if (typeof req.body?.organization === "string")
+    updates.organization = req.body.organization.trim() || null;
+  if (req.body?.organization === null) updates.organization = null;
 
   const [row] = await db
     .update(meetingSeriesTable)

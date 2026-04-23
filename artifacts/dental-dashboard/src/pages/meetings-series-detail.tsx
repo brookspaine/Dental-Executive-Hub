@@ -3,11 +3,13 @@ import { Link, useLocation, useParams } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { ChevronLeft, Plus, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ChevronLeft, Plus, Pencil, Building2 } from "lucide-react";
 
 type Series = {
   id: number;
   name: string;
+  organization: string | null;
   members: string[];
 };
 
@@ -97,6 +99,12 @@ export function MeetingsSeriesDetail() {
           <h1 className="text-3xl font-bold tracking-tight">
             {series?.name ?? "Loading…"}
           </h1>
+          {series?.organization && (
+            <Badge variant="secondary" className="font-normal">
+              <Building2 className="w-3 h-3 mr-1" />
+              {series.organization}
+            </Badge>
+          )}
           <div className="flex -space-x-2">
             {(series?.members ?? []).map((m, i) => (
               <Avatar key={i} className="w-8 h-8 border-2 border-background">

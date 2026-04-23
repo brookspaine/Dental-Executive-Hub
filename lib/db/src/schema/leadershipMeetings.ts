@@ -11,6 +11,7 @@ import {
 export const meetingSeriesTable = pgTable("meeting_series", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
+  organization: text("organization"),
   members: jsonb("members").$type<string[]>().notNull().default([]),
   desiredFuture: text("desired_future"),
   desiredFutureStatus: text("desired_future_status").default("on-pace"),
