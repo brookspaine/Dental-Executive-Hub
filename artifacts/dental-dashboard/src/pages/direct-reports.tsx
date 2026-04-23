@@ -147,7 +147,7 @@ export function DirectReports() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Direct Reports</h2>
+          <h2 className="text-2xl font-bold tracking-tight">Manage Company</h2>
           <p className="text-muted-foreground text-sm mt-1">
             Your leadership team across all locations
           </p>
