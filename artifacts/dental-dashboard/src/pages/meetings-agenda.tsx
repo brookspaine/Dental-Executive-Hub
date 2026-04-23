@@ -90,14 +90,15 @@ type KeyTopic = {
 };
 
 type ActionItem = {
+  source: "meeting" | "seatTask";
   id: number;
-  agendaId: number;
   item: string;
   owner: string | null;
   dueDate: string | null;
   isDailyTop3: boolean;
   notes: string | null;
   completed: boolean;
+  seatTitle: string | null;
 };
 
 function initials(name: string): string {
@@ -470,11 +471,27 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: async ({ id, completed }: { id: number; completed: boolean }) => {
-      const res = await fetch(`/api/meeting-action-items/${id}`, {
+    mutationFn: async ({
+      id,
+      completed,
+      source,
+    }: {
+      id: number;
+      completed: boolean;
+      source: ActionItem["source"];
+    }) => {
+      const url =
+        source === "seatTask"
+          ? `/api/seat-tasks/${id}`
+          : `/api/meeting-action-items/${id}`;
+      const body =
+        source === "seatTask"
+          ? JSON.stringify({ completed, status: completed ? "done" : "todo" })
+          : JSON.stringify({ completed });
+      const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed }),
+        body,
       });
       if (!res.ok) throw new Error("Failed");
       return res.json();
@@ -487,7 +504,14 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: number) => {
+    mutationFn: async ({
+      id,
+      source,
+    }: {
+      id: number;
+      source: ActionItem["source"];
+    }) => {
+      if (source === "seatTask") return;
       await fetch(`/api/meeting-action-items/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
@@ -519,7 +543,7 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
           <div className="space-y-2">
             {items.map((a) => (
               <div
-                key={a.id}
+                key={`${a.source}-${a.id}`}
                 className="flex items-start gap-3 p-3 border rounded-md"
               >
                 <button
@@ -527,6 +551,7 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
                     toggleMutation.mutate({
                       id: a.id,
                       completed: !a.completed,
+                      source: a.source,
                     })
                   }
                   className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center shrink-0 ${
@@ -563,6 +588,14 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
                         Daily Top 3
                       </span>
                     )}
+                    {a.source === "seatTask" && (
+                      <span
+                        className="px-1.5 py-0.5 rounded bg-secondary text-foreground/80 font-medium"
+                        title={a.seatTitle ?? undefined}
+                      >
+                        Org Chart{a.seatTitle ? ` · ${a.seatTitle}` : ""}
+                      </span>
+                    )}
                   </div>
                   {a.notes && (
                     <div className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">
@@ -570,13 +603,17 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
                     </div>
                   )}
                 </div>
-                <button
-                  onClick={() => deleteMutation.mutate(a.id)}
-                  className="text-muted-foreground hover:text-destructive"
-                  aria-label="Delete"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                {a.source === "meeting" ? (
+                  <button
+                    onClick={() =>
+                      deleteMutation.mutate({ id: a.id, source: a.source })
+                    }
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                ) : null}
               </div>
             ))}
           </div>
