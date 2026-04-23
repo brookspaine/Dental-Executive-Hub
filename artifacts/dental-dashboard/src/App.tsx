@@ -16,6 +16,9 @@ import { VisionBoard } from "@/pages/vision-board";
 import { DirectReports } from "@/pages/direct-reports";
 import { WeeklyReview } from "@/pages/weekly-review";
 import { MeetingsLeadership } from "@/pages/meetings-leadership";
+import { MeetingsSeriesNew } from "@/pages/meetings-series-new";
+import { MeetingsSeriesDetail } from "@/pages/meetings-series-detail";
+import { MeetingsAgenda } from "@/pages/meetings-agenda";
 import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
 
 const queryClient = new QueryClient();
@@ -37,6 +40,9 @@ function Router() {
         <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/meetings/leadership" component={MeetingsLeadership} />
+        <Route path="/meetings/leadership/new" component={MeetingsSeriesNew} />
+        <Route path="/meetings/leadership/series/:id" component={MeetingsSeriesDetail} />
+        <Route path="/meetings/leadership/agendas/:id" component={MeetingsAgenda} />
         <Route path="/meetings/one-on-ones" component={MeetingsOneOnOnes} />
         <Route component={NotFound} />
       </Switch>

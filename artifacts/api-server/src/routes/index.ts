@@ -15,6 +15,7 @@ import vendorPasswordsRouter from "./vendorPasswords";
 import storageRouter from "./storage";
 import yearlyPlanningRouter from "./yearlyPlanning";
 import weeklyReviewRouter from "./weeklyReview";
+import leadershipMeetingsRouter from "./leadershipMeetings";
 
 const router: IRouter = Router();
 
@@ -34,5 +35,6 @@ router.use(vendorPasswordsRouter);
 router.use(storageRouter);
 router.use(yearlyPlanningRouter);
 router.use(weeklyReviewRouter);
+router.use(leadershipMeetingsRouter);
 
 export default router;
