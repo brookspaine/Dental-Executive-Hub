@@ -20,14 +20,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  ChevronLeft,
-  Mic,
-  Plus,
-  Lock,
-  Trash2,
-  Check,
-} from "lucide-react";
+import { ChevronLeft, Plus, Lock, Trash2, Check } from "lucide-react";
 
 const SECTIONS = [
   {
@@ -135,23 +128,17 @@ export function MeetingsAgenda() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-4">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <Link
-          href={
-            agenda
-              ? `/meetings/leadership/series/${agenda.seriesId}`
-              : "/meetings/leadership"
-          }
-          className="inline-flex items-center gap-1 text-2xl font-bold hover:text-primary transition-colors"
-        >
-          <ChevronLeft className="w-6 h-6 text-primary" />
-          {agenda?.name ?? "Weekly Agenda"}
-        </Link>
-        <Button variant="outline" disabled>
-          <Mic className="w-4 h-4 mr-2" />
-          Record Audio
-        </Button>
-      </div>
+      <Link
+        href={
+          agenda
+            ? `/meetings/leadership/series/${agenda.seriesId}`
+            : "/meetings/leadership"
+        }
+        className="inline-flex items-center gap-1 text-2xl font-bold hover:text-primary transition-colors"
+      >
+        <ChevronLeft className="w-6 h-6 text-primary" />
+        {agenda?.name ?? "Weekly Agenda"}
+      </Link>
 
       <Select value={section} onValueChange={setSection}>
         <SelectTrigger className="w-full bg-background">
