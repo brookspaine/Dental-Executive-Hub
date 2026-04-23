@@ -14,7 +14,6 @@ import { IdealWeek } from "@/pages/ideal-week";
 import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
 import { VisionBoard } from "@/pages/vision-board";
 import { DirectReports } from "@/pages/direct-reports";
-import { Announcements } from "@/pages/announcements";
 import { WeeklyReview } from "@/pages/weekly-review";
 import { MeetingsLeadership } from "@/pages/meetings-leadership";
 import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
@@ -37,7 +36,6 @@ function Router() {
         <Route path="/org-chart" component={OrgChart} />
         <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
-        <Route path="/announcements" component={Announcements} />
         <Route path="/meetings/leadership" component={MeetingsLeadership} />
         <Route path="/meetings/one-on-ones" component={MeetingsOneOnOnes} />
         <Route component={NotFound} />

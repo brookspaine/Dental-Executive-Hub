@@ -4,7 +4,6 @@ import {
   Activity,
   Building2,
   LayoutDashboard,
-  Megaphone,
   Users,
   Bell,
   Zap,
@@ -38,7 +37,6 @@ const navItems: NavItem[] = [
   { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/direct-reports", label: "Direct Reports", icon: Users },
-  { href: "/announcements", label: "Announcements", icon: Megaphone },
   {
     label: "Meetings",
     icon: CalendarDays,
