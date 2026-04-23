@@ -20,6 +20,7 @@ import { MeetingsSeriesNew } from "@/pages/meetings-series-new";
 import { MeetingsSeriesDetail } from "@/pages/meetings-series-detail";
 import { MeetingsAgenda } from "@/pages/meetings-agenda";
 import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
+import { TeamPlaceholder } from "@/pages/team-placeholder";
 
 const queryClient = new QueryClient();
 
@@ -39,6 +40,30 @@ function Router() {
         <Route path="/org-chart" component={OrgChart} />
         <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
+        <Route path="/team/reports">
+          <TeamPlaceholder
+            title="Team Reports"
+            description="Reports submitted by your team."
+          />
+        </Route>
+        <Route path="/team/my-reports">
+          <TeamPlaceholder
+            title="My Reports"
+            description="Reports you have submitted."
+          />
+        </Route>
+        <Route path="/team/fill-out-a-report">
+          <TeamPlaceholder
+            title="Fill Out a Report"
+            description="Submit a new report for review."
+          />
+        </Route>
+        <Route path="/team/kra-assistant">
+          <TeamPlaceholder
+            title="KRA Assistant"
+            description="Get help defining Key Result Areas for any role."
+          />
+        </Route>
         <Route path="/meetings/leadership" component={MeetingsLeadership} />
         <Route path="/meetings/leadership/new" component={MeetingsSeriesNew} />
         <Route path="/meetings/leadership/series/:id" component={MeetingsSeriesDetail} />

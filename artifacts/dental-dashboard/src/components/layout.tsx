@@ -36,7 +36,17 @@ const navItems: NavItem[] = [
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
-  { href: "/direct-reports", label: "Direct Reports", icon: Users },
+  {
+    label: "Team",
+    icon: Users,
+    children: [
+      { href: "/team/reports", label: "Team Reports" },
+      { href: "/team/my-reports", label: "My Reports" },
+      { href: "/team/fill-out-a-report", label: "Fill Out a Report" },
+      { href: "/direct-reports", label: "Manage Company" },
+      { href: "/team/kra-assistant", label: "KRA Assistant" },
+    ],
+  },
   {
     label: "Meetings",
     icon: CalendarDays,
