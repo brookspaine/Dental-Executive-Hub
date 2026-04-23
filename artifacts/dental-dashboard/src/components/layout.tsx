@@ -11,6 +11,8 @@ import {
   CalendarCheck,
   Network,
   Menu,
+  ChevronDown,
+  CalendarDays,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -21,7 +23,15 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-const navItems = [
+type NavLeaf = { href: string; label: string; icon: any };
+type NavGroup = {
+  label: string;
+  icon: any;
+  children: { href: string; label: string }[];
+};
+type NavItem = NavLeaf | NavGroup;
+
+const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
@@ -29,7 +39,27 @@ const navItems = [
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/direct-reports", label: "Direct Reports", icon: Users },
   { href: "/announcements", label: "Announcements", icon: Megaphone },
+  {
+    label: "Meetings",
+    icon: CalendarDays,
+    children: [
+      { href: "/meetings/leadership", label: "Leadership Team" },
+      { href: "/meetings/one-on-ones", label: "1-on-1s" },
+    ],
+  },
 ];
+
+function isGroup(item: NavItem): item is NavGroup {
+  return (item as NavGroup).children !== undefined;
+}
+
+function flattenLabel(item: NavItem, location: string): string | null {
+  if (isGroup(item)) {
+    const child = item.children.find((c) => c.href === location);
+    return child ? child.label : null;
+  }
+  return item.href === location ? item.label : null;
+}
 
 function NavList({
   location,
@@ -38,9 +68,81 @@ function NavList({
   location: string;
   onNavigate?: () => void;
 }) {
+  // Track which groups are expanded. Auto-expand a group if its child is active.
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const item of navItems) {
+      if (isGroup(item)) {
+        initial[item.label] = item.children.some((c) => c.href === location);
+      }
+    }
+    return initial;
+  });
+
+  useEffect(() => {
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      for (const item of navItems) {
+        if (isGroup(item) && item.children.some((c) => c.href === location)) {
+          next[item.label] = true;
+        }
+      }
+      return next;
+    });
+  }, [location]);
+
   return (
-    <nav className="flex-1 px-3 space-y-1">
+    <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
       {navItems.map((item) => {
+        if (isGroup(item)) {
+          const open = !!openGroups[item.label];
+          const hasActiveChild = item.children.some((c) => c.href === location);
+          return (
+            <div key={item.label}>
+              <button
+                type="button"
+                onClick={() =>
+                  setOpenGroups((p) => ({ ...p, [item.label]: !p[item.label] }))
+                }
+                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  hasActiveChild
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+                aria-expanded={open}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                <span className="truncate flex-1 text-left">{item.label}</span>
+                <ChevronDown
+                  className={`h-4 w-4 shrink-0 transition-transform ${
+                    open ? "rotate-0" : "-rotate-90"
+                  }`}
+                />
+              </button>
+              {open && (
+                <div className="mt-1 ml-7 space-y-1 border-l pl-3">
+                  {item.children.map((child) => {
+                    const childActive = location === child.href;
+                    return (
+                      <Link key={child.href} href={child.href}>
+                        <span
+                          onClick={onNavigate}
+                          className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                            childActive
+                              ? "bg-primary text-primary-foreground font-medium"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          }`}
+                        >
+                          {child.label}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
         const isActive = location === item.href;
         return (
           <Link key={item.href} href={item.href}>
@@ -102,7 +204,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [location]);
 
   const currentLabel =
-    navItems.find((i) => i.href === location)?.label || "Dashboard";
+    navItems.map((i) => flattenLabel(i, location)).find((l) => l) || "Dashboard";
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
