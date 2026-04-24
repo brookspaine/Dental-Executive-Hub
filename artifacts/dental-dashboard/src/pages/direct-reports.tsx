@@ -46,6 +46,8 @@ import {
   ArrowUpDown,
   Shield,
   Bell,
+  Mail,
+  Phone,
 } from "lucide-react";
 
 type ReportFormData = {
