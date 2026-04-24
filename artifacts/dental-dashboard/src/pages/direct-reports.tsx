@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListDirectReports,
+  useListOrganizations,
   useCreateDirectReport,
   useUpdateDirectReport,
   useDeleteDirectReport,
@@ -105,6 +106,14 @@ const statusClasses: Record<string, string> = {
   inactive: "text-muted-foreground",
 };
 
+function formatCompanyLabel(o: any): string {
+  const name = (o?.name ?? "").trim();
+  const cat = o?.category;
+  if (cat === "edge_dso") return "EDGE DSO";
+  if (cat === "edge") return `EDGE - ${name}`;
+  return name;
+}
+
 function getInitials(name: string) {
   return name
     .split(/\s+/)
@@ -118,6 +127,7 @@ function getInitials(name: string) {
 export function DirectReports() {
   const queryClient = useQueryClient();
   const { data: reports, isLoading } = useListDirectReports();
+  const { data: organizations } = useListOrganizations();
   const createReport = useCreateDirectReport();
   const updateReport = useUpdateDirectReport();
   const deleteReport = useDeleteDirectReport();
@@ -126,6 +136,7 @@ export function DirectReports() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ReportFormData>(emptyForm);
   const [search, setSearch] = useState("");
+  const [orgFilter, setOrgFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [detailMember, setDetailMember] = useState<any | null>(null);
@@ -215,8 +226,17 @@ export function DirectReports() {
   const visible = useMemo(() => {
     const list = (reports ?? []) as any[];
     const q = search.trim().toLowerCase();
+    const orgFiltered =
+      orgFilter === "all"
+        ? list
+        : list.filter(
+            (r) =>
+              ((r.organization || r.organizationName || "") as string)
+                .trim()
+                .toLowerCase() === orgFilter.trim().toLowerCase(),
+          );
     const filtered = q
-      ? list.filter(
+      ? orgFiltered.filter(
           (r) =>
             r.name?.toLowerCase().includes(q) ||
             r.email?.toLowerCase().includes(q) ||
@@ -225,7 +245,7 @@ export function DirectReports() {
               .toLowerCase()
               .includes(q)
         )
-      : list;
+      : orgFiltered;
     const reportsTo = (r: any) => r.organization || r.organizationName || "";
     const sorted = [...filtered].sort((a, b) => {
       let av = "";
@@ -244,7 +264,7 @@ export function DirectReports() {
       return sortDir === "asc" ? cmp : -cmp;
     });
     return sorted;
-  }, [reports, search, sortKey, sortDir]);
+  }, [reports, search, sortKey, sortDir, orgFilter]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -441,7 +461,27 @@ export function DirectReports() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div className="w-full sm:w-72">
+          <Select value={orgFilter} onValueChange={setOrgFilter}>
+            <SelectTrigger className="h-10">
+              <SelectValue placeholder="Filter by company" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Companies</SelectItem>
+              {(organizations ?? [])
+                .slice()
+                .sort((a: any, b: any) =>
+                  formatCompanyLabel(a).localeCompare(formatCompanyLabel(b)),
+                )
+                .map((o: any) => (
+                  <SelectItem key={o.id} value={(o.name ?? "").trim()}>
+                    {formatCompanyLabel(o)}
+                  </SelectItem>
+                ))}
+            </SelectContent>
+          </Select>
+        </div>
         <div className="relative w-full sm:w-80">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
