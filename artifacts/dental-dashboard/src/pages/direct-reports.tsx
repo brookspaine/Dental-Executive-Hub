@@ -851,11 +851,6 @@ export function DirectReports() {
                 <h3 className="mt-2 text-lg font-semibold leading-tight">
                   {detailMember.name}
                 </h3>
-                {detailMember.role && (
-                  <p className="text-xs text-muted-foreground">
-                    {detailMember.role}
-                  </p>
-                )}
                 <span
                   className={`mt-1 text-xs font-medium ${
                     statusClasses[detailMember.status] ?? ""
