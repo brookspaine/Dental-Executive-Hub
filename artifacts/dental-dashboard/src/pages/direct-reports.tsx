@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
@@ -110,6 +111,8 @@ export function DirectReports() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [detailMember, setDetailMember] = useState<any | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [weeklyReminders, setWeeklyReminders] = useState(true);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
@@ -248,7 +251,10 @@ export function DirectReports() {
             <Shield className="h-4 w-4" />
             Administrators
           </button>
-          <button className="flex items-center gap-1.5 text-primary hover:underline">
+          <button
+            onClick={() => setNotificationsOpen(true)}
+            className="flex items-center gap-1.5 text-primary hover:underline"
+          >
             <Bell className="h-4 w-4" />
             Notification Preferences
           </button>
@@ -506,6 +512,48 @@ export function DirectReports() {
           </div>
         )}
       </Card>
+
+      <Sheet open={notificationsOpen} onOpenChange={setNotificationsOpen}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          <SheetHeader className="text-left">
+            <SheetTitle className="text-xl">Notification Preferences</SheetTitle>
+          </SheetHeader>
+          <div className="mt-6 space-y-6">
+            <section className="space-y-3">
+              <h4 className="font-bold text-base">Get notified. Build habits.</h4>
+              <p className="text-sm text-muted-foreground">
+                Building a habit is hard! Get help with reminders from Brooks
+                Paine. Turning this setting ON will allow the system to:
+              </p>
+              <ul className="list-disc pl-5 space-y-2 text-sm text-muted-foreground">
+                <li>
+                  Email your team every Friday, reminding them to fill out a
+                  report for the week.
+                </li>
+                <li>
+                  Email your leaders every Monday, reminding them to review
+                  their team's reports.
+                </li>
+              </ul>
+            </section>
+
+            <section className="space-y-3">
+              <h4 className="font-bold text-base">Allow Weekly Reminders</h4>
+              <div className="flex items-start gap-3">
+                <Switch
+                  checked={weeklyReminders}
+                  onCheckedChange={setWeeklyReminders}
+                  className="mt-0.5"
+                />
+                <Label className="text-sm font-normal leading-snug cursor-pointer">
+                  Allow weekly report reminder emails for you and your
+                  organization.
+                </Label>
+              </div>
+            </section>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       <Sheet
         open={!!detailMember}
