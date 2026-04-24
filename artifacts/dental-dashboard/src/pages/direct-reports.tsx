@@ -288,7 +288,7 @@ export function DirectReports() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <h2 className="text-2xl font-bold tracking-tight">Manage Company</h2>
+        <h2 className="text-2xl font-bold tracking-tight">Manage Teams</h2>
         <div className="flex items-center gap-4 flex-wrap text-sm">
           <button className="flex items-center gap-1.5 text-primary hover:underline">
             <Shield className="h-4 w-4" />

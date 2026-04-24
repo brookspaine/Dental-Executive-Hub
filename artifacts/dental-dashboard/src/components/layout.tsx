@@ -43,7 +43,7 @@ const navItems: NavItem[] = [
       { href: "/team/reports", label: "Team Reports" },
       { href: "/team/my-reports", label: "My Reports" },
       { href: "/team/fill-out-a-report", label: "Fill Out a Report" },
-      { href: "/direct-reports", label: "Manage Company" },
+      { href: "/direct-reports", label: "Manage Teams" },
     ],
   },
   {
