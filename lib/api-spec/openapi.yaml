@@ -1266,7 +1266,7 @@ components:
           type: string
         status:
           type: string
-          enum: [active, on_leave, inactive]
+          enum: [active, invite_not_sent, on_leave, inactive]
         hireDate:
           type: string
           format: date
@@ -1302,7 +1302,7 @@ components:
           type: string
         status:
           type: string
-          enum: [active, on_leave, inactive]
+          enum: [active, invite_not_sent, on_leave, inactive]
         hireDate:
           type: string
           format: date
@@ -1332,7 +1332,7 @@ components:
           type: string
         status:
           type: string
-          enum: [active, on_leave, inactive]
+          enum: [active, invite_not_sent, on_leave, inactive]
         hireDate:
           type: string
           format: date

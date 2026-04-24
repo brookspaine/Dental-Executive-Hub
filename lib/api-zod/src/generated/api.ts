@@ -261,7 +261,7 @@ export const ListDirectReportsResponseItem = zod.object({
   organizationId: zod.number().optional(),
   organization: zod.string().optional(),
   organizationName: zod.string().optional(),
-  status: zod.enum(["active", "on_leave", "inactive"]),
+  status: zod.enum(["active", "invite_not_sent", "on_leave", "inactive"]),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
@@ -281,7 +281,9 @@ export const CreateDirectReportBody = zod.object({
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
   organization: zod.string().optional(),
-  status: zod.enum(["active", "on_leave", "inactive"]).optional(),
+  status: zod
+    .enum(["active", "invite_not_sent", "on_leave", "inactive"])
+    .optional(),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
@@ -303,7 +305,7 @@ export const GetDirectReportResponse = zod.object({
   organizationId: zod.number().optional(),
   organization: zod.string().optional(),
   organizationName: zod.string().optional(),
-  status: zod.enum(["active", "on_leave", "inactive"]),
+  status: zod.enum(["active", "invite_not_sent", "on_leave", "inactive"]),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
@@ -324,7 +326,9 @@ export const UpdateDirectReportBody = zod.object({
   phone: zod.string().optional(),
   organizationId: zod.number().optional(),
   organization: zod.string().optional(),
-  status: zod.enum(["active", "on_leave", "inactive"]).optional(),
+  status: zod
+    .enum(["active", "invite_not_sent", "on_leave", "inactive"])
+    .optional(),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
@@ -339,7 +343,7 @@ export const UpdateDirectReportResponse = zod.object({
   organizationId: zod.number().optional(),
   organization: zod.string().optional(),
   organizationName: zod.string().optional(),
-  status: zod.enum(["active", "on_leave", "inactive"]),
+  status: zod.enum(["active", "invite_not_sent", "on_leave", "inactive"]),
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),

@@ -11,6 +11,7 @@ export type CreateDirectReportBodyStatus =
 
 export const CreateDirectReportBodyStatus = {
   active: "active",
+  invite_not_sent: "invite_not_sent",
   on_leave: "on_leave",
   inactive: "inactive",
 } as const;

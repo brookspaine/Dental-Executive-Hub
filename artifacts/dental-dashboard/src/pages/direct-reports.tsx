@@ -54,6 +54,7 @@ import {
   Bell,
   Mail,
   Phone,
+  Send,
 } from "lucide-react";
 
 type ReportFormData = {
@@ -81,12 +82,14 @@ type SortDir = "asc" | "desc";
 
 const statusLabels: Record<string, string> = {
   active: "Active",
+  invite_not_sent: "Invite Not Sent",
   on_leave: "On Leave",
   inactive: "Inactive",
 };
 
 const statusClasses: Record<string, string> = {
   active: "text-emerald-600",
+  invite_not_sent: "text-primary",
   on_leave: "text-amber-600",
   inactive: "text-muted-foreground",
 };
@@ -141,7 +144,7 @@ export function DirectReports() {
       email: form.email,
       organization: reportsToName || undefined,
       organizationId: undefined,
-      status: "active",
+      status: editingId ? undefined : "invite_not_sent",
     };
 
     if (editingId) {
@@ -593,6 +596,44 @@ export function DirectReports() {
               </div>
 
               <div className="px-6 pb-6 space-y-6">
+                {detailMember.status === "invite_not_sent" && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-start gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold">
+                        Invite team member!
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        They'll receive an email invitation to create their
+                        account.
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="border-primary text-primary hover:bg-primary/10 shrink-0"
+                      disabled={updateReport.isPending}
+                      onClick={() => {
+                        const id = detailMember.id;
+                        updateReport.mutate(
+                          { id, data: { status: "active" } as any },
+                          {
+                            onSuccess: () => {
+                              invalidate();
+                              setDetailMember((prev: any) =>
+                                prev && prev.id === id
+                                  ? { ...prev, status: "active" }
+                                  : prev
+                              );
+                            },
+                          }
+                        );
+                      }}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-1.5" />
+                      Send Invite
+                    </Button>
+                  </div>
+                )}
                 <section>
                   <h4 className="text-sm font-semibold mb-3">
                     Personal Information
