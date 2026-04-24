@@ -931,6 +931,19 @@ export function DirectReports() {
                       </span>
                     </div>
                     {(() => {
+                      const isCurrentUser =
+                        (detailMember.name ?? "").trim().toLowerCase() ===
+                        CURRENT_USER_NAME.toLowerCase();
+                      if (isCurrentUser) {
+                        return (
+                          <div className="px-3 py-2">
+                            <div className="text-xs font-medium text-muted-foreground mb-0.5">
+                              Office
+                            </div>
+                            <div className="text-sm font-medium">CEO</div>
+                          </div>
+                        );
+                      }
                       const memberSeats = (allSeats ?? []).filter(
                         (s: any) =>
                           (s.name ?? "").trim().toLowerCase() ===
