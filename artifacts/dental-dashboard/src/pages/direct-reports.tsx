@@ -228,7 +228,7 @@ export function DirectReports() {
         <div className="flex items-center gap-4 flex-wrap text-sm">
           <button className="flex items-center gap-1.5 text-primary hover:underline">
             <Shield className="h-4 w-4" />
-            Elite Administrators
+            Administrators
           </button>
           <button className="flex items-center gap-1.5 text-primary hover:underline">
             <Bell className="h-4 w-4" />
