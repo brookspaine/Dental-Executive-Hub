@@ -945,7 +945,7 @@ export function DirectReports() {
                         return (
                           <div className="px-3 py-2">
                             <div className="text-xs font-medium text-muted-foreground mb-0.5">
-                              Org Chart
+                              Office
                             </div>
                             <div className="text-sm text-muted-foreground italic">
                               Not in any org chart
@@ -956,7 +956,7 @@ export function DirectReports() {
                       return (
                         <div className="px-3 py-2">
                           <div className="text-xs font-medium text-muted-foreground mb-1">
-                            Org Chart
+                            Office
                           </div>
                           <div className="space-y-1">
                             {memberSeats.map((seat: any) => {
