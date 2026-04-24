@@ -840,40 +840,46 @@ export function DirectReports() {
         <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
           {detailMember && (
             <div className="flex flex-col">
-              <SheetHeader className="px-6 pt-6 pb-2">
+              <SheetHeader className="px-6 pt-4 pb-0">
                 <SheetTitle className="sr-only">
                   {detailMember.name}
                 </SheetTitle>
               </SheetHeader>
 
-              <div className="flex flex-col items-center px-6 pt-2 pb-6">
+              <div className="flex flex-col items-center px-6 pt-1 pb-2">
                 <EditableReportPhoto report={detailMember} />
-                <h3 className="mt-4 text-lg font-semibold">
+                <h3 className="mt-2 text-lg font-semibold leading-tight">
                   {detailMember.name}
                 </h3>
                 {detailMember.role && (
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-xs text-muted-foreground">
                     {detailMember.role}
                   </p>
                 )}
+                <span
+                  className={`mt-1 text-xs font-medium ${
+                    statusClasses[detailMember.status] ?? ""
+                  }`}
+                >
+                  {statusLabels[detailMember.status] ?? detailMember.status}
+                </span>
               </div>
 
-              <div className="px-6 pb-6 space-y-6">
+              <div className="px-6 pb-4 space-y-3">
                 {detailMember.status === "invite_not_sent" && (
-                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-start gap-3">
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 flex items-center gap-3">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold">
+                      <p className="text-sm font-semibold leading-tight">
                         Invite team member!
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        They'll receive an email invitation to create their
-                        account.
+                      <p className="text-xs text-muted-foreground">
+                        They'll receive an email invitation.
                       </p>
                     </div>
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-primary text-primary hover:bg-primary/10 shrink-0"
+                      className="h-8 border-primary text-primary hover:bg-primary/10 shrink-0"
                       disabled={updateReport.isPending}
                       onClick={() => {
                         const id = detailMember.id;
@@ -898,76 +904,19 @@ export function DirectReports() {
                   </div>
                 )}
                 <section>
-                  <h4 className="text-sm font-semibold mb-3">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
                     Personal Information
                   </h4>
                   <div className="rounded-lg border bg-card divide-y">
-                    <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex items-center gap-3 px-3 py-2">
                       <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="text-sm font-medium w-16">Email</span>
                       <span className="text-sm text-muted-foreground truncate flex-1">
                         {detailMember.email}
                       </span>
                     </div>
-                    {(() => {
-                      const memberSeats = (allSeats ?? []).filter(
-                        (s: any) =>
-                          (s.name ?? "").trim().toLowerCase() ===
-                          (detailMember.name ?? "").trim().toLowerCase(),
-                      );
-                      if (memberSeats.length === 0) {
-                        return (
-                          <div className="grid grid-cols-2 gap-3 px-4 py-3">
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground mb-1">
-                                Organization
-                              </div>
-                              <div className="text-sm text-muted-foreground italic">
-                                Not in any org chart
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground mb-1">
-                                Role
-                              </div>
-                              <div className="text-sm text-muted-foreground italic">
-                                —
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return memberSeats.map((seat: any) => {
-                        const org = (organizations ?? []).find(
-                          (o: any) => o.id === seat.organizationId,
-                        );
-                        return (
-                          <div
-                            key={seat.id}
-                            className="grid grid-cols-2 gap-3 px-4 py-3"
-                          >
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground mb-1">
-                                Organization
-                              </div>
-                              <div className="text-sm font-medium truncate">
-                                {org ? formatCompanyLabel(org) : "—"}
-                              </div>
-                            </div>
-                            <div>
-                              <div className="text-xs font-medium text-muted-foreground mb-1">
-                                Role
-                              </div>
-                              <div className="text-sm font-medium truncate">
-                                {seat.title ?? "—"}
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      });
-                    })()}
                     {detailMember.phone && (
-                      <div className="flex items-center gap-3 px-4 py-3">
+                      <div className="flex items-center gap-3 px-3 py-2">
                         <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
                         <span className="text-sm font-medium w-16">Phone</span>
                         <span className="text-sm text-muted-foreground truncate flex-1">
@@ -975,7 +924,7 @@ export function DirectReports() {
                         </span>
                       </div>
                     )}
-                    <div className="flex items-center gap-3 px-4 py-3">
+                    <div className="flex items-center gap-3 px-3 py-2">
                       <Users className="h-4 w-4 text-muted-foreground shrink-0" />
                       <span className="text-sm font-medium w-16">
                         Reports
@@ -986,23 +935,59 @@ export function DirectReports() {
                           "—"}
                       </span>
                     </div>
-                    <div className="flex items-center gap-3 px-4 py-3">
-                      <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span className="text-sm font-medium w-16">Status</span>
-                      <span
-                        className={`text-sm flex-1 ${
-                          statusClasses[detailMember.status] ?? ""
-                        }`}
-                      >
-                        {statusLabels[detailMember.status] ??
-                          detailMember.status}
-                      </span>
-                    </div>
+                    {(() => {
+                      const memberSeats = (allSeats ?? []).filter(
+                        (s: any) =>
+                          (s.name ?? "").trim().toLowerCase() ===
+                          (detailMember.name ?? "").trim().toLowerCase(),
+                      );
+                      if (memberSeats.length === 0) {
+                        return (
+                          <div className="px-3 py-2">
+                            <div className="text-xs font-medium text-muted-foreground mb-0.5">
+                              Org Chart
+                            </div>
+                            <div className="text-sm text-muted-foreground italic">
+                              Not in any org chart
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="px-3 py-2">
+                          <div className="text-xs font-medium text-muted-foreground mb-1">
+                            Org Chart
+                          </div>
+                          <div className="space-y-1">
+                            {memberSeats.map((seat: any) => {
+                              const org = (organizations ?? []).find(
+                                (o: any) => o.id === seat.organizationId,
+                              );
+                              return (
+                                <div
+                                  key={seat.id}
+                                  className="grid grid-cols-2 gap-2 text-sm"
+                                >
+                                  <div className="font-medium truncate">
+                                    {org ? formatCompanyLabel(org) : "—"}
+                                  </div>
+                                  <div className="text-muted-foreground truncate">
+                                    {seat.title ?? "—"}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </section>
 
                 <section>
-                  <h4 className="text-sm font-semibold mb-3">Weekly Report</h4>
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+                    Weekly Report
+                  </h4>
                   <div className="rounded-lg border bg-card divide-y">
                     <button
                       type="button"
@@ -1011,7 +996,7 @@ export function DirectReports() {
                         setViewersAdding(false);
                         setViewersOpen(true);
                       }}
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                      className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/30 transition-colors"
                     >
                       <span className="text-sm">
                         Who can see your personal Weekly Reports?
@@ -1024,7 +1009,7 @@ export function DirectReports() {
                         setViewAsMeSearch("");
                         setViewAsMeOpen(true);
                       }}
-                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                      className="w-full flex items-center justify-between px-3 py-2 text-left hover:bg-muted/30 transition-colors"
                     >
                       <span className="text-sm">
                         Who has "View as Me" access?
@@ -1034,7 +1019,7 @@ export function DirectReports() {
                   </div>
                 </section>
 
-                <div className="flex items-center justify-between gap-2 pt-2">
+                <div className="flex items-center justify-between gap-2 pt-1">
                   <Button
                     variant="outline"
                     onClick={() => {
