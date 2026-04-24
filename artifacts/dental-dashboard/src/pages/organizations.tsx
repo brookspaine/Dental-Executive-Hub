@@ -495,8 +495,6 @@ function OrgSection({
                 <TableRow>
                   <TableHead>{nameLabel}</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Providers</TableHead>
-                  <TableHead className="text-right">Patients</TableHead>
                   <TableHead className="text-right">Monthly Revenue</TableHead>
                   <TableHead>Status</TableHead>
                   {editMode && <TableHead className="w-20"></TableHead>}
@@ -524,12 +522,6 @@ function OrgSection({
                         {org.city && org.state ? ", " : ""}
                         {org.state}
                       </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {org.providerCount ?? 0}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      {(org.patientCount ?? 0).toLocaleString()}
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       ${((org.monthlyRevenue ?? 0) / 1000).toFixed(0)}K
