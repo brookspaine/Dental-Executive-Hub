@@ -817,6 +817,21 @@ paths:
               schema:
                 $ref: "#/components/schemas/IdealWeekCompletion"
 
+  /seats:
+    get:
+      operationId: listAllSeats
+      tags: [orgChart]
+      summary: List all org chart seats across all organizations
+      responses:
+        "200":
+          description: All seats
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/OrgChartSeat"
+
   /organizations/{organizationId}/seats:
     get:
       operationId: listOrgChartSeats

@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   useListDirectReports,
   useListOrganizations,
+  useListAllSeats,
   useCreateDirectReport,
   useUpdateDirectReport,
   useDeleteDirectReport,
@@ -128,6 +129,7 @@ export function DirectReports() {
   const queryClient = useQueryClient();
   const { data: reports, isLoading } = useListDirectReports();
   const { data: organizations } = useListOrganizations();
+  const { data: allSeats } = useListAllSeats();
   const createReport = useCreateDirectReport();
   const updateReport = useUpdateDirectReport();
   const deleteReport = useDeleteDirectReport();
@@ -702,6 +704,63 @@ export function DirectReports() {
                         {detailMember.email}
                       </span>
                     </div>
+                    {(() => {
+                      const memberSeats = (allSeats ?? []).filter(
+                        (s: any) =>
+                          (s.name ?? "").trim().toLowerCase() ===
+                          (detailMember.name ?? "").trim().toLowerCase(),
+                      );
+                      if (memberSeats.length === 0) {
+                        return (
+                          <div className="grid grid-cols-2 gap-3 px-4 py-3">
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">
+                                Organization
+                              </div>
+                              <div className="text-sm text-muted-foreground italic">
+                                Not in any org chart
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">
+                                Role
+                              </div>
+                              <div className="text-sm text-muted-foreground italic">
+                                —
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      }
+                      return memberSeats.map((seat: any) => {
+                        const org = (organizations ?? []).find(
+                          (o: any) => o.id === seat.organizationId,
+                        );
+                        return (
+                          <div
+                            key={seat.id}
+                            className="grid grid-cols-2 gap-3 px-4 py-3"
+                          >
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">
+                                Organization
+                              </div>
+                              <div className="text-sm font-medium truncate">
+                                {org ? formatCompanyLabel(org) : "—"}
+                              </div>
+                            </div>
+                            <div>
+                              <div className="text-xs font-medium text-muted-foreground mb-1">
+                                Role
+                              </div>
+                              <div className="text-sm font-medium truncate">
+                                {seat.title ?? "—"}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                     {detailMember.phone && (
                       <div className="flex items-center gap-3 px-4 py-3">
                         <Phone className="h-4 w-4 text-muted-foreground shrink-0" />

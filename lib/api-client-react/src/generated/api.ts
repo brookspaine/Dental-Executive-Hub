@@ -3603,6 +3603,81 @@ export const useToggleIdealWeekCompletion = <
 };
 
 /**
+ * @summary List all org chart seats across all organizations
+ */
+export const getListAllSeatsUrl = () => {
+  return `/api/seats`;
+};
+
+export const listAllSeats = async (
+  options?: RequestInit,
+): Promise<OrgChartSeat[]> => {
+  return customFetch<OrgChartSeat[]>(getListAllSeatsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAllSeatsQueryKey = () => {
+  return [`/api/seats`] as const;
+};
+
+export const getListAllSeatsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAllSeats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAllSeats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListAllSeatsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listAllSeats>>> = ({
+    signal,
+  }) => listAllSeats({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAllSeats>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAllSeatsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAllSeats>>
+>;
+export type ListAllSeatsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all org chart seats across all organizations
+ */
+
+export function useListAllSeats<
+  TData = Awaited<ReturnType<typeof listAllSeats>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listAllSeats>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAllSeatsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
  * @summary List org chart seats for an organization
  */
 export const getListOrgChartSeatsUrl = (organizationId: number) => {

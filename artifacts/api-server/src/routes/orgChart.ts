@@ -71,6 +71,18 @@ async function validateParent(
   return { ok: true };
 }
 
+router.get("/seats", async (_req, res): Promise<void> => {
+  try {
+    const seats = await db
+      .select()
+      .from(orgChartSeatsTable)
+      .orderBy(asc(orgChartSeatsTable.organizationId), asc(orgChartSeatsTable.sortOrder), asc(orgChartSeatsTable.id));
+    res.json(seats.map(mapSeat));
+  } catch (e: any) {
+    res.status(500).json({ error: e?.message ?? "Failed to list seats" });
+  }
+});
+
 router.get("/organizations/:organizationId/seats", async (req, res): Promise<void> => {
   const orgId = parseIntParam(req.params.organizationId);
   if (orgId === null) {

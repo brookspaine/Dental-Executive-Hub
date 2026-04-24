@@ -639,6 +639,23 @@ export const ToggleIdealWeekCompletionResponse = zod.object({
 });
 
 /**
+ * @summary List all org chart seats across all organizations
+ */
+export const ListAllSeatsResponseItem = zod.object({
+  id: zod.number(),
+  organizationId: zod.number(),
+  parentSeatId: zod.number().nullish(),
+  title: zod.string(),
+  name: zod.string().nullish(),
+  photoUrl: zod.string().nullish(),
+  accountabilities: zod.array(zod.string()),
+  keyResultsArea: zod.array(zod.string()),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+});
+export const ListAllSeatsResponse = zod.array(ListAllSeatsResponseItem);
+
+/**
  * @summary List org chart seats for an organization
  */
 export const ListOrgChartSeatsParams = zod.object({
