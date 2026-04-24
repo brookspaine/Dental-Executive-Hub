@@ -47,6 +47,8 @@ import {
 
 type Belt = "white" | "blue" | "brown" | "black";
 
+type OrgCategory = "edge" | "edge_dso" | "urgent_dental";
+
 type OrgFormData = {
   name: string;
   address: string;
@@ -58,8 +60,14 @@ type OrgFormData = {
   patientCount: number;
   monthlyRevenue: number;
   status: "active" | "inactive";
-  category: "edge" | "edge_dso";
+  category: OrgCategory;
   beltClassification: Belt | null;
+};
+
+const categoryLabels: Record<OrgCategory, string> = {
+  edge: "EDGE Location",
+  edge_dso: "EDGE DSO",
+  urgent_dental: "UD Location",
 };
 
 const emptyForm: OrgFormData = {
@@ -160,7 +168,7 @@ export function Organizations() {
       patientCount: org.patientCount || 0,
       monthlyRevenue: org.monthlyRevenue || 0,
       status: org.status,
-      category: (org.category as "edge" | "edge_dso") || "edge",
+      category: (org.category as OrgCategory) || "edge",
       beltClassification: (BELT_OPTIONS as string[]).includes(org.beltClassification)
         ? (org.beltClassification as Belt)
         : null,
@@ -168,7 +176,7 @@ export function Organizations() {
     setDialogOpen(true);
   };
 
-  const openAddDialog = (category: "edge" | "edge_dso") => {
+  const openAddDialog = (category: OrgCategory) => {
     setEditingId(null);
     setForm({ ...emptyForm, category });
     setDialogOpen(true);
@@ -188,14 +196,6 @@ export function Organizations() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => openAddDialog("edge_dso")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add EDGE DSO
-          </Button>
-          <Button onClick={() => openAddDialog("edge")}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add EDGE Location
-          </Button>
           <Button
             variant={editMode ? "default" : "outline"}
             size="icon"
@@ -220,8 +220,7 @@ export function Organizations() {
           <DialogContent className="max-w-lg">
             <DialogHeader>
               <DialogTitle>
-                {editingId ? "Edit" : "Add"}{" "}
-                {form.category === "edge_dso" ? "EDGE DSO" : "EDGE Location"}
+                {editingId ? "Edit" : "Add"} {categoryLabels[form.category]}
               </DialogTitle>
             </DialogHeader>
             <div className="grid gap-4 py-2">
@@ -330,8 +329,7 @@ export function Organizations() {
                 </Select>
               </div>
               <Button onClick={handleSubmit} className="mt-2">
-                {editingId ? "Update" : "Create"}{" "}
-                {form.category === "edge_dso" ? "EDGE DSO" : "EDGE Location"}
+                {editingId ? "Update" : "Create"} {categoryLabels[form.category]}
               </Button>
             </div>
           </DialogContent>
@@ -346,6 +344,8 @@ export function Organizations() {
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onAdd={() => openAddDialog("edge_dso")}
+        addLabel="Add EDGE DSO"
       />
 
       <OrgSection
@@ -358,6 +358,8 @@ export function Organizations() {
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onAdd={() => openAddDialog("edge")}
+        addLabel="Add EDGE Location"
       />
 
       <OrgSection
@@ -370,6 +372,8 @@ export function Organizations() {
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onAdd={() => openAddDialog("urgent_dental")}
+        addLabel="Add UD Location"
       />
     </div>
   );
@@ -383,6 +387,8 @@ type DsoSectionProps = {
   onRowClick: (id: number) => void;
   onEdit: (org: any) => void;
   onDelete: (id: number) => void;
+  onAdd: () => void;
+  addLabel: string;
 };
 
 function DsoSection({
@@ -393,6 +399,8 @@ function DsoSection({
   onRowClick,
   onEdit,
   onDelete,
+  onAdd,
+  addLabel,
 }: DsoSectionProps) {
   const totalRevenue = (edgeOrgs ?? []).reduce(
     (sum, o) => sum + (o.monthlyRevenue ?? 0),
@@ -477,6 +485,14 @@ function DsoSection({
               <p className="text-sm text-muted-foreground">No EDGE DSOs yet</p>
             </div>
           )}
+          {editMode && (
+            <div className="border-t p-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={onAdd}>
+                <Plus className="h-4 w-4 mr-2" />
+                {addLabel}
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
@@ -493,6 +509,8 @@ type OrgSectionProps = {
   onRowClick: (id: number) => void;
   onEdit: (org: any) => void;
   onDelete: (id: number) => void;
+  onAdd: () => void;
+  addLabel: string;
 };
 
 function OrgSection({
@@ -505,6 +523,8 @@ function OrgSection({
   onRowClick,
   onEdit,
   onDelete,
+  onAdd,
+  addLabel,
 }: OrgSectionProps) {
   return (
     <div className="space-y-2">
@@ -589,6 +609,14 @@ function OrgSection({
             <div className="p-8 text-center">
               <Building2 className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
               <p className="text-sm text-muted-foreground">{emptyText}</p>
+            </div>
+          )}
+          {editMode && (
+            <div className="border-t p-3 flex justify-end">
+              <Button variant="outline" size="sm" onClick={onAdd}>
+                <Plus className="h-4 w-4 mr-2" />
+                {addLabel}
+              </Button>
             </div>
           )}
         </CardContent>
