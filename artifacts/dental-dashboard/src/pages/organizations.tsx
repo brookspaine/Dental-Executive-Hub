@@ -80,6 +80,7 @@ export function Organizations() {
   const { data: allOrgs, isLoading } = useListOrganizations();
   const dsoOrgs = allOrgs?.filter((o: any) => o.category === "edge_dso");
   const orgs = allOrgs?.filter((o: any) => !o.category || o.category === "edge");
+  const udOrgs = allOrgs?.filter((o: any) => o.category === "urgent_dental");
   const createOrg = useCreateOrganization();
   const updateOrg = useUpdateOrganization();
   const deleteOrg = useDeleteOrganization();
@@ -307,6 +308,17 @@ export function Organizations() {
         emptyText="No EDGE locations yet"
         isLoading={isLoading}
         orgs={orgs}
+        onRowClick={(id) => setLocation(`/organizations/${id}`)}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
+
+      <OrgSection
+        title=""
+        nameLabel="UD Locations"
+        emptyText="No UD locations yet"
+        isLoading={isLoading}
+        orgs={udOrgs}
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
