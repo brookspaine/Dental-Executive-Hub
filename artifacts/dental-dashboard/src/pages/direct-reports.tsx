@@ -7,6 +7,10 @@ import {
   useCreateDirectReport,
   useUpdateDirectReport,
   useDeleteDirectReport,
+  useCreateOrgChartSeat,
+  useUpdateOrgChartSeat,
+  getListAllSeatsQueryKey,
+  getListOrgChartSeatsQueryKey,
   useListViewAsMeGrants,
   useCreateViewAsMeGrant,
   useDeleteViewAsMeGrant,
@@ -76,9 +80,12 @@ type ReportFormData = {
   email: string;
   reportsTo: string;
   hasDirectReports: "yes" | "no";
+  organizationId: string;
+  role: string;
 };
 
 const SELF_REPORTS_TO = "__self__";
+const NO_ORG = "__none__";
 
 const emptyForm: ReportFormData = {
   firstName: "",
@@ -86,6 +93,8 @@ const emptyForm: ReportFormData = {
   email: "",
   reportsTo: SELF_REPORTS_TO,
   hasDirectReports: "no",
+  organizationId: NO_ORG,
+  role: "",
 };
 
 const CURRENT_USER_NAME = "Brooks Paine";
@@ -133,6 +142,8 @@ export function DirectReports() {
   const createReport = useCreateDirectReport();
   const updateReport = useUpdateDirectReport();
   const deleteReport = useDeleteDirectReport();
+  const createSeat = useCreateOrgChartSeat();
+  const updateSeat = useUpdateOrgChartSeat();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -150,9 +161,112 @@ export function DirectReports() {
   const [viewersSearch, setViewersSearch] = useState("");
   const [viewersAdding, setViewersAdding] = useState(false);
 
-  const invalidate = () => {
+  const invalidate = (touchedOrgIds: number[] = []) => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
     queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getListAllSeatsQueryKey() });
+    const uniqueOrgs = Array.from(new Set(touchedOrgIds.filter((n) => Number.isFinite(n))));
+    uniqueOrgs.forEach((orgId) => {
+      queryClient.invalidateQueries({
+        queryKey: getListOrgChartSeatsQueryKey(orgId),
+      });
+    });
+  };
+
+  const findPrimarySeat = (memberName: string) => {
+    const target = memberName.trim().toLowerCase();
+    if (!target) return undefined;
+    return (allSeats ?? []).find(
+      (s: any) => (s.name ?? "").trim().toLowerCase() === target,
+    );
+  };
+
+  const titlesForOrg = (orgIdStr: string): string[] => {
+    if (!orgIdStr || orgIdStr === NO_ORG) return [];
+    const orgId = parseInt(orgIdStr, 10);
+    if (Number.isNaN(orgId)) return [];
+    const titles = new Set<string>();
+    (allSeats ?? []).forEach((s: any) => {
+      if (s.organizationId === orgId && s.title) titles.add(s.title);
+    });
+    return Array.from(titles).sort();
+  };
+
+  const syncSeatAssignment = async (
+    fullName: string,
+    lookupName: string,
+    orgIdStr: string,
+    role: string,
+  ): Promise<number[]> => {
+    const touched: number[] = [];
+    const existing = findPrimarySeat(lookupName);
+
+    if (!orgIdStr || orgIdStr === NO_ORG) {
+      if (existing) {
+        await updateSeat.mutateAsync({
+          id: existing.id,
+          data: { name: null } as any,
+        });
+        touched.push(existing.organizationId);
+      }
+      return touched;
+    }
+
+    const orgId = parseInt(orgIdStr, 10);
+    if (Number.isNaN(orgId)) return touched;
+
+    if (
+      existing &&
+      existing.organizationId === orgId &&
+      (existing.title ?? "").trim().toLowerCase() ===
+        role.trim().toLowerCase() &&
+      (existing.name ?? "") === fullName
+    ) {
+      return touched;
+    }
+
+    if (
+      existing &&
+      existing.organizationId === orgId &&
+      (existing.title ?? "").trim().toLowerCase() ===
+        role.trim().toLowerCase()
+    ) {
+      await updateSeat.mutateAsync({
+        id: existing.id,
+        data: { name: fullName } as any,
+      });
+      touched.push(orgId);
+      return touched;
+    }
+
+    if (existing) {
+      await updateSeat.mutateAsync({
+        id: existing.id,
+        data: { name: null } as any,
+      });
+      touched.push(existing.organizationId);
+    }
+
+    const target = (allSeats ?? []).find(
+      (s: any) =>
+        s.organizationId === orgId &&
+        (s.title ?? "").trim().toLowerCase() === role.trim().toLowerCase() &&
+        !((s.name ?? "").trim()),
+    );
+
+    if (target) {
+      await updateSeat.mutateAsync({
+        id: target.id,
+        data: { name: fullName } as any,
+      });
+    } else {
+      await createSeat.mutateAsync({
+        organizationId: orgId,
+        data: { title: role, name: fullName } as any,
+      });
+    }
+    touched.push(orgId);
+    return touched;
   };
 
   const handleSubmit = () => {
@@ -166,39 +280,48 @@ export function DirectReports() {
 
     const data: any = {
       name: fullName,
-      role: editingId
-        ? (reports as any[] | undefined)?.find((r) => r.id === editingId)?.role ||
-          "Team Member"
-        : "Team Member",
+      role: form.role.trim()
+        ? form.role.trim()
+        : editingId
+          ? (reports as any[] | undefined)?.find((r) => r.id === editingId)?.role ||
+            "Team Member"
+          : "Team Member",
       email: form.email,
       organization: reportsToName || undefined,
       organizationId: undefined,
       status: editingId ? undefined : "invite_not_sent",
     };
 
+    const originalName = editingId
+      ? ((reports as any[] | undefined)?.find((r) => r.id === editingId)?.name ??
+          fullName)
+      : fullName;
+
+    const finalize = async () => {
+      let touched: number[] = [];
+      try {
+        touched = await syncSeatAssignment(
+          fullName,
+          originalName,
+          form.organizationId,
+          form.role,
+        );
+      } catch (err) {
+        console.error("Failed to sync org chart seat", err);
+      }
+      invalidate(touched);
+      setDialogOpen(false);
+      setEditingId(null);
+      setForm(emptyForm);
+    };
+
     if (editingId) {
       updateReport.mutate(
         { id: editingId, data },
-        {
-          onSuccess: () => {
-            invalidate();
-            setDialogOpen(false);
-            setEditingId(null);
-            setForm(emptyForm);
-          },
-        }
+        { onSuccess: () => void finalize() },
       );
     } else {
-      createReport.mutate(
-        { data },
-        {
-          onSuccess: () => {
-            invalidate();
-            setDialogOpen(false);
-            setForm(emptyForm);
-          },
-        }
-      );
+      createReport.mutate({ data }, { onSuccess: () => void finalize() });
     }
   };
 
@@ -207,6 +330,7 @@ export function DirectReports() {
     const firstName = parts.shift() ?? "";
     const lastName = parts.join(" ");
     const reportsToValue = r.organization || r.organizationName || "";
+    const primarySeat = findPrimarySeat(r.name ?? "");
     setEditingId(r.id);
     setForm({
       firstName,
@@ -217,6 +341,10 @@ export function DirectReports() {
           ? SELF_REPORTS_TO
           : reportsToValue,
       hasDirectReports: "no",
+      organizationId: primarySeat
+        ? String(primarySeat.organizationId)
+        : NO_ORG,
+      role: primarySeat?.title ?? "",
     });
     setDialogOpen(true);
   };
@@ -366,6 +494,75 @@ export function DirectReports() {
                     }
                   />
                 </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">
+                      Organization
+                    </Label>
+                    <Select
+                      value={form.organizationId}
+                      onValueChange={(v) =>
+                        setForm({ ...form, organizationId: v, role: "" })
+                      }
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue placeholder="Select organization" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_ORG}>None</SelectItem>
+                        {(organizations ?? [])
+                          .slice()
+                          .sort((a: any, b: any) =>
+                            formatCompanyLabel(a).localeCompare(
+                              formatCompanyLabel(b),
+                            ),
+                          )
+                          .map((o: any) => (
+                            <SelectItem key={o.id} value={String(o.id)}>
+                              {formatCompanyLabel(o)}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-sm font-semibold">Role</Label>
+                    <Select
+                      value={form.role}
+                      onValueChange={(v) => setForm({ ...form, role: v })}
+                      disabled={
+                        !form.organizationId ||
+                        form.organizationId === NO_ORG
+                      }
+                    >
+                      <SelectTrigger className="h-11">
+                        <SelectValue
+                          placeholder={
+                            !form.organizationId ||
+                            form.organizationId === NO_ORG
+                              ? "Pick org first"
+                              : "Select role"
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {titlesForOrg(form.organizationId).map((t) => (
+                          <SelectItem key={t} value={t}>
+                            {t}
+                          </SelectItem>
+                        ))}
+                        {form.role &&
+                          !titlesForOrg(form.organizationId).includes(
+                            form.role,
+                          ) && (
+                            <SelectItem value={form.role}>
+                              {form.role}
+                            </SelectItem>
+                          )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">
                     Who do they report to?
@@ -444,13 +641,21 @@ export function DirectReports() {
                     </div>
                   </RadioGroup>
                 </div>
-                <div className="flex justify-center pt-2">
+                <div className="flex flex-col items-center gap-2 pt-2">
+                  {form.organizationId &&
+                    form.organizationId !== NO_ORG &&
+                    !form.role && (
+                      <p className="text-xs text-amber-600">
+                        Please pick a Role for the selected Organization.
+                      </p>
+                    )}
                   <Button
                     onClick={handleSubmit}
                     disabled={
                       !form.firstName.trim() ||
                       !form.lastName.trim() ||
-                      !form.email.trim()
+                      !form.email.trim() ||
+                      (form.organizationId !== NO_ORG && !form.role)
                     }
                     className="px-8"
                   >

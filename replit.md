@@ -55,6 +55,16 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 
 - **Simplicity first.** Default to clean, read-only views with minimal chrome. Hide editing controls (add row buttons, delete icons, drag handles, hover-only actions) behind an explicit edit toggle on each container. Avoid clutter; prefer one obvious affordance over many.
 
+## Manage Teams ↔ Org Chart Sync
+
+The Add/Edit Team Member dialog on `/direct-reports` includes side-by-side **Organization** and **Role** dropdowns that map directly to org chart seats:
+
+- The Organization dropdown lists all organizations (with formatted labels) plus a `None` option.
+- The Role dropdown is disabled until an Organization is picked, then offers the existing distinct seat titles in that org. Save is blocked when an org is set without a role.
+- The detail panel under "Personal Information" displays the team member's seat assignments (Organization + Role) sourced from `GET /api/seats`, matched to the member by name.
+- On save, `syncSeatAssignment` looks up the member's existing primary seat by their **pre-edit** name (so renaming migrates correctly), then either no-ops, retitles in place, or unassigns the old seat and fills/creates a seat in the new org. Per-org seat queries are invalidated so the org chart view refreshes immediately.
+- Persons with multiple seats (e.g. Brooks Paine across multiple practices) keep all secondary seats untouched; the dialog only manages the first matched primary seat.
+
 ## Project Structure
 
 - `artifacts/dental-dashboard/` — React + Vite frontend
