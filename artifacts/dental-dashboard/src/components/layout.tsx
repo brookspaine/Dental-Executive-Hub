@@ -201,6 +201,16 @@ function BrandHeader() {
   );
 }
 
+function shouldHideTopHeader(location: string): boolean {
+  if (location.startsWith("/organizations")) return true;
+  if (location.startsWith("/urgent-dental")) return true;
+  if (location.startsWith("/org-chart")) return true;
+  if (location.startsWith("/team")) return true;
+  if (location.startsWith("/direct-reports")) return true;
+  if (location.startsWith("/meetings")) return true;
+  return false;
+}
+
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -213,6 +223,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const currentLabel =
     navItems.map((i) => flattenLabel(i, location)).find((l) => l) || "Dashboard";
 
+  const hideTopHeader = shouldHideTopHeader(location);
+
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
       {/* Persistent sidebar — md and up */}
@@ -224,9 +236,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
       {/* Main column */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        <header className="h-14 border-b bg-card flex items-center gap-2 px-3 sm:px-4 md:px-6 md:grid md:grid-cols-3">
-          {/* Mobile: hamburger + brand */}
-          <div className="flex items-center gap-2 md:hidden min-w-0 flex-1">
+        {hideTopHeader ? (
+          <header className="h-14 border-b bg-card flex items-center gap-2 px-3 sm:px-4 md:hidden">
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
               <SheetTrigger asChild>
                 <button
@@ -249,32 +260,64 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 <UserBadge />
               </SheetContent>
             </Sheet>
-            <h1 className="text-base font-semibold tracking-tight truncate">
-              {currentLabel}
-            </h1>
-          </div>
-
-          {/* Desktop: title left, slot center */}
-          <h1 className="hidden md:block text-lg font-semibold tracking-tight truncate">
-            {currentLabel}
-          </h1>
-          <div
-            id="header-actions"
-            className="hidden md:flex items-center justify-center"
-          />
-
-          {/* Right side: actions slot (mobile) + bell */}
-          <div className="flex items-center justify-end gap-2 md:gap-3">
             <div
               id="header-actions-mobile"
-              className="md:hidden flex items-center"
+              className="ml-auto flex items-center"
             />
-            <button className="relative p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
-              <Bell className="h-5 w-5" />
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive border-2 border-card" />
-            </button>
-          </div>
-        </header>
+          </header>
+        ) : (
+          <header className="h-14 border-b bg-card flex items-center gap-2 px-3 sm:px-4 md:px-6 md:grid md:grid-cols-3">
+            {/* Mobile: hamburger + brand */}
+            <div className="flex items-center gap-2 md:hidden min-w-0 flex-1">
+              <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+                <SheetTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="Open navigation"
+                    className="p-2 -ml-2 rounded-md hover:bg-muted"
+                  >
+                    <Menu className="h-5 w-5" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="left" className="p-0 w-72 flex flex-col">
+                  <SheetHeader className="sr-only">
+                    <SheetTitle>Navigation</SheetTitle>
+                  </SheetHeader>
+                  <BrandHeader />
+                  <NavList
+                    location={location}
+                    onNavigate={() => setDrawerOpen(false)}
+                  />
+                  <UserBadge />
+                </SheetContent>
+              </Sheet>
+              <h1 className="text-base font-semibold tracking-tight truncate">
+                {currentLabel}
+              </h1>
+            </div>
+
+            {/* Desktop: title left, slot center */}
+            <h1 className="hidden md:block text-lg font-semibold tracking-tight truncate">
+              {currentLabel}
+            </h1>
+            <div
+              id="header-actions"
+              className="hidden md:flex items-center justify-center"
+            />
+
+            {/* Right side: actions slot (mobile) + bell */}
+            <div className="flex items-center justify-end gap-2 md:gap-3">
+              <div
+                id="header-actions-mobile"
+                className="md:hidden flex items-center"
+              />
+              <button className="relative p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
+                <Bell className="h-5 w-5" />
+                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive border-2 border-card" />
+              </button>
+            </div>
+          </header>
+        )}
         <div className="flex-1 overflow-auto p-3 sm:p-4">
           <div className="max-w-6xl mx-auto space-y-4">{children}</div>
         </div>
