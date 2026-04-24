@@ -495,7 +495,7 @@ function OrgSection({
                 <TableRow>
                   <TableHead>{nameLabel}</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead className="text-right">Monthly Revenue</TableHead>
+                  <TableHead className="text-right">EBITDA</TableHead>
                   <TableHead>Status</TableHead>
                   {editMode && <TableHead className="w-20"></TableHead>}
                 </TableRow>
