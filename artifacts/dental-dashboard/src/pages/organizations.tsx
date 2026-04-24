@@ -43,8 +43,6 @@ import {
   Pencil,
   Trash2,
   MapPin,
-  Phone,
-  Mail,
 } from "lucide-react";
 
 type OrgFormData = {
@@ -89,6 +87,7 @@ export function Organizations() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
+  const [editMode, setEditMode] = useState(false);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListOrganizationsQueryKey() });
@@ -169,6 +168,16 @@ export function Organizations() {
           <Button onClick={() => openAddDialog("edge")}>
             <Plus className="h-4 w-4 mr-2" />
             Add EDGE Location
+          </Button>
+          <Button
+            variant={editMode ? "default" : "outline"}
+            size="icon"
+            onClick={() => setEditMode((v) => !v)}
+            aria-label={editMode ? "Done editing" : "Edit"}
+            aria-pressed={editMode}
+            title={editMode ? "Done editing" : "Edit"}
+          >
+            <Pencil className="h-4 w-4" />
           </Button>
         </div>
         <Dialog
@@ -297,6 +306,7 @@ export function Organizations() {
         isLoading={isLoading}
         dsoOrgs={dsoOrgs}
         edgeOrgs={orgs}
+        editMode={editMode}
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
@@ -308,6 +318,7 @@ export function Organizations() {
         emptyText="No EDGE locations yet"
         isLoading={isLoading}
         orgs={orgs}
+        editMode={editMode}
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
@@ -319,6 +330,7 @@ export function Organizations() {
         emptyText="No UD locations yet"
         isLoading={isLoading}
         orgs={udOrgs}
+        editMode={editMode}
         onRowClick={(id) => setLocation(`/organizations/${id}`)}
         onEdit={handleEdit}
         onDelete={handleDelete}
@@ -331,6 +343,7 @@ type DsoSectionProps = {
   isLoading: boolean;
   dsoOrgs: any[] | undefined;
   edgeOrgs: any[] | undefined;
+  editMode: boolean;
   onRowClick: (id: number) => void;
   onEdit: (org: any) => void;
   onDelete: (id: number) => void;
@@ -340,6 +353,7 @@ function DsoSection({
   isLoading,
   dsoOrgs,
   edgeOrgs,
+  editMode,
   onRowClick,
   onEdit,
   onDelete,
@@ -367,7 +381,7 @@ function DsoSection({
                   <TableHead className="text-right">EBITDA</TableHead>
                   <TableHead className="text-right"># of Locations</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-20"></TableHead>
+                  {editMode && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -401,24 +415,26 @@ function DsoSection({
                         {org.status}
                       </Badge>
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onEdit(org)}
-                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                          aria-label="Edit DSO"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(org.id)}
-                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                          aria-label="Delete DSO"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </TableCell>
+                    {editMode && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => onEdit(org)}
+                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Edit DSO"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onDelete(org.id)}
+                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                            aria-label="Delete DSO"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -441,6 +457,7 @@ type OrgSectionProps = {
   emptyText: string;
   isLoading: boolean;
   orgs: any[] | undefined;
+  editMode: boolean;
   onRowClick: (id: number) => void;
   onEdit: (org: any) => void;
   onDelete: (id: number) => void;
@@ -452,6 +469,7 @@ function OrgSection({
   emptyText,
   isLoading,
   orgs,
+  editMode,
   onRowClick,
   onEdit,
   onDelete,
@@ -481,7 +499,7 @@ function OrgSection({
                   <TableHead className="text-right">Patients</TableHead>
                   <TableHead className="text-right">Monthly Revenue</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="w-20"></TableHead>
+                  {editMode && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -523,22 +541,26 @@ function OrgSection({
                         {org.status}
                       </Badge>
                     </TableCell>
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => onEdit(org)}
-                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <Pencil className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          onClick={() => onDelete(org.id)}
-                          className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </TableCell>
+                    {editMode && (
+                      <TableCell onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => onEdit(org)}
+                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                            aria-label="Edit"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onDelete(org.id)}
+                            className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive transition-colors"
+                            aria-label="Delete"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
