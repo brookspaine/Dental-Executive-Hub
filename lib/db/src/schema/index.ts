@@ -18,3 +18,4 @@ export * from "./yearlyPlanning";
 export * from "./weeklyReview";
 export * from "./leadershipMeetings";
 export * from "./viewAsMeGrants";
+export * from "./additionalViewers";

@@ -500,6 +500,76 @@ paths:
         "204":
           description: Revoked
 
+  /direct-reports/{id}/additional-viewers:
+    get:
+      operationId: listAdditionalViewers
+      tags: [directReports]
+      summary: List who can see a team member's personal Weekly Reports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of viewer report IDs
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+    post:
+      operationId: createAdditionalViewer
+      tags: [directReports]
+      summary: Add an Additional Viewer for a team member's Weekly Reports
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [viewerReportId]
+              properties:
+                viewerReportId:
+                  type: integer
+      responses:
+        "201":
+          description: Viewer added
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: integer
+
+  /direct-reports/{id}/additional-viewers/{viewerReportId}:
+    delete:
+      operationId: deleteAdditionalViewer
+      tags: [directReports]
+      summary: Remove an Additional Viewer
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: viewerReportId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Removed
+
   /announcements:
     get:
       operationId: listAnnouncements

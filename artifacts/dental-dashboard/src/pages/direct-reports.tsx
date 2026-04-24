@@ -8,8 +8,12 @@ import {
   useListViewAsMeGrants,
   useCreateViewAsMeGrant,
   useDeleteViewAsMeGrant,
+  useListAdditionalViewers,
+  useCreateAdditionalViewer,
+  useDeleteAdditionalViewer,
   getListDirectReportsQueryKey,
   getListViewAsMeGrantsQueryKey,
+  getListAdditionalViewersQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
@@ -129,6 +133,9 @@ export function DirectReports() {
   const [weeklyReminders, setWeeklyReminders] = useState(true);
   const [viewAsMeOpen, setViewAsMeOpen] = useState(false);
   const [viewAsMeSearch, setViewAsMeSearch] = useState("");
+  const [viewersOpen, setViewersOpen] = useState(false);
+  const [viewersSearch, setViewersSearch] = useState("");
+  const [viewersAdding, setViewersAdding] = useState(false);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
@@ -695,6 +702,11 @@ export function DirectReports() {
                   <div className="rounded-lg border bg-card divide-y">
                     <button
                       type="button"
+                      onClick={() => {
+                        setViewersSearch("");
+                        setViewersAdding(false);
+                        setViewersOpen(true);
+                      }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
                     >
                       <span className="text-sm">
@@ -757,7 +769,241 @@ export function DirectReports() {
         search={viewAsMeSearch}
         onSearchChange={setViewAsMeSearch}
       />
+
+      <AdditionalViewersSheet
+        open={viewersOpen}
+        onOpenChange={setViewersOpen}
+        member={detailMember}
+        allReports={(reports as any[] | undefined) ?? []}
+        search={viewersSearch}
+        onSearchChange={setViewersSearch}
+        adding={viewersAdding}
+        onAddingChange={setViewersAdding}
+      />
     </div>
+  );
+}
+
+function AdditionalViewersSheet({
+  open,
+  onOpenChange,
+  member,
+  allReports,
+  search,
+  onSearchChange,
+  adding,
+  onAddingChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  member: any | null;
+  allReports: any[];
+  search: string;
+  onSearchChange: (v: string) => void;
+  adding: boolean;
+  onAddingChange: (v: boolean) => void;
+}) {
+  const queryClient = useQueryClient();
+  const memberId = member?.id ?? 0;
+  const enabled = open && !!member;
+
+  const { data: viewers } = useListAdditionalViewers(memberId, {
+    query: { enabled },
+  });
+  const addMut = useCreateAdditionalViewer();
+  const removeMut = useDeleteAdditionalViewer();
+
+  const invalidateViewers = () => {
+    queryClient.invalidateQueries({
+      queryKey: getListAdditionalViewersQueryKey(memberId),
+    });
+  };
+
+  if (!member) return null;
+
+  const viewerIds = new Set(viewers ?? []);
+  const candidates = allReports.filter((r) => r.id !== member.id);
+  const q = search.trim().toLowerCase();
+  const matches = q
+    ? candidates.filter(
+        (r) =>
+          r.name?.toLowerCase().includes(q) ||
+          r.email?.toLowerCase().includes(q),
+      )
+    : candidates;
+  const granted = candidates.filter((r) => viewerIds.has(r.id));
+  const firstName = (member.name ?? "").split(" ")[0] || "they";
+  const possessive =
+    firstName.endsWith("s") ? `${firstName}'` : `${firstName}'s`;
+
+  const showAddList = adding || q.length > 0;
+
+  const toggleViewer = (id: number) => {
+    if (viewerIds.has(id)) {
+      removeMut.mutate(
+        { id: memberId, viewerReportId: id },
+        { onSuccess: invalidateViewers },
+      );
+    } else {
+      addMut.mutate(
+        { id: memberId, data: { viewerReportId: id } },
+        { onSuccess: invalidateViewers },
+      );
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
+        <SheetHeader className="px-4 pt-4 pb-2">
+          <SheetTitle className="sr-only">
+            Who can see {possessive} personal Weekly Reports
+          </SheetTitle>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="flex items-center gap-1 text-primary text-sm font-medium hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </SheetHeader>
+
+        <div className="px-6 pt-4 pb-6 space-y-4">
+          <div className="rounded-xl bg-muted/50 px-5 py-5 text-center space-y-2">
+            <h3 className="text-lg font-semibold">
+              Who can see {possessive} personal Weekly Reports
+            </h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              As the owner, {possessive} personal Weekly Reports do not get
+              shared by default. To share with team members, add them as an
+              Additional Viewer.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={search}
+                onChange={(e) => onSearchChange(e.target.value)}
+                placeholder="Search for Team Member"
+                className="pl-9 h-10"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 whitespace-nowrap"
+              onClick={() => {
+                onSearchChange("");
+                onAddingChange(!adding);
+              }}
+            >
+              {adding ? "Done" : "Add Additional Viewer"}
+            </Button>
+          </div>
+
+          {showAddList ? (
+            matches.length === 0 ? (
+              <p className="text-sm text-center text-muted-foreground italic py-6">
+                {q
+                  ? `No team members match "${search}".`
+                  : "No team members available."}
+              </p>
+            ) : (
+              <div className="rounded-lg border bg-card divide-y">
+                {matches.map((r) => {
+                  const isViewer = viewerIds.has(r.id);
+                  const url = resolveAvatarUrl(r.avatarUrl);
+                  return (
+                    <button
+                      type="button"
+                      key={r.id}
+                      onClick={() => toggleViewer(r.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30"
+                    >
+                      <Avatar className="h-9 w-9">
+                        {url && <AvatarImage src={url} alt={r.name} />}
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                          {getInitials(r.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {r.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {r.email}
+                        </div>
+                      </div>
+                      {isViewer ? (
+                        <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                          <Check className="h-4 w-4" />
+                          Added
+                        </span>
+                      ) : (
+                        <span className="text-xs text-primary font-medium">
+                          Add
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )
+          ) : granted.length === 0 ? (
+            <p className="text-sm text-center text-muted-foreground italic py-6">
+              No one can view {possessive} personal Weekly Reports.
+            </p>
+          ) : (
+            <div className="rounded-lg border bg-card divide-y">
+              {granted.map((r) => {
+                const url = resolveAvatarUrl(r.avatarUrl);
+                return (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    <Avatar className="h-9 w-9">
+                      {url && <AvatarImage src={url} alt={r.name} />}
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                        {getInitials(r.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {r.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {r.email}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleViewer(r.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

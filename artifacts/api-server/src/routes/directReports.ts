@@ -6,6 +6,7 @@ import {
   organizationsTable,
   activityTable,
   viewAsMeGrantsTable,
+  additionalViewersTable,
 } from "@workspace/db";
 import {
   CreateDirectReportBody,
@@ -199,6 +200,70 @@ router.delete(
         and(
           eq(viewAsMeGrantsTable.directReportId, id),
           eq(viewAsMeGrantsTable.granteeReportId, granteeReportId),
+        ),
+      );
+    res.sendStatus(204);
+  },
+);
+
+router.get(
+  "/direct-reports/:id/additional-viewers",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const rows = await db
+      .select({ viewerReportId: additionalViewersTable.viewerReportId })
+      .from(additionalViewersTable)
+      .where(eq(additionalViewersTable.directReportId, id));
+    res.json(rows.map((r) => r.viewerReportId));
+  },
+);
+
+router.post(
+  "/direct-reports/:id/additional-viewers",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    const viewerReportId = Number(req.body?.viewerReportId);
+    if (!Number.isFinite(id) || !Number.isFinite(viewerReportId)) {
+      res.status(400).json({ error: "Invalid id or viewerReportId" });
+      return;
+    }
+    if (id === viewerReportId) {
+      res
+        .status(400)
+        .json({ error: "Cannot add self as Additional Viewer" });
+      return;
+    }
+    await db
+      .insert(additionalViewersTable)
+      .values({ directReportId: id, viewerReportId })
+      .onConflictDoNothing();
+    const rows = await db
+      .select({ viewerReportId: additionalViewersTable.viewerReportId })
+      .from(additionalViewersTable)
+      .where(eq(additionalViewersTable.directReportId, id));
+    res.status(201).json(rows.map((r) => r.viewerReportId));
+  },
+);
+
+router.delete(
+  "/direct-reports/:id/additional-viewers/:viewerReportId",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    const viewerReportId = Number(req.params.viewerReportId);
+    if (!Number.isFinite(id) || !Number.isFinite(viewerReportId)) {
+      res.status(400).json({ error: "Invalid id or viewerReportId" });
+      return;
+    }
+    await db
+      .delete(additionalViewersTable)
+      .where(
+        and(
+          eq(additionalViewersTable.directReportId, id),
+          eq(additionalViewersTable.viewerReportId, viewerReportId),
         ),
       );
     res.sendStatus(204);

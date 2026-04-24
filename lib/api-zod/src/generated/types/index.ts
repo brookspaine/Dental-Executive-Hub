@@ -10,6 +10,7 @@ export * from "./activityItem";
 export * from "./activityItemType";
 export * from "./announcement";
 export * from "./announcementType";
+export * from "./createAdditionalViewerBody";
 export * from "./createAnnouncementBody";
 export * from "./createAnnouncementBodyType";
 export * from "./createDailyTop3Body";

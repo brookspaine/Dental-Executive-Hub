@@ -389,6 +389,37 @@ export const DeleteViewAsMeGrantParams = zod.object({
 });
 
 /**
+ * @summary List who can see a team member's personal Weekly Reports
+ */
+export const ListAdditionalViewersParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListAdditionalViewersResponseItem = zod.number();
+export const ListAdditionalViewersResponse = zod.array(
+  ListAdditionalViewersResponseItem,
+);
+
+/**
+ * @summary Add an Additional Viewer for a team member's Weekly Reports
+ */
+export const CreateAdditionalViewerParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateAdditionalViewerBody = zod.object({
+  viewerReportId: zod.number(),
+});
+
+/**
+ * @summary Remove an Additional Viewer
+ */
+export const DeleteAdditionalViewerParams = zod.object({
+  id: zod.coerce.number(),
+  viewerReportId: zod.coerce.number(),
+});
+
+/**
  * @summary List all announcements
  */
 export const ListAnnouncementsResponseItem = zod.object({

@@ -512,6 +512,10 @@ export type CreateViewAsMeGrantBody = {
   granteeReportId: number;
 };
 
+export type CreateAdditionalViewerBody = {
+  viewerReportId: number;
+};
+
 export type GetRecentActivityParams = {
   limit?: number;
 };

@@ -19,6 +19,7 @@ import type {
 import type {
   ActivityItem,
   Announcement,
+  CreateAdditionalViewerBody,
   CreateAnnouncementBody,
   CreateDailyTop3Body,
   CreateDirectReportBody,
@@ -2158,6 +2159,270 @@ export const useDeleteViewAsMeGrant = <
   TContext
 > => {
   return useMutation(getDeleteViewAsMeGrantMutationOptions(options));
+};
+
+/**
+ * @summary List who can see a team member's personal Weekly Reports
+ */
+export const getListAdditionalViewersUrl = (id: number) => {
+  return `/api/direct-reports/${id}/additional-viewers`;
+};
+
+export const listAdditionalViewers = async (
+  id: number,
+  options?: RequestInit,
+): Promise<number[]> => {
+  return customFetch<number[]>(getListAdditionalViewersUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListAdditionalViewersQueryKey = (id: number) => {
+  return [`/api/direct-reports/${id}/additional-viewers`] as const;
+};
+
+export const getListAdditionalViewersQueryOptions = <
+  TData = Awaited<ReturnType<typeof listAdditionalViewers>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdditionalViewers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getListAdditionalViewersQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listAdditionalViewers>>
+  > = ({ signal }) => listAdditionalViewers(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listAdditionalViewers>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListAdditionalViewersQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listAdditionalViewers>>
+>;
+export type ListAdditionalViewersQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List who can see a team member's personal Weekly Reports
+ */
+
+export function useListAdditionalViewers<
+  TData = Awaited<ReturnType<typeof listAdditionalViewers>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listAdditionalViewers>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListAdditionalViewersQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Add an Additional Viewer for a team member's Weekly Reports
+ */
+export const getCreateAdditionalViewerUrl = (id: number) => {
+  return `/api/direct-reports/${id}/additional-viewers`;
+};
+
+export const createAdditionalViewer = async (
+  id: number,
+  createAdditionalViewerBody: CreateAdditionalViewerBody,
+  options?: RequestInit,
+): Promise<number[]> => {
+  return customFetch<number[]>(getCreateAdditionalViewerUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createAdditionalViewerBody),
+  });
+};
+
+export const getCreateAdditionalViewerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdditionalViewer>>,
+    TError,
+    { id: number; data: BodyType<CreateAdditionalViewerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createAdditionalViewer>>,
+  TError,
+  { id: number; data: BodyType<CreateAdditionalViewerBody> },
+  TContext
+> => {
+  const mutationKey = ["createAdditionalViewer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createAdditionalViewer>>,
+    { id: number; data: BodyType<CreateAdditionalViewerBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createAdditionalViewer(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateAdditionalViewerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createAdditionalViewer>>
+>;
+export type CreateAdditionalViewerMutationBody =
+  BodyType<CreateAdditionalViewerBody>;
+export type CreateAdditionalViewerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Add an Additional Viewer for a team member's Weekly Reports
+ */
+export const useCreateAdditionalViewer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createAdditionalViewer>>,
+    TError,
+    { id: number; data: BodyType<CreateAdditionalViewerBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createAdditionalViewer>>,
+  TError,
+  { id: number; data: BodyType<CreateAdditionalViewerBody> },
+  TContext
+> => {
+  return useMutation(getCreateAdditionalViewerMutationOptions(options));
+};
+
+/**
+ * @summary Remove an Additional Viewer
+ */
+export const getDeleteAdditionalViewerUrl = (
+  id: number,
+  viewerReportId: number,
+) => {
+  return `/api/direct-reports/${id}/additional-viewers/${viewerReportId}`;
+};
+
+export const deleteAdditionalViewer = async (
+  id: number,
+  viewerReportId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteAdditionalViewerUrl(id, viewerReportId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteAdditionalViewerMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdditionalViewer>>,
+    TError,
+    { id: number; viewerReportId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteAdditionalViewer>>,
+  TError,
+  { id: number; viewerReportId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteAdditionalViewer"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteAdditionalViewer>>,
+    { id: number; viewerReportId: number }
+  > = (props) => {
+    const { id, viewerReportId } = props ?? {};
+
+    return deleteAdditionalViewer(id, viewerReportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteAdditionalViewerMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteAdditionalViewer>>
+>;
+
+export type DeleteAdditionalViewerMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove an Additional Viewer
+ */
+export const useDeleteAdditionalViewer = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteAdditionalViewer>>,
+    TError,
+    { id: number; viewerReportId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteAdditionalViewer>>,
+  TError,
+  { id: number; viewerReportId: number },
+  TContext
+> => {
+  return useMutation(getDeleteAdditionalViewerMutationOptions(options));
 };
 
 /**
