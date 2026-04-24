@@ -20,6 +20,12 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -102,6 +108,7 @@ export function DirectReports() {
   const [search, setSearch] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [detailMember, setDetailMember] = useState<any | null>(null);
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
@@ -432,9 +439,11 @@ export function DirectReports() {
             {visible.map((r: any) => {
               const reportsTo = r.organization || r.organizationName || "";
               return (
-                <div
+                <button
                   key={r.id}
-                  className="grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-5 py-4 items-center hover:bg-muted/30 transition-colors group"
+                  type="button"
+                  onClick={() => setDetailMember(r)}
+                  className="w-full text-left grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-5 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar className="h-9 w-9 shrink-0">
@@ -451,37 +460,153 @@ export function DirectReports() {
                       </div>
                     </div>
                   </div>
-                  <div
-                    className={`text-sm ${statusClasses[r.status] ?? ""}`}
-                  >
+                  <div className={`text-sm ${statusClasses[r.status] ?? ""}`}>
                     {statusLabels[r.status] ?? r.status}
                   </div>
                   <div className="text-sm text-muted-foreground truncate">
                     {reportsTo || "—"}
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => handleEdit(r)}
-                      aria-label={`Edit ${r.name}`}
-                      className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(r.id)}
-                      aria-label={`Delete ${r.name}`}
-                      className="p-1.5 rounded hover:bg-muted text-muted-foreground hover:text-destructive"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                    <ChevronRight className="h-4 w-4 text-muted-foreground ml-1" />
-                  </div>
-                </div>
+                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                </button>
               );
             })}
           </div>
         )}
       </Card>
+
+      <Sheet
+        open={!!detailMember}
+        onOpenChange={(open) => {
+          if (!open) setDetailMember(null);
+        }}
+      >
+        <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
+          {detailMember && (
+            <div className="flex flex-col">
+              <SheetHeader className="px-6 pt-6 pb-2">
+                <SheetTitle className="sr-only">
+                  {detailMember.name}
+                </SheetTitle>
+              </SheetHeader>
+
+              <div className="flex flex-col items-center px-6 pt-2 pb-6">
+                <Avatar className="h-24 w-24">
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
+                    {getInitials(detailMember.name)}
+                  </AvatarFallback>
+                </Avatar>
+                <h3 className="mt-4 text-lg font-semibold">
+                  {detailMember.name}
+                </h3>
+                {detailMember.role && (
+                  <p className="text-sm text-muted-foreground">
+                    {detailMember.role}
+                  </p>
+                )}
+              </div>
+
+              <div className="px-6 pb-6 space-y-6">
+                <section>
+                  <h4 className="text-sm font-semibold mb-3">
+                    Personal Information
+                  </h4>
+                  <div className="rounded-lg border bg-card divide-y">
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium w-16">Email</span>
+                      <span className="text-sm text-muted-foreground truncate flex-1">
+                        {detailMember.email}
+                      </span>
+                    </div>
+                    {detailMember.phone && (
+                      <div className="flex items-center gap-3 px-4 py-3">
+                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium w-16">Phone</span>
+                        <span className="text-sm text-muted-foreground truncate flex-1">
+                          {detailMember.phone}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium w-16">
+                        Reports
+                      </span>
+                      <span className="text-sm text-muted-foreground truncate flex-1">
+                        {detailMember.organization ||
+                          detailMember.organizationName ||
+                          "—"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 px-4 py-3">
+                      <Shield className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <span className="text-sm font-medium w-16">Status</span>
+                      <span
+                        className={`text-sm flex-1 ${
+                          statusClasses[detailMember.status] ?? ""
+                        }`}
+                      >
+                        {statusLabels[detailMember.status] ??
+                          detailMember.status}
+                      </span>
+                    </div>
+                  </div>
+                </section>
+
+                <section>
+                  <h4 className="text-sm font-semibold mb-3">Weekly Report</h4>
+                  <div className="rounded-lg border bg-card divide-y">
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                    >
+                      <span className="text-sm">
+                        Who can see your personal Weekly Reports?
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                    >
+                      <span className="text-sm">
+                        Who has "View as Me" access?
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                </section>
+
+                <div className="flex items-center justify-between gap-2 pt-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const m = detailMember;
+                      setDetailMember(null);
+                      handleEdit(m);
+                    }}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    className="text-destructive hover:text-destructive"
+                    onClick={() => {
+                      const id = detailMember.id;
+                      setDetailMember(null);
+                      handleDelete(id);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
