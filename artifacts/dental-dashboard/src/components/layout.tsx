@@ -3,7 +3,6 @@ import { Link, useLocation } from "wouter";
 import {
   Activity,
   Building2,
-  LayoutDashboard,
   Users,
   Bell,
   Zap,
@@ -32,7 +31,6 @@ type NavItem = NavLeaf | NavGroup;
 
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
@@ -221,7 +219,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [location]);
 
   const currentLabel =
-    navItems.map((i) => flattenLabel(i, location)).find((l) => l) || "Dashboard";
+    navItems.map((i) => flattenLabel(i, location)).find((l) => l) || "Ideal Week";
 
   const hideTopHeader = shouldHideTopHeader(location);
 

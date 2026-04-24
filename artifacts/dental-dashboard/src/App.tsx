@@ -4,7 +4,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
-import { Dashboard } from "@/pages/dashboard";
 import { Organizations } from "@/pages/organizations";
 import { OrganizationDetail } from "@/pages/organization-detail";
 import { UrgentDental } from "@/pages/urgent-dental";
@@ -33,7 +32,6 @@ function Router() {
         <Route path="/weekly-review" component={WeeklyReview} />
         <Route path="/living-your-best-year-ever" component={LivingYourBestYearEver} />
         <Route path="/vision-board" component={VisionBoard} />
-        <Route path="/dashboard" component={Dashboard} />
         <Route path="/organizations" component={Organizations} />
         <Route path="/organizations/:id" component={OrganizationDetail} />
         <Route path="/urgent-dental" component={UrgentDental} />
