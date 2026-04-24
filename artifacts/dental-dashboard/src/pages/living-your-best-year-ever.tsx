@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Trash2, Plus } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, Pencil, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -433,52 +433,67 @@ function BulletList({
   items,
   onChange,
   placeholder,
+  editing,
 }: {
   title: string;
   items: string[];
   onChange: (next: string[]) => void;
   placeholder: string;
+  editing: boolean;
 }) {
+  const visible = editing ? items : items.filter((it) => it.trim().length > 0);
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
         {title}
       </div>
-      <ul className="space-y-1">
-        {items.map((it, idx) => (
-          <li key={idx} className="flex items-center gap-2 group">
-            <span className="text-muted-foreground leading-none">•</span>
-            <div className="flex-1">
-              <InlineText
-                value={it}
-                onChange={(v) => {
-                  const next = [...items];
-                  next[idx] = v;
-                  onChange(next);
-                }}
-                placeholder={placeholder}
-                multiline
-              />
-            </div>
-            <button
-              type="button"
-              onClick={() => onChange(items.filter((_, i) => i !== idx))}
-              aria-label="Delete bullet"
-              className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </button>
-          </li>
-        ))}
-      </ul>
-      <button
-        type="button"
-        onClick={() => onChange([...items, ""])}
-        className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Add row
-      </button>
+      {visible.length === 0 && !editing ? null : (
+        <ul className="space-y-1">
+          {(editing ? items : visible).map((it, idx) => (
+            <li key={idx} className="flex items-start gap-2">
+              <span className="text-muted-foreground leading-none mt-1.5">•</span>
+              <div className="flex-1">
+                {editing ? (
+                  <InlineText
+                    value={it}
+                    onChange={(v) => {
+                      const next = [...items];
+                      next[idx] = v;
+                      onChange(next);
+                    }}
+                    placeholder={placeholder}
+                    multiline
+                  />
+                ) : (
+                  <div className="text-sm leading-snug px-1 py-0.5 whitespace-pre-wrap">
+                    {it}
+                  </div>
+                )}
+              </div>
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => onChange(items.filter((_, i) => i !== idx))}
+                  aria-label="Delete bullet"
+                  className="text-muted-foreground hover:text-destructive mt-1"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {editing && (
+        <button
+          type="button"
+          onClick={() => onChange([...items, ""])}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add row
+        </button>
+      )}
     </div>
   );
 }
@@ -488,11 +503,13 @@ function GoalsTable({
   rows,
   onChange,
   goalLabel = "Goal",
+  editing,
 }: {
   title: string;
   rows: GoalRow[];
   onChange: (next: GoalRow[]) => void;
   goalLabel?: string;
+  editing: boolean;
 }) {
   const update = (idx: number, patch: Partial<GoalRow>) => {
     const next = rows.map((r, i) => (i === idx ? { ...r, ...patch } : r));
@@ -502,85 +519,128 @@ function GoalsTable({
   const addRow = () =>
     onChange([...rows, { text: "", status: "Not started", nextSteps: "" }]);
 
+  const visibleRows = editing
+    ? rows
+    : rows.filter(
+        (r) => r.text.trim().length > 0 || r.nextSteps.trim().length > 0
+      );
+
+  if (!editing && visibleRows.length === 0) {
+    return (
+      <div className="space-y-2">
+        <div className="text-sm font-semibold">{title}</div>
+        <div className="text-xs italic text-muted-foreground px-1">
+          No items yet.
+        </div>
+      </div>
+    );
+  }
+
+  const cols = editing
+    ? "grid-cols-[1fr_140px_1fr_32px]"
+    : "grid-cols-[1fr_140px_1fr]";
+
   return (
     <div className="space-y-2">
       <div className="text-sm font-semibold">{title}</div>
       <div className="rounded-md border overflow-hidden">
-        <div className="grid grid-cols-[1fr_140px_1fr_32px] bg-muted/60 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground">
+        <div
+          className={`grid ${cols} bg-muted/60 text-[11px] uppercase tracking-wide font-semibold text-muted-foreground`}
+        >
           <div className="px-3 py-2">{goalLabel}</div>
           <div className="px-3 py-2">Status</div>
           <div className="px-3 py-2">Next Steps</div>
-          <div />
+          {editing && <div />}
         </div>
-        {rows.length === 0 && (
-          <div className="px-3 py-3 text-xs italic text-muted-foreground">
-            No items yet.
-          </div>
-        )}
-        {/* rows rendered below */}
-        {rows.map((row, idx) => (
+        {visibleRows.map((row, idx) => (
           <div
             key={idx}
-            className="grid grid-cols-[1fr_140px_1fr_32px] border-t items-start group"
+            className={`grid ${cols} border-t items-start`}
           >
             <div className="px-2 py-1.5">
-              <InlineText
-                value={row.text}
-                onChange={(v) => update(idx, { text: v })}
-                placeholder="Goal…"
-                multiline
-              />
+              {editing ? (
+                <InlineText
+                  value={row.text}
+                  onChange={(v) => update(idx, { text: v })}
+                  placeholder="Goal…"
+                  multiline
+                />
+              ) : (
+                <div className="text-sm leading-snug px-1 py-0.5 whitespace-pre-wrap">
+                  {row.text}
+                </div>
+              )}
             </div>
             <div className="px-2 py-1.5">
-              <Select
-                value={row.status || "Not started"}
-                onValueChange={(v) => update(idx, { status: v })}
-              >
-                <SelectTrigger className="h-7 text-xs">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {STATUS_OPTIONS.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      <span
-                        className={`text-[11px] px-1.5 py-0.5 rounded ${STATUS_COLORS[s] ?? ""}`}
-                      >
-                        {s}
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {editing ? (
+                <Select
+                  value={row.status || "Not started"}
+                  onValueChange={(v) => update(idx, { status: v })}
+                >
+                  <SelectTrigger className="h-7 text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        <span
+                          className={`text-[11px] px-1.5 py-0.5 rounded ${STATUS_COLORS[s] ?? ""}`}
+                        >
+                          {s}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <span
+                  className={`inline-block text-[11px] px-1.5 py-0.5 rounded ${
+                    STATUS_COLORS[row.status || "Not started"] ?? ""
+                  }`}
+                >
+                  {row.status || "Not started"}
+                </span>
+              )}
             </div>
             <div className="px-2 py-1.5">
-              <InlineText
-                value={row.nextSteps}
-                onChange={(v) => update(idx, { nextSteps: v })}
-                placeholder="Next steps…"
-                multiline
-              />
+              {editing ? (
+                <InlineText
+                  value={row.nextSteps}
+                  onChange={(v) => update(idx, { nextSteps: v })}
+                  placeholder="Next steps…"
+                  multiline
+                />
+              ) : (
+                <div className="text-sm leading-snug px-1 py-0.5 whitespace-pre-wrap text-muted-foreground">
+                  {row.nextSteps}
+                </div>
+              )}
             </div>
-            <div className="px-1 py-2 flex items-start justify-center">
-              <button
-                type="button"
-                onClick={() => remove(idx)}
-                aria-label="Delete row"
-                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
+            {editing && (
+              <div className="px-1 py-2 flex items-start justify-center">
+                <button
+                  type="button"
+                  onClick={() => remove(idx)}
+                  aria-label="Delete row"
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            )}
           </div>
         ))}
       </div>
-      <button
-        type="button"
-        onClick={addRow}
-        className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Add row
-      </button>
+      {editing && (
+        <button
+          type="button"
+          onClick={addRow}
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add row
+        </button>
+      )}
     </div>
   );
 }
@@ -612,6 +672,7 @@ function SectionCard({
   );
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [editing, setEditing] = useState(false);
   const debounceRef = useRef<ReturnType<typeof setTimeout>>();
 
   const saveMut = useMutation({
@@ -650,66 +711,101 @@ function SectionCard({
     }, 600);
   };
 
+  const visibleIdentity = editing
+    ? data.identity
+    : data.identity.filter((s) => s.trim().length > 0);
+
   return (
     <Card id={def.key}>
       <CardContent className="p-6 space-y-6">
-        <div className="flex items-baseline justify-between gap-3 flex-wrap border-b pb-4">
+        <div className="flex items-center justify-between gap-3 flex-wrap border-b pb-4">
           <div className="flex items-baseline gap-3">
             <span className="text-2xl font-bold text-primary">{def.number}.</span>
             <h2 className="text-2xl font-bold">{def.title}</h2>
           </div>
-          <div className="text-xs text-muted-foreground">
-            {dirty
-              ? "Saving…"
-              : savedAt
-                ? `Saved ${savedAt.toLocaleTimeString()}`
-                : "Auto-saves as you type"}
+          <div className="flex items-center gap-3">
+            {editing && (
+              <div className="text-xs text-muted-foreground">
+                {dirty
+                  ? "Saving…"
+                  : savedAt
+                    ? `Saved ${savedAt.toLocaleTimeString()}`
+                    : "Auto-saves as you type"}
+              </div>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditing((e) => !e)}
+              aria-label={editing ? "Done editing" : "Edit section"}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              {editing ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Pencil className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="space-y-2">
-          {data.identity.map((line, idx) => (
-            <div key={idx} className="flex items-start gap-2 group">
-              <div className="flex-1">
-                <InlineText
-                  value={line}
-                  onChange={(v) => {
-                    const next = [...data.identity];
-                    next[idx] = v;
-                    update({ identity: next });
-                  }}
-                  placeholder="Identity statement…"
-                  multiline
-                  className="text-lg font-semibold leading-snug"
-                />
+        {visibleIdentity.length === 0 && !editing ? null : (
+          <div className="space-y-2">
+            {visibleIdentity.map((line, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <div className="flex-1">
+                  {editing ? (
+                    <InlineText
+                      value={line}
+                      onChange={(v) => {
+                        const next = [...data.identity];
+                        next[idx] = v;
+                        update({ identity: next });
+                      }}
+                      placeholder="Identity statement…"
+                      multiline
+                      className="text-lg font-semibold leading-snug"
+                    />
+                  ) : (
+                    <div className="text-lg font-semibold leading-snug px-1 py-0.5 whitespace-pre-wrap">
+                      {line}
+                    </div>
+                  )}
+                </div>
+                {editing && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      update({
+                        identity: data.identity.filter((_, i) => i !== idx),
+                      })
+                    }
+                    aria-label="Delete identity statement"
+                    className="text-muted-foreground hover:text-destructive mt-2"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
               </div>
+            ))}
+            {editing && (
               <button
                 type="button"
-                onClick={() =>
-                  update({ identity: data.identity.filter((_, i) => i !== idx) })
-                }
-                aria-label="Delete identity statement"
-                className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100 mt-2"
+                onClick={() => update({ identity: [...data.identity, ""] })}
+                className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Plus className="h-3.5 w-3.5" />
+                Add row
               </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() => update({ identity: [...data.identity, ""] })}
-            className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add row
-          </button>
-        </div>
+            )}
+          </div>
+        )}
 
         <BulletList
           title="WHY? — Key motivators"
           items={data.why}
           onChange={(v) => update({ why: v })}
           placeholder="Why does this matter?"
+          editing={editing}
         />
 
         <BulletList
@@ -717,6 +813,7 @@ function SectionCard({
           items={data.howIPreserve}
           onChange={(v) => update({ howIPreserve: v })}
           placeholder="Practice or commitment…"
+          editing={editing}
         />
 
         <BulletList
@@ -724,6 +821,7 @@ function SectionCard({
           items={data.feelsLike}
           onChange={(v) => update({ feelsLike: v })}
           placeholder="Describe the feeling…"
+          editing={editing}
         />
 
         <div className="space-y-4">
@@ -734,6 +832,7 @@ function SectionCard({
             goalLabel="Outcome-Goals"
             rows={data.outcomeGoals}
             onChange={(v) => update({ outcomeGoals: v })}
+            editing={editing}
           />
 
           <GoalsTable
@@ -741,6 +840,7 @@ function SectionCard({
             goalLabel="Performance-Goals"
             rows={data.performanceGoals}
             onChange={(v) => update({ performanceGoals: v })}
+            editing={editing}
           />
 
           <div className="space-y-3 rounded-md border p-3">
@@ -749,16 +849,19 @@ function SectionCard({
               title="Continue"
               rows={data.processContinue}
               onChange={(v) => update({ processContinue: v })}
+              editing={editing}
             />
             <GoalsTable
               title="Become More Consistent"
               rows={data.processMoreConsistent}
               onChange={(v) => update({ processMoreConsistent: v })}
+              editing={editing}
             />
             <GoalsTable
               title="Begin"
               rows={data.processBegin}
               onChange={(v) => update({ processBegin: v })}
+              editing={editing}
             />
           </div>
         </div>

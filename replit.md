@@ -49,6 +49,10 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 - `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
 - `pnpm --filter @workspace/api-server run dev` — run API server locally
 
+## Design Principles
+
+- **Simplicity first.** Default to clean, read-only views with minimal chrome. Hide editing controls (add row buttons, delete icons, drag handles, hover-only actions) behind an explicit edit toggle on each container. Avoid clutter; prefer one obvious affordance over many.
+
 ## Project Structure
 
 - `artifacts/dental-dashboard/` — React + Vite frontend
