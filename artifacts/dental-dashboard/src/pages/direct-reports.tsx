@@ -55,6 +55,9 @@ import {
   Mail,
   Phone,
   Send,
+  ArrowLeft,
+  X,
+  Check,
 } from "lucide-react";
 
 type ReportFormData = {
@@ -120,6 +123,11 @@ export function DirectReports() {
   const [detailMember, setDetailMember] = useState<any | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [weeklyReminders, setWeeklyReminders] = useState(true);
+  const [viewAsMeOpen, setViewAsMeOpen] = useState(false);
+  const [viewAsMeSearch, setViewAsMeSearch] = useState("");
+  const [viewAsMeGrants, setViewAsMeGrants] = useState<
+    Record<number, number[]>
+  >({});
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
@@ -695,6 +703,10 @@ export function DirectReports() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => {
+                        setViewAsMeSearch("");
+                        setViewAsMeOpen(true);
+                      }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
                     >
                       <span className="text-sm">
@@ -733,6 +745,197 @@ export function DirectReports() {
               </div>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      <Sheet
+        open={viewAsMeOpen}
+        onOpenChange={(open) => setViewAsMeOpen(open)}
+      >
+        <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
+          {detailMember &&
+            (() => {
+              const orgKey =
+                (detailMember.organization ||
+                  detailMember.organizationName ||
+                  "") as string;
+              const candidates = ((reports as any[] | undefined) ?? []).filter(
+                (r) =>
+                  r.id !== detailMember.id &&
+                  ((r.organization || r.organizationName || "") as string) ===
+                    orgKey
+              );
+              const q = viewAsMeSearch.trim().toLowerCase();
+              const matches = q
+                ? candidates.filter(
+                    (r) =>
+                      r.name?.toLowerCase().includes(q) ||
+                      r.email?.toLowerCase().includes(q)
+                  )
+                : candidates;
+              const grants = viewAsMeGrants[detailMember.id] ?? [];
+              const granted = candidates.filter((r) =>
+                grants.includes(r.id)
+              );
+              const toggleGrant = (id: number) => {
+                setViewAsMeGrants((prev) => {
+                  const current = prev[detailMember.id] ?? [];
+                  const next = current.includes(id)
+                    ? current.filter((x) => x !== id)
+                    : [...current, id];
+                  return { ...prev, [detailMember.id]: next };
+                });
+              };
+              return (
+                <div className="flex flex-col">
+                  <SheetHeader className="px-4 pt-4 pb-2">
+                    <SheetTitle className="sr-only">
+                      View as Me Access
+                    </SheetTitle>
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setViewAsMeOpen(false)}
+                        className="flex items-center gap-1 text-primary text-sm font-medium hover:underline"
+                      >
+                        <ArrowLeft className="h-4 w-4" />
+                        Back
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setViewAsMeOpen(false)}
+                        className="text-muted-foreground hover:text-foreground"
+                        aria-label="Close"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </SheetHeader>
+
+                  <div className="px-6 pt-4 pb-6 space-y-4">
+                    <div className="rounded-xl bg-muted/50 px-5 py-5 text-center space-y-2">
+                      <h3 className="text-lg font-semibold">
+                        "View as Me" Access
+                      </h3>
+                      <p className="text-sm text-muted-foreground leading-relaxed">
+                        These team members have the ability to see any Weekly
+                        Report that {detailMember.name.split(" ")[0]} has
+                        access to, such as their direct reports', extended
+                        team's, and anyone who has added{" "}
+                        {detailMember.name.split(" ")[0]} as their Additional
+                        Viewer. This is helpful if{" "}
+                        {detailMember.name.split(" ")[0]} needs someone to
+                        review Weekly Reports on their behalf.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          value={viewAsMeSearch}
+                          onChange={(e) =>
+                            setViewAsMeSearch(e.target.value)
+                          }
+                          placeholder="Search for Team Member"
+                          className="pl-9 h-10"
+                        />
+                      </div>
+                      <Button
+                        variant="outline"
+                        className="border-primary text-primary hover:bg-primary/10 h-10"
+                        disabled
+                        title="Select team member(s) below to grant access"
+                      >
+                        Grant Access
+                      </Button>
+                    </div>
+
+                    {q ? (
+                      matches.length === 0 ? (
+                        <p className="text-sm text-center text-muted-foreground italic py-6">
+                          No team members match "{viewAsMeSearch}".
+                        </p>
+                      ) : (
+                        <div className="rounded-lg border bg-card divide-y">
+                          {matches.map((r) => {
+                            const isGranted = grants.includes(r.id);
+                            const url = resolveAvatarUrl(r.avatarUrl);
+                            return (
+                              <button
+                                type="button"
+                                key={r.id}
+                                onClick={() => toggleGrant(r.id)}
+                                className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30"
+                              >
+                                <Avatar className="h-9 w-9">
+                                  {url && <AvatarImage src={url} alt={r.name} />}
+                                  <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                                    {getInitials(r.name)}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium truncate">
+                                    {r.name}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground truncate">
+                                    {r.email}
+                                  </div>
+                                </div>
+                                {isGranted && (
+                                  <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                                    <Check className="h-4 w-4" />
+                                    Granted
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )
+                    ) : granted.length === 0 ? (
+                      <p className="text-sm text-center text-muted-foreground italic py-6">
+                        No one has "View as Me" access.
+                      </p>
+                    ) : (
+                      <div className="rounded-lg border bg-card divide-y">
+                        {granted.map((r) => {
+                          const url = resolveAvatarUrl(r.avatarUrl);
+                          return (
+                            <div
+                              key={r.id}
+                              className="flex items-center gap-3 px-4 py-3"
+                            >
+                              <Avatar className="h-9 w-9">
+                                {url && <AvatarImage src={url} alt={r.name} />}
+                                <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                                  {getInitials(r.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">
+                                  {r.name}
+                                </div>
+                                <div className="text-xs text-muted-foreground truncate">
+                                  {r.email}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => toggleGrant(r.id)}
+                                className="text-xs text-muted-foreground hover:text-destructive"
+                              >
+                                Revoke
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
         </SheetContent>
       </Sheet>
     </div>
