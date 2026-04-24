@@ -12,7 +12,6 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { EditableReportPhoto } from "@/components/editable-report-photo";
 import {
   Dialog,
   DialogContent,
@@ -479,21 +478,18 @@ export function DirectReports() {
             {visible.map((r: any) => {
               const reportsTo = r.organization || r.organizationName || "";
               return (
-                <div
+                <button
                   key={r.id}
-                  role="button"
-                  tabIndex={0}
+                  type="button"
                   onClick={() => setDetailMember(r)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" || e.key === " ") {
-                      e.preventDefault();
-                      setDetailMember(r);
-                    }
-                  }}
-                  className="w-full text-left grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-5 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer focus:outline-none focus:bg-muted/30"
+                  className="w-full text-left grid grid-cols-[2fr_1fr_1fr_auto] gap-4 px-5 py-4 items-center hover:bg-muted/30 transition-colors cursor-pointer"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <EditableReportPhoto report={r} size="md" />
+                    <Avatar className="h-9 w-9 shrink-0">
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                        {getInitials(r.name)}
+                      </AvatarFallback>
+                    </Avatar>
                     <div className="min-w-0">
                       <div className="font-medium text-sm truncate">
                         {r.name}
@@ -575,11 +571,11 @@ export function DirectReports() {
               </SheetHeader>
 
               <div className="flex flex-col items-center px-6 pt-2 pb-6">
-                <EditableReportPhoto
-                  report={detailMember}
-                  size="xl"
-                  stopPropagation={false}
-                />
+                <Avatar className="h-24 w-24">
+                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
+                    {getInitials(detailMember.name)}
+                  </AvatarFallback>
+                </Avatar>
                 <h3 className="mt-4 text-lg font-semibold">
                   {detailMember.name}
                 </h3>
