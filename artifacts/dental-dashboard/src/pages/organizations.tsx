@@ -477,7 +477,6 @@ function OrgSection({
                 <TableRow>
                   <TableHead>{nameLabel}</TableHead>
                   <TableHead>Location</TableHead>
-                  <TableHead>Contact</TableHead>
                   <TableHead className="text-right">Providers</TableHead>
                   <TableHead className="text-right">Patients</TableHead>
                   <TableHead className="text-right">Monthly Revenue</TableHead>
@@ -506,22 +505,6 @@ function OrgSection({
                         {org.city}
                         {org.city && org.state ? ", " : ""}
                         {org.state}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="space-y-0.5 text-sm text-muted-foreground">
-                        {org.phone && (
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3" />
-                            {org.phone}
-                          </div>
-                        )}
-                        {org.email && (
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-3 w-3" />
-                            {org.email}
-                          </div>
-                        )}
                       </div>
                     </TableCell>
                     <TableCell className="text-right">
