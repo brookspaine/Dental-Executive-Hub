@@ -1,6 +1,12 @@
 import { Router, type IRouter } from "express";
-import { eq } from "drizzle-orm";
-import { db, directReportsTable, organizationsTable, activityTable } from "@workspace/db";
+import { and, eq } from "drizzle-orm";
+import {
+  db,
+  directReportsTable,
+  organizationsTable,
+  activityTable,
+  viewAsMeGrantsTable,
+} from "@workspace/db";
 import {
   CreateDirectReportBody,
   GetDirectReportParams,
@@ -134,6 +140,70 @@ router.patch("/direct-reports/:id", async (req, res): Promise<void> => {
 
   res.json(UpdateDirectReportResponse.parse(mapNulls(full)));
 });
+
+router.get(
+  "/direct-reports/:id/view-as-me-grants",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      res.status(400).json({ error: "Invalid id" });
+      return;
+    }
+    const rows = await db
+      .select({ granteeReportId: viewAsMeGrantsTable.granteeReportId })
+      .from(viewAsMeGrantsTable)
+      .where(eq(viewAsMeGrantsTable.directReportId, id));
+    res.json(rows.map((r) => r.granteeReportId));
+  },
+);
+
+router.post(
+  "/direct-reports/:id/view-as-me-grants",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    const granteeReportId = Number(req.body?.granteeReportId);
+    if (!Number.isFinite(id) || !Number.isFinite(granteeReportId)) {
+      res.status(400).json({ error: "Invalid id or granteeReportId" });
+      return;
+    }
+    if (id === granteeReportId) {
+      res
+        .status(400)
+        .json({ error: "Cannot grant View as Me access to self" });
+      return;
+    }
+    await db
+      .insert(viewAsMeGrantsTable)
+      .values({ directReportId: id, granteeReportId })
+      .onConflictDoNothing();
+    const rows = await db
+      .select({ granteeReportId: viewAsMeGrantsTable.granteeReportId })
+      .from(viewAsMeGrantsTable)
+      .where(eq(viewAsMeGrantsTable.directReportId, id));
+    res.status(201).json(rows.map((r) => r.granteeReportId));
+  },
+);
+
+router.delete(
+  "/direct-reports/:id/view-as-me-grants/:granteeReportId",
+  async (req, res): Promise<void> => {
+    const id = Number(req.params.id);
+    const granteeReportId = Number(req.params.granteeReportId);
+    if (!Number.isFinite(id) || !Number.isFinite(granteeReportId)) {
+      res.status(400).json({ error: "Invalid id or granteeReportId" });
+      return;
+    }
+    await db
+      .delete(viewAsMeGrantsTable)
+      .where(
+        and(
+          eq(viewAsMeGrantsTable.directReportId, id),
+          eq(viewAsMeGrantsTable.granteeReportId, granteeReportId),
+        ),
+      );
+    res.sendStatus(204);
+  },
+);
 
 router.delete("/direct-reports/:id", async (req, res): Promise<void> => {
   const params = DeleteDirectReportParams.safeParse(req.params);

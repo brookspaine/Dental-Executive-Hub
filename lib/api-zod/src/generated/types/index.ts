@@ -23,6 +23,7 @@ export * from "./createScheduleBlockBody";
 export * from "./createSeatKeyResultBody";
 export * from "./createSeatTaskBody";
 export * from "./createVendorPasswordBody";
+export * from "./createViewAsMeGrantBody";
 export * from "./createWisdomQuoteBody";
 export * from "./dailyTop3Item";
 export * from "./dashboardSummary";

@@ -24,7 +24,7 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 - **EDGE**: CRUD management for EDGE dental practice locations with address, contact info, provider/patient counts, monthly revenue, and status tracking
 - **Urgent Dental**: Single-location detail view for the urgent dental care practice with inline editing
 - **Ideal Week**: Weekly scorecard with 12 identity/habit items (Bed Before 9:30 PM, Morning Ritual, Morning Journal, Movement or Workout, etc.) displayed as a Mon–Sun checkbox grid with per-row scores and overall weekly progress. Below the scorecard is a **Google Calendar-style** color-coded weekly schedule with absolutely-positioned time blocks that visually span their full duration. Blocks show labels and time ranges (e.g. "9:00AM–12:00PM"). Supports **drag-to-create** (click and drag on empty space), **drag-to-move** (grab a block and drag to reposition across days/times), **drag-to-resize** (grab bottom edge to change duration), and click-to-edit via dialog. Half-hour grid lines provide visual precision. Current time is shown with a red indicator line. Schedule data persists in the database (`schedule_blocks` table) and auto-seeds defaults on first load. Week navigation with prev/next and "This Week" buttons. **Google Calendar integration** overlays live events from connected Google accounts with side-by-side layout when events overlap schedule blocks. Calendar events use cyan pastel styling consistent with other block categories. **Reading List** section with DB-backed book tracking (add, edit, complete, delete). **Ritual sidebar** with 11 editable ritual sections (Morning, Startup, Shutdown, Evening, Deepwork, etc.) with journal prompts and inline editing.
-- **Direct Reports**: Card-based view of team members with roles, organization assignment, contact details, performance ratings, and status management
+- **Direct Reports**: Card-based view of team members with roles, organization assignment, contact details, performance ratings, and status management. Per-member side detail panel includes a "View as Me" Access sub-panel — search any team member to grant or revoke read-only access to that member's Weekly Reports; persisted in `direct_report_view_as_me_grants`.
 - **Announcements**: Color-coded announcements (info, warning, success, urgent) with create/delete functionality
 
 ## Database Schema
@@ -40,6 +40,7 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 - `reading_list` - Books/reading items with title, completed status, and sort order
 - `ritual_items` - Editable ritual section items with ritual key, content, and sort order
 - `journal_responses` - Journal prompt responses with ritual key, prompt, response text, and date
+- `direct_report_view_as_me_grants` - "View as Me" access grants between team members (directReportId → granteeReportId, unique per pair)
 
 ## Key Commands
 

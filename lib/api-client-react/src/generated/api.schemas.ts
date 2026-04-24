@@ -508,6 +508,10 @@ export interface UpdateVendorPasswordBody {
   sortOrder?: number;
 }
 
+export type CreateViewAsMeGrantBody = {
+  granteeReportId: number;
+};
+
 export type GetRecentActivityParams = {
   limit?: number;
 };

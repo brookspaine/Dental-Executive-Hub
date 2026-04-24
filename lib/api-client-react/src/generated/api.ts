@@ -28,6 +28,7 @@ import type {
   CreateSeatKeyResultBody,
   CreateSeatTaskBody,
   CreateVendorPasswordBody,
+  CreateViewAsMeGrantBody,
   CreateWisdomQuoteBody,
   DailyTop3Item,
   DashboardSummary,
@@ -1895,6 +1896,268 @@ export const useDeleteDirectReport = <
   TContext
 > => {
   return useMutation(getDeleteDirectReportMutationOptions(options));
+};
+
+/**
+ * @summary List who has "View as Me" access for a team member
+ */
+export const getListViewAsMeGrantsUrl = (id: number) => {
+  return `/api/direct-reports/${id}/view-as-me-grants`;
+};
+
+export const listViewAsMeGrants = async (
+  id: number,
+  options?: RequestInit,
+): Promise<number[]> => {
+  return customFetch<number[]>(getListViewAsMeGrantsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListViewAsMeGrantsQueryKey = (id: number) => {
+  return [`/api/direct-reports/${id}/view-as-me-grants`] as const;
+};
+
+export const getListViewAsMeGrantsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listViewAsMeGrants>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listViewAsMeGrants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListViewAsMeGrantsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listViewAsMeGrants>>
+  > = ({ signal }) => listViewAsMeGrants(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listViewAsMeGrants>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListViewAsMeGrantsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listViewAsMeGrants>>
+>;
+export type ListViewAsMeGrantsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List who has "View as Me" access for a team member
+ */
+
+export function useListViewAsMeGrants<
+  TData = Awaited<ReturnType<typeof listViewAsMeGrants>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listViewAsMeGrants>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListViewAsMeGrantsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Grant "View as Me" access to a team member
+ */
+export const getCreateViewAsMeGrantUrl = (id: number) => {
+  return `/api/direct-reports/${id}/view-as-me-grants`;
+};
+
+export const createViewAsMeGrant = async (
+  id: number,
+  createViewAsMeGrantBody: CreateViewAsMeGrantBody,
+  options?: RequestInit,
+): Promise<number[]> => {
+  return customFetch<number[]>(getCreateViewAsMeGrantUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createViewAsMeGrantBody),
+  });
+};
+
+export const getCreateViewAsMeGrantMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createViewAsMeGrant>>,
+    TError,
+    { id: number; data: BodyType<CreateViewAsMeGrantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createViewAsMeGrant>>,
+  TError,
+  { id: number; data: BodyType<CreateViewAsMeGrantBody> },
+  TContext
+> => {
+  const mutationKey = ["createViewAsMeGrant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createViewAsMeGrant>>,
+    { id: number; data: BodyType<CreateViewAsMeGrantBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createViewAsMeGrant(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateViewAsMeGrantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createViewAsMeGrant>>
+>;
+export type CreateViewAsMeGrantMutationBody = BodyType<CreateViewAsMeGrantBody>;
+export type CreateViewAsMeGrantMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Grant "View as Me" access to a team member
+ */
+export const useCreateViewAsMeGrant = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createViewAsMeGrant>>,
+    TError,
+    { id: number; data: BodyType<CreateViewAsMeGrantBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createViewAsMeGrant>>,
+  TError,
+  { id: number; data: BodyType<CreateViewAsMeGrantBody> },
+  TContext
+> => {
+  return useMutation(getCreateViewAsMeGrantMutationOptions(options));
+};
+
+/**
+ * @summary Revoke "View as Me" access for a team member
+ */
+export const getDeleteViewAsMeGrantUrl = (
+  id: number,
+  granteeReportId: number,
+) => {
+  return `/api/direct-reports/${id}/view-as-me-grants/${granteeReportId}`;
+};
+
+export const deleteViewAsMeGrant = async (
+  id: number,
+  granteeReportId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteViewAsMeGrantUrl(id, granteeReportId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteViewAsMeGrantMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteViewAsMeGrant>>,
+    TError,
+    { id: number; granteeReportId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteViewAsMeGrant>>,
+  TError,
+  { id: number; granteeReportId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteViewAsMeGrant"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteViewAsMeGrant>>,
+    { id: number; granteeReportId: number }
+  > = (props) => {
+    const { id, granteeReportId } = props ?? {};
+
+    return deleteViewAsMeGrant(id, granteeReportId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteViewAsMeGrantMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteViewAsMeGrant>>
+>;
+
+export type DeleteViewAsMeGrantMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Revoke "View as Me" access for a team member
+ */
+export const useDeleteViewAsMeGrant = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteViewAsMeGrant>>,
+    TError,
+    { id: number; granteeReportId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteViewAsMeGrant>>,
+  TError,
+  { id: number; granteeReportId: number },
+  TContext
+> => {
+  return useMutation(getDeleteViewAsMeGrantMutationOptions(options));
 };
 
 /**

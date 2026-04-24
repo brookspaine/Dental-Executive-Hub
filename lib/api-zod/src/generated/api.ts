@@ -358,6 +358,37 @@ export const DeleteDirectReportParams = zod.object({
 });
 
 /**
+ * @summary List who has "View as Me" access for a team member
+ */
+export const ListViewAsMeGrantsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListViewAsMeGrantsResponseItem = zod.number();
+export const ListViewAsMeGrantsResponse = zod.array(
+  ListViewAsMeGrantsResponseItem,
+);
+
+/**
+ * @summary Grant "View as Me" access to a team member
+ */
+export const CreateViewAsMeGrantParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateViewAsMeGrantBody = zod.object({
+  granteeReportId: zod.number(),
+});
+
+/**
+ * @summary Revoke "View as Me" access for a team member
+ */
+export const DeleteViewAsMeGrantParams = zod.object({
+  id: zod.coerce.number(),
+  granteeReportId: zod.coerce.number(),
+});
+
+/**
  * @summary List all announcements
  */
 export const ListAnnouncementsResponseItem = zod.object({

@@ -5,7 +5,11 @@ import {
   useCreateDirectReport,
   useUpdateDirectReport,
   useDeleteDirectReport,
+  useListViewAsMeGrants,
+  useCreateViewAsMeGrant,
+  useDeleteViewAsMeGrant,
   getListDirectReportsQueryKey,
+  getListViewAsMeGrantsQueryKey,
   getGetDashboardSummaryQueryKey,
 } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
@@ -55,6 +59,9 @@ import {
   Mail,
   Phone,
   Send,
+  ArrowLeft,
+  X,
+  Check,
 } from "lucide-react";
 
 type ReportFormData = {
@@ -120,6 +127,8 @@ export function DirectReports() {
   const [detailMember, setDetailMember] = useState<any | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [weeklyReminders, setWeeklyReminders] = useState(true);
+  const [viewAsMeOpen, setViewAsMeOpen] = useState(false);
+  const [viewAsMeSearch, setViewAsMeSearch] = useState("");
 
   const invalidate = () => {
     queryClient.invalidateQueries({ queryKey: getListDirectReportsQueryKey() });
@@ -695,6 +704,10 @@ export function DirectReports() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => {
+                        setViewAsMeSearch("");
+                        setViewAsMeOpen(true);
+                      }}
                       className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
                     >
                       <span className="text-sm">
@@ -736,6 +749,212 @@ export function DirectReports() {
         </SheetContent>
       </Sheet>
 
+      <ViewAsMeSheet
+        open={viewAsMeOpen}
+        onOpenChange={setViewAsMeOpen}
+        member={detailMember}
+        allReports={(reports as any[] | undefined) ?? []}
+        search={viewAsMeSearch}
+        onSearchChange={setViewAsMeSearch}
+      />
     </div>
+  );
+}
+
+function ViewAsMeSheet({
+  open,
+  onOpenChange,
+  member,
+  allReports,
+  search,
+  onSearchChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  member: any | null;
+  allReports: any[];
+  search: string;
+  onSearchChange: (v: string) => void;
+}) {
+  const queryClient = useQueryClient();
+  const memberId = member?.id ?? 0;
+  const enabled = open && !!member;
+
+  const { data: grants } = useListViewAsMeGrants(memberId, {
+    query: { enabled },
+  });
+  const grantMut = useCreateViewAsMeGrant();
+  const revokeMut = useDeleteViewAsMeGrant();
+
+  const invalidateGrants = () => {
+    queryClient.invalidateQueries({
+      queryKey: getListViewAsMeGrantsQueryKey(memberId),
+    });
+  };
+
+  if (!member) return null;
+
+  const grantedIds = new Set(grants ?? []);
+  const candidates = allReports.filter((r) => r.id !== member.id);
+  const q = search.trim().toLowerCase();
+  const matches = q
+    ? candidates.filter(
+        (r) =>
+          r.name?.toLowerCase().includes(q) ||
+          r.email?.toLowerCase().includes(q),
+      )
+    : candidates;
+  const granted = candidates.filter((r) => grantedIds.has(r.id));
+  const firstName = (member.name ?? "").split(" ")[0] || "they";
+
+  const toggleGrant = (id: number) => {
+    if (grantedIds.has(id)) {
+      revokeMut.mutate(
+        { id: memberId, granteeReportId: id },
+        { onSuccess: invalidateGrants },
+      );
+    } else {
+      grantMut.mutate(
+        { id: memberId, data: { granteeReportId: id } },
+        { onSuccess: invalidateGrants },
+      );
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent className="w-full sm:max-w-md p-0 overflow-y-auto">
+        <SheetHeader className="px-4 pt-4 pb-2">
+          <SheetTitle className="sr-only">"View as Me" Access</SheetTitle>
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="flex items-center gap-1 text-primary text-sm font-medium hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <button
+              type="button"
+              onClick={() => onOpenChange(false)}
+              className="text-muted-foreground hover:text-foreground"
+              aria-label="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </SheetHeader>
+
+        <div className="px-6 pt-4 pb-6 space-y-4">
+          <div className="rounded-xl bg-muted/50 px-5 py-5 text-center space-y-2">
+            <h3 className="text-lg font-semibold">"View as Me" Access</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              These team members have the ability to see any Weekly Report that{" "}
+              {firstName} has access to, such as their direct reports',
+              extended team's, and anyone who has added {firstName} as their
+              Additional Viewer. This is helpful if {firstName} needs someone
+              to review Weekly Reports on their behalf.
+            </p>
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              placeholder="Search for Team Member"
+              className="pl-9 h-10"
+            />
+          </div>
+
+          {q ? (
+            matches.length === 0 ? (
+              <p className="text-sm text-center text-muted-foreground italic py-6">
+                No team members match "{search}".
+              </p>
+            ) : (
+              <div className="rounded-lg border bg-card divide-y">
+                {matches.map((r) => {
+                  const isGranted = grantedIds.has(r.id);
+                  const url = resolveAvatarUrl(r.avatarUrl);
+                  return (
+                    <button
+                      type="button"
+                      key={r.id}
+                      onClick={() => toggleGrant(r.id)}
+                      className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-muted/30"
+                    >
+                      <Avatar className="h-9 w-9">
+                        {url && <AvatarImage src={url} alt={r.name} />}
+                        <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                          {getInitials(r.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">
+                          {r.name}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {r.email}
+                        </div>
+                      </div>
+                      {isGranted ? (
+                        <span className="flex items-center gap-1 text-xs text-primary font-medium">
+                          <Check className="h-4 w-4" />
+                          Granted
+                        </span>
+                      ) : (
+                        <span className="text-xs text-primary font-medium">
+                          Grant
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )
+          ) : granted.length === 0 ? (
+            <p className="text-sm text-center text-muted-foreground italic py-6">
+              No one has "View as Me" access.
+            </p>
+          ) : (
+            <div className="rounded-lg border bg-card divide-y">
+              {granted.map((r) => {
+                const url = resolveAvatarUrl(r.avatarUrl);
+                return (
+                  <div
+                    key={r.id}
+                    className="flex items-center gap-3 px-4 py-3"
+                  >
+                    <Avatar className="h-9 w-9">
+                      {url && <AvatarImage src={url} alt={r.name} />}
+                      <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+                        {getInitials(r.name)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">
+                        {r.name}
+                      </div>
+                      <div className="text-xs text-muted-foreground truncate">
+                        {r.email}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => toggleGrant(r.id)}
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }

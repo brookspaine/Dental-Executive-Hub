@@ -17,3 +17,4 @@ export * from "./vendorPasswords";
 export * from "./yearlyPlanning";
 export * from "./weeklyReview";
 export * from "./leadershipMeetings";
+export * from "./viewAsMeGrants";
