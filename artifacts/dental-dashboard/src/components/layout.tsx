@@ -44,7 +44,6 @@ const navItems: NavItem[] = [
       { href: "/team/my-reports", label: "My Reports" },
       { href: "/team/fill-out-a-report", label: "Fill Out a Report" },
       { href: "/direct-reports", label: "Manage Company" },
-      { href: "/team/kra-assistant", label: "KRA Assistant" },
     ],
   },
   {
