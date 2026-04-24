@@ -5,6 +5,7 @@
  * Dental CEO Dashboard API
  * OpenAPI spec version: 0.1.0
  */
+import type { OrganizationBeltClassification } from "./organizationBeltClassification";
 import type { OrganizationCategory } from "./organizationCategory";
 import type { OrganizationStatus } from "./organizationStatus";
 
@@ -21,5 +22,6 @@ export interface Organization {
   monthlyRevenue?: number;
   category?: OrganizationCategory;
   status: OrganizationStatus;
+  beltClassification?: OrganizationBeltClassification;
   createdAt: Date;
 }

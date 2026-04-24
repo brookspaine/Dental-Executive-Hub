@@ -80,6 +80,17 @@ export const OrganizationStatus = {
   inactive: "inactive",
 } as const;
 
+export type OrganizationBeltClassification =
+  | (typeof OrganizationBeltClassification)[keyof typeof OrganizationBeltClassification]
+  | null;
+
+export const OrganizationBeltClassification = {
+  white: "white",
+  blue: "blue",
+  brown: "brown",
+  black: "black",
+} as const;
+
 export interface Organization {
   id: number;
   name: string;
@@ -93,6 +104,7 @@ export interface Organization {
   monthlyRevenue?: number;
   category?: OrganizationCategory;
   status: OrganizationStatus;
+  beltClassification?: OrganizationBeltClassification;
   createdAt: string;
 }
 
@@ -113,6 +125,17 @@ export const CreateOrganizationBodyStatus = {
   inactive: "inactive",
 } as const;
 
+export type CreateOrganizationBodyBeltClassification =
+  | (typeof CreateOrganizationBodyBeltClassification)[keyof typeof CreateOrganizationBodyBeltClassification]
+  | null;
+
+export const CreateOrganizationBodyBeltClassification = {
+  white: "white",
+  blue: "blue",
+  brown: "brown",
+  black: "black",
+} as const;
+
 export interface CreateOrganizationBody {
   name: string;
   address: string;
@@ -125,6 +148,7 @@ export interface CreateOrganizationBody {
   monthlyRevenue?: number;
   category?: CreateOrganizationBodyCategory;
   status?: CreateOrganizationBodyStatus;
+  beltClassification?: CreateOrganizationBodyBeltClassification;
 }
 
 export type UpdateOrganizationBodyCategory =
@@ -144,6 +168,17 @@ export const UpdateOrganizationBodyStatus = {
   inactive: "inactive",
 } as const;
 
+export type UpdateOrganizationBodyBeltClassification =
+  | (typeof UpdateOrganizationBodyBeltClassification)[keyof typeof UpdateOrganizationBodyBeltClassification]
+  | null;
+
+export const UpdateOrganizationBodyBeltClassification = {
+  white: "white",
+  blue: "blue",
+  brown: "brown",
+  black: "black",
+} as const;
+
 export interface UpdateOrganizationBody {
   name?: string;
   address?: string;
@@ -156,6 +191,7 @@ export interface UpdateOrganizationBody {
   monthlyRevenue?: number;
   category?: UpdateOrganizationBodyCategory;
   status?: UpdateOrganizationBodyStatus;
+  beltClassification?: UpdateOrganizationBodyBeltClassification;
 }
 
 export type DirectReportStatus =

@@ -1327,6 +1327,10 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        beltClassification:
+          type: string
+          enum: [white, blue, brown, black]
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -1366,6 +1370,10 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        beltClassification:
+          type: string
+          enum: [white, blue, brown, black]
+          nullable: true
       required:
         - name
         - address
@@ -1399,6 +1407,10 @@ components:
         status:
           type: string
           enum: [active, inactive]
+        beltClassification:
+          type: string
+          enum: [white, blue, brown, black]
+          nullable: true
 
     DirectReport:
       type: object

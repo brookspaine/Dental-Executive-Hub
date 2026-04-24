@@ -68,9 +68,23 @@ export function OrganizationDetail() {
             </div>
           </div>
         </div>
-        <Badge variant={org.status === "active" ? "default" : "secondary"}>
-          {org.status}
-        </Badge>
+        {org.beltClassification ? (
+          <Badge
+            className={
+              org.beltClassification === "white"
+                ? "bg-white text-slate-900 border border-slate-300 hover:bg-white"
+                : org.beltClassification === "blue"
+                ? "bg-blue-600 text-white border-transparent hover:bg-blue-600"
+                : org.beltClassification === "brown"
+                ? "bg-amber-800 text-white border-transparent hover:bg-amber-800"
+                : "bg-black text-white border-transparent hover:bg-black"
+            }
+          >
+            {`${org.beltClassification.charAt(0).toUpperCase()}${org.beltClassification.slice(1)} Belt`}
+          </Badge>
+        ) : (
+          <span className="text-muted-foreground text-sm">No belt classification</span>
+        )}
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

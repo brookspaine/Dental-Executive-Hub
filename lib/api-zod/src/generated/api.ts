@@ -159,6 +159,7 @@ export const ListOrganizationsResponseItem = zod.object({
   monthlyRevenue: zod.number().optional(),
   category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
+  beltClassification: zod.enum(["white", "blue", "brown", "black"]).nullish(),
   createdAt: zod.coerce.date(),
 });
 export const ListOrganizationsResponse = zod.array(
@@ -180,6 +181,7 @@ export const CreateOrganizationBody = zod.object({
   monthlyRevenue: zod.number().optional(),
   category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]).optional(),
+  beltClassification: zod.enum(["white", "blue", "brown", "black"]).nullish(),
 });
 
 /**
@@ -202,6 +204,7 @@ export const GetOrganizationResponse = zod.object({
   monthlyRevenue: zod.number().optional(),
   category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
+  beltClassification: zod.enum(["white", "blue", "brown", "black"]).nullish(),
   createdAt: zod.coerce.date(),
 });
 
@@ -224,6 +227,7 @@ export const UpdateOrganizationBody = zod.object({
   monthlyRevenue: zod.number().optional(),
   category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]).optional(),
+  beltClassification: zod.enum(["white", "blue", "brown", "black"]).nullish(),
 });
 
 export const UpdateOrganizationResponse = zod.object({
@@ -239,6 +243,7 @@ export const UpdateOrganizationResponse = zod.object({
   monthlyRevenue: zod.number().optional(),
   category: zod.enum(["edge", "edge_dso", "urgent_dental"]).optional(),
   status: zod.enum(["active", "inactive"]),
+  beltClassification: zod.enum(["white", "blue", "brown", "black"]).nullish(),
   createdAt: zod.coerce.date(),
 });
 

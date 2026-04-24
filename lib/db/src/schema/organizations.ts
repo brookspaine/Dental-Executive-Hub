@@ -15,6 +15,7 @@ export const organizationsTable = pgTable("organizations", {
   monthlyRevenue: real("monthly_revenue").default(0),
   category: text("category").notNull().default("edge"),
   status: text("status").notNull().default("active"),
+  beltClassification: text("belt_classification"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

@@ -45,6 +45,8 @@ import {
   MapPin,
 } from "lucide-react";
 
+type Belt = "white" | "blue" | "brown" | "black";
+
 type OrgFormData = {
   name: string;
   address: string;
@@ -57,6 +59,7 @@ type OrgFormData = {
   monthlyRevenue: number;
   status: "active" | "inactive";
   category: "edge" | "edge_dso";
+  beltClassification: Belt | null;
 };
 
 const emptyForm: OrgFormData = {
@@ -71,7 +74,28 @@ const emptyForm: OrgFormData = {
   monthlyRevenue: 0,
   status: "active",
   category: "edge",
+  beltClassification: null,
 };
+
+const BELT_OPTIONS: Belt[] = ["white", "blue", "brown", "black"];
+
+const beltClasses: Record<Belt, string> = {
+  white: "bg-white text-slate-900 border border-slate-300 hover:bg-white",
+  blue: "bg-blue-600 text-white border-transparent hover:bg-blue-600",
+  brown: "bg-amber-800 text-white border-transparent hover:bg-amber-800",
+  black: "bg-black text-white border-transparent hover:bg-black",
+};
+
+function beltLabel(belt: Belt): string {
+  return `${belt.charAt(0).toUpperCase()}${belt.slice(1)} Belt`;
+}
+
+function BeltBadge({ belt }: { belt: string | null | undefined }) {
+  if (!belt || !(BELT_OPTIONS as string[]).includes(belt)) {
+    return <span className="text-muted-foreground text-sm">—</span>;
+  }
+  return <Badge className={beltClasses[belt as Belt]}>{beltLabel(belt as Belt)}</Badge>;
+}
 
 export function Organizations() {
   const queryClient = useQueryClient();
@@ -137,6 +161,9 @@ export function Organizations() {
       monthlyRevenue: org.monthlyRevenue || 0,
       status: org.status,
       category: (org.category as "edge" | "edge_dso") || "edge",
+      beltClassification: (BELT_OPTIONS as string[]).includes(org.beltClassification)
+        ? (org.beltClassification as Belt)
+        : null,
     });
     setDialogOpen(true);
   };
@@ -279,17 +306,26 @@ export function Organizations() {
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label>Status</Label>
+                <Label>Belt Classification</Label>
                 <Select
-                  value={form.status}
-                  onValueChange={(v) => setForm({ ...form, status: v as "active" | "inactive" })}
+                  value={form.beltClassification ?? "__none__"}
+                  onValueChange={(v) =>
+                    setForm({
+                      ...form,
+                      beltClassification: v === "__none__" ? null : (v as Belt),
+                    })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {BELT_OPTIONS.map((b) => (
+                      <SelectItem key={b} value={b}>
+                        {beltLabel(b)}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -380,7 +416,7 @@ function DsoSection({
                   <TableHead className="text-right">Total Revenue</TableHead>
                   <TableHead className="text-right">EBITDA</TableHead>
                   <TableHead className="text-right"># of Locations</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Belt Classification</TableHead>
                   {editMode && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -409,11 +445,7 @@ function DsoSection({
                       {locationCount}
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={org.status === "active" ? "default" : "secondary"}
-                      >
-                        {org.status}
-                      </Badge>
+                      <BeltBadge belt={org.beltClassification} />
                     </TableCell>
                     {editMode && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
@@ -496,7 +528,7 @@ function OrgSection({
                   <TableHead>{nameLabel}</TableHead>
                   <TableHead>Location</TableHead>
                   <TableHead className="text-right">EBITDA</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>Belt Classification</TableHead>
                   {editMode && <TableHead className="w-20"></TableHead>}
                 </TableRow>
               </TableHeader>
@@ -527,11 +559,7 @@ function OrgSection({
                       ${((org.monthlyRevenue ?? 0) / 1000).toFixed(0)}K
                     </TableCell>
                     <TableCell>
-                      <Badge
-                        variant={org.status === "active" ? "default" : "secondary"}
-                      >
-                        {org.status}
-                      </Badge>
+                      <BeltBadge belt={org.beltClassification} />
                     </TableCell>
                     {editMode && (
                       <TableCell onClick={(e) => e.stopPropagation()}>
