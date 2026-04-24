@@ -4,6 +4,7 @@ import { Link, useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MemberAvatar } from "@/components/member-avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   Select,
@@ -158,14 +159,11 @@ export function MeetingsLeadership() {
                       )}
                       <div className="flex -space-x-2">
                         {(s.members ?? []).slice(0, 4).map((m, i) => (
-                          <Avatar
+                          <MemberAvatar
                             key={i}
+                            name={m}
                             className="w-8 h-8 border-2 border-background"
-                          >
-                            <AvatarFallback className="text-xs bg-primary/15 text-primary">
-                              {initials(m)}
-                            </AvatarFallback>
-                          </Avatar>
+                          />
                         ))}
                         {(s.members?.length ?? 0) > 4 && (
                           <Avatar className="w-8 h-8 border-2 border-background">

@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MemberAvatar } from "@/components/member-avatar";
 import {
   Select,
   SelectContent,
@@ -364,11 +365,11 @@ function KeyTopicsSection({ agendaId }: { agendaId: number }) {
                   </div>
                   {t.owner && (
                     <div className="flex items-center gap-1.5 mt-1">
-                      <Avatar className="w-5 h-5">
-                        <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
-                          {initials(t.owner)}
-                        </AvatarFallback>
-                      </Avatar>
+                      <MemberAvatar
+                        name={t.owner}
+                        className="w-5 h-5"
+                        fallbackClassName="text-[10px] bg-primary/15 text-primary"
+                      />
                       <span className="text-xs text-muted-foreground">
                         {t.owner}
                       </span>
@@ -574,11 +575,11 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
                   <div className="flex items-center gap-3 mt-1 flex-wrap text-xs text-muted-foreground">
                     {a.owner && (
                       <div className="flex items-center gap-1.5">
-                        <Avatar className="w-5 h-5">
-                          <AvatarFallback className="text-[10px] bg-primary/15 text-primary">
-                            {initials(a.owner)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <MemberAvatar
+                          name={a.owner}
+                          className="w-5 h-5"
+                          fallbackClassName="text-[10px] bg-primary/15 text-primary"
+                        />
                         <span>{a.owner}</span>
                       </div>
                     )}

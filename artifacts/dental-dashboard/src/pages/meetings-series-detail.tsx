@@ -3,6 +3,7 @@ import { Link, useLocation, useParams } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MemberAvatar } from "@/components/member-avatar";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Plus, Pencil, Building2 } from "lucide-react";
 
@@ -107,11 +108,11 @@ export function MeetingsSeriesDetail() {
           )}
           <div className="flex -space-x-2">
             {(series?.members ?? []).map((m, i) => (
-              <Avatar key={i} className="w-8 h-8 border-2 border-background">
-                <AvatarFallback className="text-xs bg-primary/15 text-primary">
-                  {initials(m)}
-                </AvatarFallback>
-              </Avatar>
+              <MemberAvatar
+                key={i}
+                name={m}
+                className="w-8 h-8 border-2 border-background"
+              />
             ))}
           </div>
         </div>

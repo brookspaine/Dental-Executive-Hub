@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MemberAvatar } from "@/components/member-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -167,11 +168,7 @@ export function MeetingsSeriesNew() {
                       className="flex items-center justify-between gap-2"
                     >
                       <div className="flex items-center gap-2 min-w-0">
-                        <Avatar className="w-7 h-7">
-                          <AvatarFallback className="text-xs bg-primary/15 text-primary">
-                            {initials(m)}
-                          </AvatarFallback>
-                        </Avatar>
+                        <MemberAvatar name={m} className="w-7 h-7" />
                         <span className="text-sm truncate">{m}</span>
                       </div>
                       <button

@@ -11,7 +11,11 @@ import {
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  EditableReportPhoto,
+  resolveAvatarUrl,
+} from "@/components/editable-report-photo";
 import {
   Dialog,
   DialogContent,
@@ -486,6 +490,12 @@ export function DirectReports() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <Avatar className="h-9 w-9 shrink-0">
+                      {resolveAvatarUrl(r.avatarUrl) && (
+                        <AvatarImage
+                          src={resolveAvatarUrl(r.avatarUrl) ?? undefined}
+                          alt={r.name}
+                        />
+                      )}
                       <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
                         {getInitials(r.name)}
                       </AvatarFallback>
@@ -571,11 +581,7 @@ export function DirectReports() {
               </SheetHeader>
 
               <div className="flex flex-col items-center px-6 pt-2 pb-6">
-                <Avatar className="h-24 w-24">
-                  <AvatarFallback className="bg-primary/10 text-primary text-2xl font-semibold">
-                    {getInitials(detailMember.name)}
-                  </AvatarFallback>
-                </Avatar>
+                <EditableReportPhoto report={detailMember} />
                 <h3 className="mt-4 text-lg font-semibold">
                   {detailMember.name}
                 </h3>
