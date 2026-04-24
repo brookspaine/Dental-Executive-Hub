@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft, Trash2, Plus } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -471,6 +471,14 @@ function BulletList({
           </li>
         ))}
       </ul>
+      <button
+        type="button"
+        onClick={() => onChange([...items, ""])}
+        className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add row
+      </button>
     </div>
   );
 }
@@ -491,6 +499,8 @@ function GoalsTable({
     onChange(next);
   };
   const remove = (idx: number) => onChange(rows.filter((_, i) => i !== idx));
+  const addRow = () =>
+    onChange([...rows, { text: "", status: "Not started", nextSteps: "" }]);
 
   return (
     <div className="space-y-2">
@@ -507,6 +517,7 @@ function GoalsTable({
             No items yet.
           </div>
         )}
+        {/* rows rendered below */}
         {rows.map((row, idx) => (
           <div
             key={idx}
@@ -562,6 +573,14 @@ function GoalsTable({
           </div>
         ))}
       </div>
+      <button
+        type="button"
+        onClick={addRow}
+        className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+      >
+        <Plus className="h-3.5 w-3.5" />
+        Add row
+      </button>
     </div>
   );
 }
@@ -676,6 +695,14 @@ function SectionCard({
               </button>
             </div>
           ))}
+          <button
+            type="button"
+            onClick={() => update({ identity: [...data.identity, ""] })}
+            className="inline-flex items-center gap-1 text-xs text-primary hover:underline font-medium"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Add row
+          </button>
         </div>
 
         <BulletList
