@@ -33,6 +33,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Plus,
@@ -51,26 +52,24 @@ import {
 } from "lucide-react";
 
 type ReportFormData = {
-  name: string;
-  role: string;
+  firstName: string;
+  lastName: string;
   email: string;
-  phone: string;
-  organization: string;
-  status: "active" | "on_leave" | "inactive";
-  hireDate: string;
-  performanceRating: number | undefined;
+  reportsTo: string;
+  hasDirectReports: "yes" | "no";
 };
 
+const SELF_REPORTS_TO = "__self__";
+
 const emptyForm: ReportFormData = {
-  name: "",
-  role: "",
+  firstName: "",
+  lastName: "",
   email: "",
-  phone: "",
-  organization: "",
-  status: "active",
-  hireDate: "",
-  performanceRating: undefined,
+  reportsTo: SELF_REPORTS_TO,
+  hasDirectReports: "no",
 };
+
+const CURRENT_USER_NAME = "Brooks Paine";
 
 type SortKey = "name" | "status" | "reportsTo";
 type SortDir = "asc" | "desc";
@@ -118,18 +117,24 @@ export function DirectReports() {
   };
 
   const handleSubmit = () => {
-    if (!form.name || !form.role || !form.email) return;
+    const fullName = `${form.firstName.trim()} ${form.lastName.trim()}`.trim();
+    if (!fullName || !form.email) return;
+
+    const reportsToName =
+      form.reportsTo === SELF_REPORTS_TO
+        ? CURRENT_USER_NAME
+        : form.reportsTo;
 
     const data: any = {
-      name: form.name,
-      role: form.role,
+      name: fullName,
+      role: editingId
+        ? (reports as any[] | undefined)?.find((r) => r.id === editingId)?.role ||
+          "Team Member"
+        : "Team Member",
       email: form.email,
-      phone: form.phone || undefined,
-      organization: form.organization || undefined,
+      organization: reportsToName || undefined,
       organizationId: undefined,
-      status: form.status,
-      hireDate: form.hireDate || undefined,
-      performanceRating: form.performanceRating,
+      status: "active",
     };
 
     if (editingId) {
@@ -159,16 +164,20 @@ export function DirectReports() {
   };
 
   const handleEdit = (r: any) => {
+    const parts = (r.name ?? "").trim().split(/\s+/);
+    const firstName = parts.shift() ?? "";
+    const lastName = parts.join(" ");
+    const reportsToValue = r.organization || r.organizationName || "";
     setEditingId(r.id);
     setForm({
-      name: r.name,
-      role: r.role,
-      email: r.email,
-      phone: r.phone || "",
-      organization: r.organization || r.organizationName || "",
-      status: r.status,
-      hireDate: r.hireDate || "",
-      performanceRating: r.performanceRating || undefined,
+      firstName,
+      lastName,
+      email: r.email ?? "",
+      reportsTo:
+        !reportsToValue || reportsToValue === CURRENT_USER_NAME
+          ? SELF_REPORTS_TO
+          : reportsToValue,
+      hasDirectReports: "no",
     });
     setDialogOpen(true);
   };
@@ -259,122 +268,144 @@ export function DirectReports() {
                 Add Team Member
               </button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
-              <DialogHeader>
-                <DialogTitle>
+            <DialogContent className="max-w-md">
+              <DialogHeader className="space-y-1">
+                <p className="text-[11px] font-semibold tracking-widest text-muted-foreground uppercase">
+                  Manage Team Members
+                </p>
+                <DialogTitle className="text-2xl">
                   {editingId ? "Edit Team Member" : "Add Team Member"}
                 </DialogTitle>
               </DialogHeader>
-              <div className="grid gap-4 py-2">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Name</Label>
-                    <Input
-                      value={form.name}
-                      onChange={(e) =>
-                        setForm({ ...form, name: e.target.value })
-                      }
-                      placeholder="Full name"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Role</Label>
-                    <Input
-                      value={form.role}
-                      onChange={(e) =>
-                        setForm({ ...form, role: e.target.value })
-                      }
-                      placeholder="e.g. Office Manager"
-                    />
-                  </div>
+              <div className="space-y-5 pt-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName" className="text-sm font-semibold">
+                    First Name
+                  </Label>
+                  <Input
+                    id="firstName"
+                    value={form.firstName}
+                    onChange={(e) =>
+                      setForm({ ...form, firstName: e.target.value })
+                    }
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Email</Label>
-                    <Input
-                      value={form.email}
-                      onChange={(e) =>
-                        setForm({ ...form, email: e.target.value })
-                      }
-                      type="email"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Phone</Label>
-                    <Input
-                      value={form.phone}
-                      onChange={(e) =>
-                        setForm({ ...form, phone: e.target.value })
-                      }
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-sm font-semibold">
+                    Last Name
+                  </Label>
+                  <Input
+                    id="lastName"
+                    value={form.lastName}
+                    onChange={(e) =>
+                      setForm({ ...form, lastName: e.target.value })
+                    }
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Reports To / Organization</Label>
-                    <Input
-                      value={form.organization}
-                      onChange={(e) =>
-                        setForm({ ...form, organization: e.target.value })
-                      }
-                      placeholder="e.g. Urgent Dental"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Account Status</Label>
-                    <Select
-                      value={form.status}
-                      onValueChange={(v) =>
-                        setForm({
-                          ...form,
-                          status: v as "active" | "on_leave" | "inactive",
-                        })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="active">Active</SelectItem>
-                        <SelectItem value="on_leave">On Leave</SelectItem>
-                        <SelectItem value="inactive">Inactive</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email" className="text-sm font-semibold">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={form.email}
+                    onChange={(e) =>
+                      setForm({ ...form, email: e.target.value })
+                    }
+                  />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label>Hire Date</Label>
-                    <Input
-                      type="date"
-                      value={form.hireDate}
-                      onChange={(e) =>
-                        setForm({ ...form, hireDate: e.target.value })
-                      }
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label>Performance Rating (1-5)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={5}
-                      step={0.1}
-                      value={form.performanceRating || ""}
-                      onChange={(e) =>
-                        setForm({
-                          ...form,
-                          performanceRating: e.target.value
-                            ? parseFloat(e.target.value)
-                            : undefined,
-                        })
-                      }
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">
+                    Who do they report to?
+                  </Label>
+                  <Select
+                    value={form.reportsTo}
+                    onValueChange={(v) =>
+                      setForm({ ...form, reportsTo: v })
+                    }
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SELF_REPORTS_TO}>
+                        <span className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                              {getInitials(CURRENT_USER_NAME)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span>
+                            {CURRENT_USER_NAME}{" "}
+                            <span className="text-muted-foreground">(me)</span>
+                          </span>
+                        </span>
+                      </SelectItem>
+                      {((reports as any[] | undefined) ?? [])
+                        .filter((r) => r.id !== editingId)
+                        .map((r) => (
+                          <SelectItem key={r.id} value={r.name}>
+                            <span className="flex items-center gap-2">
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                                  {getInitials(r.name)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span>{r.name}</span>
+                            </span>
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <Button onClick={handleSubmit} className="mt-2">
-                  {editingId ? "Update" : "Add"} Team Member
-                </Button>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">
+                    Do they have direct reports?
+                  </Label>
+                  <RadioGroup
+                    value={form.hasDirectReports}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        hasDirectReports: v as "yes" | "no",
+                      })
+                    }
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="yes" id="dr-yes" />
+                      <Label
+                        htmlFor="dr-yes"
+                        className="font-normal cursor-pointer"
+                      >
+                        Yes, they lead at least one person.
+                      </Label>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <RadioGroupItem value="no" id="dr-no" />
+                      <Label
+                        htmlFor="dr-no"
+                        className="font-normal cursor-pointer"
+                      >
+                        No, they have no direct reports.
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+                <div className="flex justify-center pt-2">
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={
+                      !form.firstName.trim() ||
+                      !form.lastName.trim() ||
+                      !form.email.trim()
+                    }
+                    className="px-8"
+                  >
+                    Save & Close
+                  </Button>
+                </div>
               </div>
             </DialogContent>
           </Dialog>
