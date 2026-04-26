@@ -44,6 +44,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverTrigger,
+  PopoverContent,
+} from "@/components/ui/popover";
 import { ExternalLink } from "lucide-react";
 import {
   Table,
@@ -138,6 +143,48 @@ export function ActionItems() {
     emailUpcoming: true,
   });
   const [newOpen, setNewOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const defaultFilters = {
+    source: "all",
+    status: "uncompleted",
+    owner: "all",
+    dueDate: "all",
+  };
+  const [filters, setFilters] = useState(defaultFilters);
+  const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+
+  const filterLabel = (key: keyof typeof defaultFilters, value: string) => {
+    const map: Record<string, Record<string, string>> = {
+      source: {
+        all: "All",
+        "Setup Journey": "Setup Journey",
+        Manual: "Manual",
+      },
+      status: {
+        all: "All",
+        uncompleted: "Uncompleted",
+        completed: "Completed",
+      },
+      owner: { all: "All", me: "Brooks Paine" },
+      dueDate: {
+        all: "All",
+        overdue: "Overdue",
+        today: "Today",
+        week: "This Week",
+      },
+    };
+    return map[key]?.[value] ?? value;
+  };
+
+  const applyFilters = () => {
+    setAppliedFilters(filters);
+    setFiltersOpen(false);
+  };
+
+  const resetFilters = () => {
+    setFilters(defaultFilters);
+    setAppliedFilters(defaultFilters);
+  };
   const [newForm, setNewForm] = useState({
     title: "",
     context: "none",
@@ -219,14 +266,28 @@ export function ActionItems() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return items;
-    return items.filter(
-      (i) =>
-        i.title.toLowerCase().includes(q) ||
-        i.owner.name.toLowerCase().includes(q) ||
-        i.source.toLowerCase().includes(q),
-    );
-  }, [items, search]);
+    return items.filter((i) => {
+      if (
+        q &&
+        !(
+          i.title.toLowerCase().includes(q) ||
+          i.owner.name.toLowerCase().includes(q) ||
+          i.source.toLowerCase().includes(q)
+        )
+      ) {
+        return false;
+      }
+      if (
+        appliedFilters.source !== "all" &&
+        i.source !== appliedFilters.source
+      ) {
+        return false;
+      }
+      if (appliedFilters.status === "uncompleted" && i.done) return false;
+      if (appliedFilters.status === "completed" && !i.done) return false;
+      return true;
+    });
+  }, [items, search, appliedFilters]);
 
   const toggleDone = (id: string) => {
     setItems((prev) =>
@@ -281,10 +342,109 @@ export function ActionItems() {
               className="pl-8 h-9"
             />
           </div>
-          <Button variant="outline" size="sm" className="h-9 gap-1.5">
-            <SlidersHorizontal className="h-4 w-4" />
-            Filters
-          </Button>
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-9 gap-1.5">
+                <SlidersHorizontal className="h-4 w-4" />
+                Filters
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-72 p-0">
+              <div className="px-4 py-3 flex items-center justify-between border-b">
+                <h4 className="text-sm font-semibold">Filter By</h4>
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-sm font-medium text-primary hover:underline"
+                >
+                  Reset
+                </button>
+              </div>
+              <div className="py-1">
+                {(
+                  [
+                    {
+                      key: "source",
+                      label: "Source",
+                      options: [
+                        { value: "all", label: "All" },
+                        { value: "Setup Journey", label: "Setup Journey" },
+                        { value: "Manual", label: "Manual" },
+                      ],
+                    },
+                    {
+                      key: "status",
+                      label: "Status",
+                      options: [
+                        { value: "all", label: "All" },
+                        { value: "uncompleted", label: "Uncompleted" },
+                        { value: "completed", label: "Completed" },
+                      ],
+                    },
+                    {
+                      key: "owner",
+                      label: "Owner",
+                      options: [
+                        { value: "all", label: "All" },
+                        { value: "me", label: "Brooks Paine" },
+                      ],
+                    },
+                    {
+                      key: "dueDate",
+                      label: "Due Date",
+                      options: [
+                        { value: "all", label: "All" },
+                        { value: "overdue", label: "Overdue" },
+                        { value: "today", label: "Today" },
+                        { value: "week", label: "This Week" },
+                      ],
+                    },
+                  ] as const
+                ).map((row) => (
+                  <Select
+                    key={row.key}
+                    value={filters[row.key]}
+                    onValueChange={(v) =>
+                      setFilters((prev) => ({ ...prev, [row.key]: v }))
+                    }
+                  >
+                    <SelectTrigger
+                      className="h-auto rounded-none border-0 border-b last:border-b-0 px-4 py-2.5 hover:bg-muted/50 focus:ring-0 focus:ring-offset-0 [&>svg]:hidden"
+                    >
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <div className="text-left">
+                          <div className="text-sm font-semibold">
+                            {row.label}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {filterLabel(row.key, filters[row.key])}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {row.options.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ))}
+              </div>
+              <div className="px-4 py-3 border-t flex items-center justify-center">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={applyFilters}
+                  className="border-primary text-primary hover:bg-primary/5"
+                >
+                  Apply Filters
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
         </div>
       </Card>
 
