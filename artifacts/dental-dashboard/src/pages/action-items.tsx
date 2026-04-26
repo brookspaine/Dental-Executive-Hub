@@ -31,6 +31,21 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ExternalLink } from "lucide-react";
+import {
   Table,
   TableHeader,
   TableBody,
@@ -122,6 +137,46 @@ export function ActionItems() {
     textDailyPriority: false,
     emailUpcoming: true,
   });
+  const [newOpen, setNewOpen] = useState(false);
+  const [newForm, setNewForm] = useState({
+    title: "",
+    context: "none",
+    dueDate: "",
+    notes: "",
+    dailyTop3: false,
+  });
+
+  const resetNewForm = () =>
+    setNewForm({
+      title: "",
+      context: "none",
+      dueDate: "",
+      notes: "",
+      dailyTop3: false,
+    });
+
+  const saveNewItem = () => {
+    if (!newForm.title.trim()) return;
+    const id = `${Date.now()}`;
+    setItems((prev) => [
+      ...prev,
+      {
+        id,
+        title: newForm.title.trim(),
+        owner: { name: "Brooks Paine", initials: "BP" },
+        source: newForm.context === "none" ? "Manual" : newForm.context,
+        dueBy: newForm.dueDate || "—",
+        dueByFull: newForm.dueDate || "",
+        notes: newForm.notes
+          .split("\n")
+          .map((s) => s.trim())
+          .filter(Boolean)
+          .map((label) => ({ label })),
+      },
+    ]);
+    setNewOpen(false);
+    resetNewForm();
+  };
 
   const openItem = items.find((i) => i.id === openId) ?? null;
   const openItemIndex = openItem
@@ -205,6 +260,7 @@ export function ActionItems() {
           </button>
           <button
             type="button"
+            onClick={() => setNewOpen(true)}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
             <Plus className="h-4 w-4" />
@@ -683,6 +739,167 @@ export function ActionItems() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* New Action Item dialog */}
+      <Dialog
+        open={newOpen}
+        onOpenChange={(open) => {
+          setNewOpen(open);
+          if (!open) resetNewForm();
+        }}
+      >
+        <DialogContent className="max-w-3xl p-0 gap-0">
+          <DialogHeader className="px-6 py-4 border-b">
+            <DialogTitle className="text-lg font-semibold">
+              New Action Item
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Create a new action item
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-6 px-6 py-5">
+            {/* Form */}
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="new-title" className="text-sm font-semibold">
+                  Action Item
+                </Label>
+                <Input
+                  id="new-title"
+                  value={newForm.title}
+                  onChange={(e) =>
+                    setNewForm((f) => ({ ...f, title: e.target.value }))
+                  }
+                  placeholder="Enter Action Item Here"
+                  autoFocus
+                  className="border-primary focus-visible:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">
+                  Context (Optional)
+                </Label>
+                <Select
+                  value={newForm.context}
+                  onValueChange={(v) =>
+                    setNewForm((f) => ({ ...f, context: v }))
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="No Context" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No Context</SelectItem>
+                    <SelectItem value="Setup Journey">Setup Journey</SelectItem>
+                    <SelectItem value="Leadership Team">
+                      Leadership Team
+                    </SelectItem>
+                    <SelectItem value="1-on-1">1-on-1</SelectItem>
+                    <SelectItem value="Personal">Personal</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-sm font-semibold">Owner</Label>
+                <button
+                  type="button"
+                  className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
+                >
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
+                        BP
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>Brooks Paine (me)</span>
+                  </div>
+                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="new-due" className="text-sm font-semibold">
+                  Due Date
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="new-due"
+                    value={newForm.dueDate}
+                    onChange={(e) =>
+                      setNewForm((f) => ({ ...f, dueDate: e.target.value }))
+                    }
+                    placeholder=""
+                  />
+                  <CalendarDays className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="new-top3"
+                  checked={newForm.dailyTop3}
+                  onCheckedChange={(v) =>
+                    setNewForm((f) => ({ ...f, dailyTop3: v }))
+                  }
+                />
+                <Label htmlFor="new-top3" className="text-sm font-normal">
+                  Make this Action Item a Daily Top 3
+                </Label>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="new-notes" className="text-sm font-semibold">
+                  Action Item Notes (Optional)
+                </Label>
+                <Textarea
+                  id="new-notes"
+                  value={newForm.notes}
+                  onChange={(e) =>
+                    setNewForm((f) => ({ ...f, notes: e.target.value }))
+                  }
+                  rows={4}
+                  placeholder="Notes about this action item"
+                  className="resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Sidebar card */}
+            <div>
+              <Card className="p-4 space-y-3">
+                <h3 className="text-sm font-semibold">
+                  Connect your calendar to Elite
+                </h3>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Add intentional time blocks on your calendar to ensure that
+                  your action items get done and you make the most of every
+                  day.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Simply sync your calendar to get started.
+                </p>
+                <Button variant="outline" className="w-full gap-2 mt-1">
+                  <ExternalLink className="h-4 w-4" />
+                  Sync Calendar
+                </Button>
+              </Card>
+            </div>
+          </div>
+
+          <div className="border-t px-6 py-3 flex items-center justify-center">
+            <Button
+              onClick={saveNewItem}
+              disabled={!newForm.title.trim()}
+              className="px-8"
+            >
+              Save
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
