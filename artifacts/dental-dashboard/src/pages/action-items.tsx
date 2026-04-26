@@ -12,6 +12,8 @@ import {
   Pencil,
   ChevronDown,
   CalendarDays,
+  Phone,
+  Mail,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -114,6 +116,12 @@ export function ActionItems() {
     notes: string;
     dailyTop3: boolean;
   }>({ title: "", dueDate: "", notes: "", dailyTop3: false });
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifPrefs, setNotifPrefs] = useState({
+    textUpcoming: false,
+    textDailyPriority: false,
+    emailUpcoming: true,
+  });
 
   const openItem = items.find((i) => i.id === openId) ?? null;
   const openItemIndex = openItem
@@ -188,6 +196,7 @@ export function ActionItems() {
         <div className="flex items-center gap-2 sm:gap-4">
           <button
             type="button"
+            onClick={() => setNotifOpen(true)}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
             <Bell className="h-4 w-4" />
@@ -568,6 +577,110 @@ export function ActionItems() {
               </div>
             </>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Notification Preferences slide-over */}
+      <Sheet open={notifOpen} onOpenChange={setNotifOpen}>
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md p-0 flex flex-col"
+        >
+          <SheetHeader className="px-6 py-4 border-b">
+            <SheetTitle className="text-lg font-semibold">
+              Notification Preferences
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Configure your action item notification preferences
+            </SheetDescription>
+          </SheetHeader>
+
+          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+            {/* Text Reminders */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Phone className="h-5 w-5" />
+                <h3 className="text-base font-semibold">Text Reminders</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Reminders will be sent to (304) 382-9080.{" "}
+                <button
+                  type="button"
+                  className="text-primary font-medium hover:underline"
+                >
+                  Edit
+                </button>
+              </p>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5 flex-1">
+                  <Label className="text-sm font-semibold">
+                    Upcoming action items
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    You'll get a reminder two days prior to an Action Item's
+                    due date.
+                  </p>
+                </div>
+                <Switch
+                  checked={notifPrefs.textUpcoming}
+                  onCheckedChange={(v) =>
+                    setNotifPrefs((p) => ({ ...p, textUpcoming: v }))
+                  }
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5 flex-1">
+                  <Label className="text-sm font-semibold">
+                    Daily Priority
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    We'll prompt you to set your daily priorities in the
+                    morning and follow up at the end of the day. Don't worry,
+                    we won't text you on the weekends.
+                  </p>
+                </div>
+                <Switch
+                  checked={notifPrefs.textDailyPriority}
+                  onCheckedChange={(v) =>
+                    setNotifPrefs((p) => ({ ...p, textDailyPriority: v }))
+                  }
+                />
+              </div>
+            </section>
+
+            <div className="border-t" />
+
+            {/* Email Reminders */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                <h3 className="text-base font-semibold">Email Reminders</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Reminders will be sent to brookspaine@gmail.com
+              </p>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5 flex-1">
+                  <Label className="text-sm font-semibold">
+                    Upcoming Action Items
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    You'll get a reminder two days prior to an Action Item's
+                    due date.
+                  </p>
+                </div>
+                <Switch
+                  checked={notifPrefs.emailUpcoming}
+                  onCheckedChange={(v) =>
+                    setNotifPrefs((p) => ({ ...p, emailUpcoming: v }))
+                  }
+                />
+              </div>
+            </section>
+          </div>
         </SheetContent>
       </Sheet>
     </div>
