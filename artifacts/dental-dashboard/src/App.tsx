@@ -20,6 +20,7 @@ import { MeetingsSeriesDetail } from "@/pages/meetings-series-detail";
 import { MeetingsAgenda } from "@/pages/meetings-agenda";
 import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
 import { TeamPlaceholder } from "@/pages/team-placeholder";
+import { ActionItems } from "@/pages/action-items";
 
 const queryClient = new QueryClient();
 
@@ -38,12 +39,7 @@ function Router() {
         <Route path="/org-chart" component={OrgChart} />
         <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
-        <Route path="/action-items">
-          <TeamPlaceholder
-            title="Action Items"
-            description="Track and manage your action items."
-          />
-        </Route>
+        <Route path="/action-items" component={ActionItems} />
         <Route path="/team/reports">
           <TeamPlaceholder
             title="Team Reports"
