@@ -9,12 +9,20 @@ import {
   FileText,
   ChevronRight,
   ArrowUp,
+  Pencil,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from "@/components/ui/sheet";
 import {
   Table,
   TableHeader,
@@ -24,12 +32,16 @@ import {
   TableCell,
 } from "@/components/ui/table";
 
+type ActionItemNote = { label: string; href?: string };
+
 type ActionItem = {
   id: string;
   title: string;
   owner: { name: string; initials: string };
   source: string;
   dueBy: string;
+  dueByFull: string;
+  notes?: ActionItemNote[];
   starred?: boolean;
   done?: boolean;
 };
@@ -41,6 +53,8 @@ const sampleItems: ActionItem[] = [
     owner: { name: "Brooks Paine", initials: "BP" },
     source: "Setup Journey",
     dueBy: "Apr 23",
+    dueByFull: "4/23/2026",
+    notes: [{ label: "Review your agenda." }],
   },
   {
     id: "2",
@@ -48,6 +62,7 @@ const sampleItems: ActionItem[] = [
     owner: { name: "Brooks Paine", initials: "BP" },
     source: "Setup Journey",
     dueBy: "Apr 23",
+    dueByFull: "4/23/2026",
   },
   {
     id: "3",
@@ -55,6 +70,7 @@ const sampleItems: ActionItem[] = [
     owner: { name: "Brooks Paine", initials: "BP" },
     source: "Setup Journey",
     dueBy: "Apr 23",
+    dueByFull: "4/23/2026",
   },
   {
     id: "4",
@@ -62,6 +78,7 @@ const sampleItems: ActionItem[] = [
     owner: { name: "Brooks Paine", initials: "BP" },
     source: "Setup Journey",
     dueBy: "Apr 23",
+    dueByFull: "4/23/2026",
   },
   {
     id: "5",
@@ -69,6 +86,7 @@ const sampleItems: ActionItem[] = [
     owner: { name: "Brooks Paine", initials: "BP" },
     source: "Setup Journey",
     dueBy: "Apr 23",
+    dueByFull: "4/23/2026",
   },
   {
     id: "6",
@@ -76,12 +94,19 @@ const sampleItems: ActionItem[] = [
     owner: { name: "Brooks Paine", initials: "BP" },
     source: "Setup Journey",
     dueBy: "Apr 23",
+    dueByFull: "4/23/2026",
   },
 ];
 
 export function ActionItems() {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<ActionItem[]>(sampleItems);
+  const [openId, setOpenId] = useState<string | null>(null);
+
+  const openItem = items.find((i) => i.id === openId) ?? null;
+  const openItemIndex = openItem
+    ? items.findIndex((i) => i.id === openItem.id)
+    : -1;
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -186,8 +211,15 @@ export function ActionItems() {
               </TableRow>
             ) : (
               filtered.map((item, idx) => (
-                <TableRow key={item.id} className="group">
-                  <TableCell className="pl-3">
+                <TableRow
+                  key={item.id}
+                  className="group cursor-pointer"
+                  onClick={() => setOpenId(item.id)}
+                >
+                  <TableCell
+                    className="pl-3"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
@@ -233,23 +265,22 @@ export function ActionItems() {
                   <TableCell className="text-sm font-medium text-rose-500">
                     {item.dueBy}
                   </TableCell>
-                  <TableCell>
+                  <TableCell onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       aria-label="View notes"
-                      className="text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => setOpenId(item.id)}
+                      className={`transition-colors ${
+                        item.notes && item.notes.length > 0
+                          ? "text-foreground hover:text-primary"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
                     >
                       <FileText className="h-4 w-4" />
                     </button>
                   </TableCell>
                   <TableCell>
-                    <button
-                      type="button"
-                      aria-label="Open action item"
-                      className="text-muted-foreground hover:text-foreground transition-colors"
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
                   </TableCell>
                 </TableRow>
               ))
@@ -257,6 +288,113 @@ export function ActionItems() {
           </TableBody>
         </Table>
       </Card>
+
+      {/* Detail slide-over */}
+      <Sheet
+        open={!!openItem}
+        onOpenChange={(open) => !open && setOpenId(null)}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md p-0 flex flex-col"
+        >
+          <SheetHeader className="px-6 py-4 border-b">
+            <SheetTitle className="text-lg font-semibold">
+              Action Item
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Action item details
+            </SheetDescription>
+          </SheetHeader>
+          {openItem && (
+            <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </button>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <Checkbox
+                  checked={!!openItem.done}
+                  onCheckedChange={() => toggleDone(openItem.id)}
+                  className="mt-1"
+                  aria-label="Mark complete"
+                />
+                <p
+                  className={`text-base leading-snug ${
+                    openItem.done
+                      ? "line-through text-muted-foreground"
+                      : ""
+                  }`}
+                >
+                  {openItemIndex + 1}. {openItem.title}
+                </p>
+              </div>
+
+              <dl className="space-y-2.5 text-sm pl-7">
+                <div className="flex items-center gap-2">
+                  <dt className="font-semibold">Source:</dt>
+                  <dd>{openItem.source}</dd>
+                </div>
+                <div className="flex items-center gap-2">
+                  <dt className="font-semibold">Owner:</dt>
+                  <dd className="flex items-center gap-2">
+                    <Avatar className="h-6 w-6">
+                      <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
+                        {openItem.owner.initials}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span>{openItem.owner.name}</span>
+                  </dd>
+                </div>
+                <div className="flex items-center gap-2">
+                  <dt className="font-semibold">Due By:</dt>
+                  <dd>{openItem.dueByFull}</dd>
+                </div>
+              </dl>
+
+              <div className="pl-7 space-y-2">
+                <div className="flex items-center gap-1.5 text-sm font-semibold">
+                  <FileText className="h-4 w-4" />
+                  Notes:
+                </div>
+                {openItem.notes && openItem.notes.length > 0 ? (
+                  <ul className="space-y-1.5">
+                    {openItem.notes.map((note, i) => (
+                      <li key={i}>
+                        {note.href ? (
+                          <a
+                            href={note.href}
+                            className="text-sm text-primary underline hover:no-underline"
+                          >
+                            {note.label}
+                          </a>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-sm text-primary underline hover:no-underline text-left"
+                          >
+                            {note.label}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">
+                    No notes yet.
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
