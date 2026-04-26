@@ -2616,72 +2616,72 @@ export function IdealWeek() {
             category="startup"
             title="Startup Ritual"
             icon={Rocket}
-            bannerColor="bg-[#93c47d]"
-            textColor="text-green-900"
+            bannerColor="bg-[#b4c5d8]"
+            textColor="text-slate-900"
           />
           <EditableRitualSection
             category="shutdown"
             title="Shutdown Ritual"
             icon={Moon}
-            bannerColor="bg-[#a4c2f4]"
-            textColor="text-blue-900"
+            bannerColor="bg-[#b4c5d8]"
+            textColor="text-slate-900"
             journalPrompts={EVENING_PROMPTS}
           />
           <EditableRitualSection
             category="weekly_review"
             title="Weekly Review"
             icon={ClipboardCheck}
-            bannerColor="bg-[#b4a7d6]"
-            textColor="text-purple-900"
+            bannerColor="bg-[#cbe0c6]"
+            textColor="text-green-900"
           />
           <EditableRitualSection
             category="monthly_review"
             title="Monthly Review"
             icon={Calendar}
-            bannerColor="bg-[#ea9999]"
-            textColor="text-red-900"
+            bannerColor="bg-[#cbe0c6]"
+            textColor="text-green-900"
           />
           <EditableRitualSection
             category="quarterly_review"
             title="Quarterly Review"
             icon={BarChart3}
-            bannerColor="bg-[#f9cb9c]"
+            bannerColor="bg-[#efcaa1]"
             textColor="text-orange-900"
           />
           <EditableRitualSection
             category="anchor_meetings"
             title="Anchor Meetings"
             icon={Anchor}
-            bannerColor="bg-[#c9daf8]"
-            textColor="text-blue-900"
+            bannerColor="bg-[#e89c4d]"
+            textColor="text-white"
           />
           <EditableRitualSection
             category="deepwork"
             title="Deepwork"
             icon={Brain}
-            bannerColor="bg-[#d5a6bd]"
-            textColor="text-pink-900"
+            bannerColor="bg-[#7fa9d4]"
+            textColor="text-white"
           />
           <EditableRitualSection
             category="execution_block"
             title="Execution Block"
             icon={Zap}
-            bannerColor="bg-[#ffe599]"
-            textColor="text-yellow-900"
+            bannerColor="bg-[#7e6db0]"
+            textColor="text-white"
           />
           <EditableRitualSection
             category="family_friends"
             title="Family/Friends"
             icon={Heart}
-            bannerColor="bg-[#b6d7a8]"
-            textColor="text-green-900"
+            bannerColor="bg-[#e89684]"
+            textColor="text-white"
           />
           <EditableRitualSection
             category="patient_care"
             title="Patient Care"
             icon={Stethoscope}
-            bannerColor="bg-[#a2c4c9]"
-            textColor="text-teal-900"
+            bannerColor="bg-[#2c3e70]"
+            textColor="text-white"
           />
         </div>
       </div>
