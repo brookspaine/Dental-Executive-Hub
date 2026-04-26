@@ -38,6 +38,12 @@ function Router() {
         <Route path="/org-chart" component={OrgChart} />
         <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
+        <Route path="/action-items">
+          <TeamPlaceholder
+            title="Action Items"
+            description="Track and manage your action items."
+          />
+        </Route>
         <Route path="/team/reports">
           <TeamPlaceholder
             title="Team Reports"

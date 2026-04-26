@@ -11,6 +11,7 @@ import {
   Menu,
   ChevronDown,
   CalendarDays,
+  ListChecks,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -34,6 +35,7 @@ const navItems: NavItem[] = [
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
+  { href: "/action-items", label: "Action Items", icon: ListChecks },
   {
     label: "Team",
     icon: Users,
@@ -205,6 +207,7 @@ function shouldHideTopHeader(location: string): boolean {
   if (location.startsWith("/org-chart")) return true;
   if (location.startsWith("/team")) return true;
   if (location.startsWith("/direct-reports")) return true;
+  if (location.startsWith("/action-items")) return true;
   if (location.startsWith("/meetings")) return true;
   return false;
 }
