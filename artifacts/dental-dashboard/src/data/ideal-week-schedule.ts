@@ -15,7 +15,7 @@ export const categoryColors: Record<string, { bg: string; text: string; border: 
   review: { bg: "bg-green-500", text: "text-white", border: "border-green-600" },
   meeting: { bg: "bg-orange-400", text: "text-slate-900", border: "border-orange-500" },
   deepwork: { bg: "bg-blue-400", text: "text-white", border: "border-blue-500" },
-  evening: { bg: "bg-red-400", text: "text-white", border: "border-red-500" },
+  evening: { bg: "bg-violet-200", text: "text-violet-900", border: "border-violet-300" },
   workout: { bg: "bg-yellow-200", text: "text-yellow-900", border: "border-yellow-300" },
   calendar: { bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-300" },
 };
