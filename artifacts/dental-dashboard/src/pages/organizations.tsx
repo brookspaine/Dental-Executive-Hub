@@ -379,26 +379,24 @@ export function Organizations() {
         addLabel="Add UD Location"
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { title: "Financials", icon: DollarSign },
-          { title: "Location", icon: MapPin },
-          { title: "People", icon: Users },
-          { title: "Operations", icon: Settings },
-        ].map(({ title, icon: Icon }) => (
-          <Card
-            key={title}
-            className="hover:shadow-md transition-shadow cursor-pointer"
-          >
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-3">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                <Icon className="h-6 w-6" />
-              </div>
-              <div className="font-semibold">{title}</div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {[
+        { title: "Financials", icon: DollarSign },
+        { title: "Location", icon: MapPin },
+        { title: "People", icon: Users },
+        { title: "Operations", icon: Settings },
+      ].map(({ title, icon: Icon }) => (
+        <Card
+          key={title}
+          className="hover:shadow-md transition-shadow cursor-pointer"
+        >
+          <CardContent className="p-4 flex items-center gap-3">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center text-primary shrink-0">
+              <Icon className="h-5 w-5" />
+            </div>
+            <div className="font-semibold">{title}</div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
