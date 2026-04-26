@@ -59,75 +59,18 @@ import {
   TableCell,
 } from "@/components/ui/table";
 
-type ActionItemNote = { label: string; href?: string };
-
-type ActionItem = {
-  id: string;
-  title: string;
-  owner: { name: string; initials: string };
-  source: string;
-  dueBy: string;
-  dueByFull: string;
-  notes?: ActionItemNote[];
-  starred?: boolean;
-  done?: boolean;
-};
-
-const sampleItems: ActionItem[] = [
-  {
-    id: "1",
-    title: "Check out the Leadership Team Meeting tool.",
-    owner: { name: "Brooks Paine", initials: "BP" },
-    source: "Setup Journey",
-    dueBy: "Apr 23",
-    dueByFull: "4/23/2026",
-    notes: [{ label: "Review your agenda." }],
-  },
-  {
-    id: "2",
-    title: "Decide the details for your strategy meeting.",
-    owner: { name: "Brooks Paine", initials: "BP" },
-    source: "Setup Journey",
-    dueBy: "Apr 23",
-    dueByFull: "4/23/2026",
-  },
-  {
-    id: "3",
-    title: "Strategy Meeting Prep: Plan your talking points.",
-    owner: { name: "Brooks Paine", initials: "BP" },
-    source: "Setup Journey",
-    dueBy: "Apr 23",
-    dueByFull: "4/23/2026",
-  },
-  {
-    id: "4",
-    title: "Strategy Meeting Prep: Review your numbers.",
-    owner: { name: "Brooks Paine", initials: "BP" },
-    source: "Setup Journey",
-    dueBy: "Apr 23",
-    dueByFull: "4/23/2026",
-  },
-  {
-    id: "5",
-    title: "Invite Your Team to Elite.",
-    owner: { name: "Brooks Paine", initials: "BP" },
-    source: "Setup Journey",
-    dueBy: "Apr 23",
-    dueByFull: "4/23/2026",
-  },
-  {
-    id: "6",
-    title: "Host the Annual Strategy meeting.",
-    owner: { name: "Brooks Paine", initials: "BP" },
-    source: "Setup Journey",
-    dueBy: "Apr 23",
-    dueByFull: "4/23/2026",
-  },
-];
+import { useActionItems } from "@/contexts/action-items-context";
+import type { ActionItem } from "@/contexts/action-items-context";
 
 export function ActionItems() {
+  const {
+    items,
+    setItems,
+    addItem,
+    toggleDone,
+    toggleStar,
+  } = useActionItems();
   const [search, setSearch] = useState("");
-  const [items, setItems] = useState<ActionItem[]>(sampleItems);
   const [openId, setOpenId] = useState<string | null>(null);
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
@@ -153,12 +96,17 @@ export function ActionItems() {
   const [filters, setFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
 
+  const sourceOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const i of items) set.add(i.source);
+    return Array.from(set).sort();
+  }, [items]);
+
   const filterLabel = (key: keyof typeof defaultFilters, value: string) => {
     const map: Record<string, Record<string, string>> = {
       source: {
         all: "All",
-        "Setup Journey": "Setup Journey",
-        Manual: "Manual",
+        ...Object.fromEntries(sourceOptions.map((s) => [s, s])),
       },
       status: {
         all: "All",
@@ -204,23 +152,12 @@ export function ActionItems() {
 
   const saveNewItem = () => {
     if (!newForm.title.trim()) return;
-    const id = `${Date.now()}`;
-    setItems((prev) => [
-      ...prev,
-      {
-        id,
-        title: newForm.title.trim(),
-        owner: { name: "Brooks Paine", initials: "BP" },
-        source: newForm.context === "none" ? "Manual" : newForm.context,
-        dueBy: newForm.dueDate || "—",
-        dueByFull: newForm.dueDate || "",
-        notes: newForm.notes
-          .split("\n")
-          .map((s) => s.trim())
-          .filter(Boolean)
-          .map((label) => ({ label })),
-      },
-    ]);
+    addItem({
+      title: newForm.title,
+      source: newForm.context === "none" ? "Manual" : newForm.context,
+      dueDate: newForm.dueDate,
+      notes: newForm.notes,
+    });
     setNewOpen(false);
     resetNewForm();
   };
@@ -289,17 +226,6 @@ export function ActionItems() {
     });
   }, [items, search, appliedFilters]);
 
-  const toggleDone = (id: string) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, done: !i.done } : i)),
-    );
-  };
-
-  const toggleStar = (id: string) => {
-    setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, starred: !i.starred } : i)),
-    );
-  };
 
   return (
     <div className="space-y-4">
@@ -368,8 +294,7 @@ export function ActionItems() {
                       label: "Source",
                       options: [
                         { value: "all", label: "All" },
-                        { value: "Setup Journey", label: "Setup Journey" },
-                        { value: "Manual", label: "Manual" },
+                        ...sourceOptions.map((s) => ({ value: s, label: s })),
                       ],
                     },
                     {
