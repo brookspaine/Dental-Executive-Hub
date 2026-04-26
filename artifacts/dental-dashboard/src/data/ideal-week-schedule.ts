@@ -12,7 +12,7 @@ export const categoryColors: Record<string, { bg: string; text: string; border: 
   executive: { bg: "bg-violet-500", text: "text-white", border: "border-violet-600" },
   patient: { bg: "bg-blue-900", text: "text-white", border: "border-blue-950" },
   family: { bg: "bg-red-300", text: "text-red-950", border: "border-red-400" },
-  review: { bg: "bg-[#9fcf85]", text: "text-green-900", border: "border-[#84bd6b]" },
+  review: { bg: "bg-[#8fdcb5]", text: "text-emerald-900", border: "border-[#6fc99c]" },
   meeting: { bg: "bg-orange-400", text: "text-slate-900", border: "border-orange-500" },
   deepwork: { bg: "bg-blue-400", text: "text-white", border: "border-blue-500" },
   evening: { bg: "bg-violet-200", text: "text-violet-900", border: "border-violet-300" },
