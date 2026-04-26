@@ -7,8 +7,8 @@ export type ScheduleBlock = {
 
 export const categoryColors: Record<string, { bg: string; text: string; border: string }> = {
   morning: { bg: "bg-yellow-200", text: "text-yellow-900", border: "border-yellow-300" },
-  startup: { bg: "bg-slate-300", text: "text-slate-900", border: "border-slate-400" },
-  shutdown: { bg: "bg-slate-300", text: "text-slate-900", border: "border-slate-400" },
+  startup: { bg: "bg-[#a8c5e0]", text: "text-slate-900", border: "border-[#8fb3d4]" },
+  shutdown: { bg: "bg-[#a8c5e0]", text: "text-slate-900", border: "border-[#8fb3d4]" },
   executive: { bg: "bg-violet-500", text: "text-white", border: "border-violet-600" },
   patient: { bg: "bg-blue-900", text: "text-white", border: "border-blue-950" },
   family: { bg: "bg-red-400", text: "text-white", border: "border-red-500" },

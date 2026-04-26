@@ -2616,14 +2616,14 @@ export function IdealWeek() {
             category="startup"
             title="Startup Ritual"
             icon={Rocket}
-            bannerColor="bg-[#b4c5d8]"
+            bannerColor="bg-[#a8c5e0]"
             textColor="text-slate-900"
           />
           <EditableRitualSection
             category="shutdown"
             title="Shutdown Ritual"
             icon={Moon}
-            bannerColor="bg-[#b4c5d8]"
+            bannerColor="bg-[#a8c5e0]"
             textColor="text-slate-900"
             journalPrompts={EVENING_PROMPTS}
           />
