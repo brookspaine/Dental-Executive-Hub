@@ -10,12 +10,17 @@ import {
   ChevronRight,
   ArrowUp,
   Pencil,
+  ChevronDown,
+  CalendarDays,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import {
   Sheet,
   SheetContent,
@@ -102,11 +107,52 @@ export function ActionItems() {
   const [search, setSearch] = useState("");
   const [items, setItems] = useState<ActionItem[]>(sampleItems);
   const [openId, setOpenId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<{
+    title: string;
+    dueDate: string;
+    notes: string;
+    dailyTop3: boolean;
+  }>({ title: "", dueDate: "", notes: "", dailyTop3: false });
 
   const openItem = items.find((i) => i.id === openId) ?? null;
   const openItemIndex = openItem
     ? items.findIndex((i) => i.id === openItem.id)
     : -1;
+  const editItem = items.find((i) => i.id === editId) ?? null;
+
+  const startEdit = (id: string) => {
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    setEditForm({
+      title: item.title,
+      dueDate: item.dueByFull,
+      notes: (item.notes ?? []).map((n) => n.label).join("\n"),
+      dailyTop3: false,
+    });
+    setEditId(id);
+  };
+
+  const saveEdit = () => {
+    if (!editId) return;
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === editId
+          ? {
+              ...i,
+              title: editForm.title,
+              dueByFull: editForm.dueDate,
+              notes: editForm.notes
+                .split("\n")
+                .map((s) => s.trim())
+                .filter(Boolean)
+                .map((label) => ({ label })),
+            }
+          : i,
+      ),
+    );
+    setEditId(null);
+  };
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -311,6 +357,7 @@ export function ActionItems() {
               <div className="flex justify-end">
                 <button
                   type="button"
+                  onClick={() => startEdit(openItem.id)}
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                 >
                   <Pencil className="h-4 w-4" />
@@ -392,6 +439,134 @@ export function ActionItems() {
                 )}
               </div>
             </div>
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Edit slide-over */}
+      <Sheet
+        open={!!editItem}
+        onOpenChange={(open) => !open && setEditId(null)}
+      >
+        <SheetContent
+          side="right"
+          className="w-full sm:max-w-md p-0 flex flex-col"
+        >
+          <SheetHeader className="px-6 py-4 border-b">
+            <SheetTitle className="text-lg font-semibold">
+              Action Item
+            </SheetTitle>
+            <SheetDescription className="sr-only">
+              Edit action item
+            </SheetDescription>
+          </SheetHeader>
+          {editItem && (
+            <>
+              <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-title" className="text-sm">
+                    Action Item
+                  </Label>
+                  <Input
+                    id="edit-title"
+                    value={editForm.title}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, title: e.target.value }))
+                    }
+                    className="border-primary focus-visible:ring-primary"
+                  />
+                </div>
+
+                <p className="text-sm">
+                  <span className="font-semibold">Source:</span>{" "}
+                  {editItem.source}
+                </p>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Owner</Label>
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
+                  >
+                    <div className="flex items-center gap-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
+                          {editItem.owner.initials}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span>{editItem.owner.name} (me)</span>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  </button>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-due" className="text-sm">
+                    Due Date
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="edit-due"
+                      value={editForm.dueDate}
+                      onChange={(e) =>
+                        setEditForm((f) => ({
+                          ...f,
+                          dueDate: e.target.value,
+                        }))
+                      }
+                      placeholder="Apr 23, 2026"
+                    />
+                    <CalendarDays className="absolute right-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-notes" className="text-sm">
+                    Notes
+                  </Label>
+                  <Textarea
+                    id="edit-notes"
+                    value={editForm.notes}
+                    onChange={(e) =>
+                      setEditForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    rows={6}
+                    className="resize-none"
+                  />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <Switch
+                    id="edit-top3"
+                    checked={editForm.dailyTop3}
+                    onCheckedChange={(checked) =>
+                      setEditForm((f) => ({ ...f, dailyTop3: checked }))
+                    }
+                  />
+                  <Label htmlFor="edit-top3" className="text-sm font-normal">
+                    Make this Action Item a Daily Top 3
+                  </Label>
+                </div>
+
+                <Card className="p-4 space-y-1.5">
+                  <h3 className="text-sm font-semibold">
+                    Connect your calendar to Elite
+                  </h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Add intentional time blocks on your calendar to ensure that
+                    your action items get done and you make the most of every
+                    day. Simply sync your calendar to get started.
+                  </p>
+                </Card>
+              </div>
+
+              <div className="border-t px-6 py-3 flex items-center justify-end gap-2">
+                <Button variant="ghost" onClick={() => setEditId(null)}>
+                  Cancel
+                </Button>
+                <Button onClick={saveEdit}>Save</Button>
+              </div>
+            </>
           )}
         </SheetContent>
       </Sheet>
