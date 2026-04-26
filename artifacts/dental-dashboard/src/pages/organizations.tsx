@@ -43,6 +43,9 @@ import {
   Pencil,
   Trash2,
   MapPin,
+  DollarSign,
+  Users,
+  Settings,
 } from "lucide-react";
 
 type Belt = "white" | "blue" | "brown" | "black";
@@ -375,6 +378,27 @@ export function Organizations() {
         onAdd={() => openAddDialog("urgent_dental")}
         addLabel="Add UD Location"
       />
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { title: "Financials", icon: DollarSign },
+          { title: "Location", icon: MapPin },
+          { title: "People", icon: Users },
+          { title: "Operations", icon: Settings },
+        ].map(({ title, icon: Icon }) => (
+          <Card
+            key={title}
+            className="hover:shadow-md transition-shadow cursor-pointer"
+          >
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center gap-3">
+              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                <Icon className="h-6 w-6" />
+              </div>
+              <div className="font-semibold">{title}</div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }
