@@ -12,6 +12,7 @@ import {
   ChevronDown,
   CalendarDays,
   ListChecks,
+  Compass,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -54,6 +55,7 @@ const navItems: NavItem[] = [
       { href: "/meetings/one-on-ones", label: "1-on-1s" },
     ],
   },
+  { href: "/edge-way", label: "The EDGE Way", icon: Compass },
 ];
 
 function isGroup(item: NavItem): item is NavGroup {
