@@ -12,10 +12,10 @@ export const categoryColors: Record<string, { bg: string; text: string; border: 
   executive: { bg: "bg-violet-500", text: "text-white", border: "border-violet-600" },
   patient: { bg: "bg-blue-900", text: "text-white", border: "border-blue-950" },
   family: { bg: "bg-red-400", text: "text-white", border: "border-red-500" },
-  review: { bg: "bg-green-200", text: "text-green-900", border: "border-green-300" },
-  meeting: { bg: "bg-orange-400", text: "text-white", border: "border-orange-500" },
+  review: { bg: "bg-green-500", text: "text-white", border: "border-green-600" },
+  meeting: { bg: "bg-orange-400", text: "text-slate-900", border: "border-orange-500" },
   deepwork: { bg: "bg-blue-400", text: "text-white", border: "border-blue-500" },
-  evening: { bg: "bg-violet-100", text: "text-violet-800", border: "border-violet-300" },
+  evening: { bg: "bg-red-400", text: "text-white", border: "border-red-500" },
   workout: { bg: "bg-yellow-200", text: "text-yellow-900", border: "border-yellow-300" },
   calendar: { bg: "bg-cyan-100", text: "text-cyan-800", border: "border-cyan-300" },
 };
