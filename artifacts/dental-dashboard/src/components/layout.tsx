@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Activity,
   Building2,
   Users,
   Bell,
@@ -191,14 +190,7 @@ function UserBadge() {
 }
 
 function BrandHeader() {
-  return (
-    <div className="px-6 py-5">
-      <div className="flex items-center gap-2 font-bold text-xl text-primary tracking-tight">
-        <Activity className="h-6 w-6" />
-        <span>Brooks Paine</span>
-      </div>
-    </div>
-  );
+  return <div className="h-4" />;
 }
 
 function shouldHideTopHeader(location: string): boolean {
