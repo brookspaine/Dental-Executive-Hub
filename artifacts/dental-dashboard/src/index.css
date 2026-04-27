@@ -218,3 +218,31 @@
   background-color: rgba(255, 255, 255, 0.1);
   color: #fff;
 }
+
+/* Action-item checkbox burst — small celebratory pop around the check
+ * when an item is marked complete. Plays once per check transition. */
+@keyframes edg-burst-ring {
+  0% { transform: scale(0.4); opacity: 0.75; }
+  60% { opacity: 0.45; }
+  100% { transform: scale(2.4); opacity: 0; }
+}
+@keyframes edg-burst-particle {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% {
+    transform: translate(calc(-50% + var(--tx)), calc(-50% + var(--ty))) scale(0.4);
+    opacity: 0;
+  }
+}
+.edg-burst-ring {
+  animation: edg-burst-ring 480ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+.edg-burst-particle {
+  animation: edg-burst-particle 560ms cubic-bezier(0.18, 0.71, 0.36, 1) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .edg-burst-ring,
+  .edg-burst-particle {
+    animation: none;
+    opacity: 0;
+  }
+}

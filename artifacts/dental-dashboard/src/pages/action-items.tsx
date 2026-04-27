@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ComponentProps } from "react";
 import {
   Info,
   Search,
@@ -73,6 +73,70 @@ import {
 import { useActionItems } from "@/contexts/action-items-context";
 import type { ActionItem } from "@/contexts/action-items-context";
 
+/**
+ * Particle palette for the small celebratory burst around the checkbox
+ * when an action item is marked complete. Eight directions, mixed brand
+ * colors so the burst reads as a small balloon-pop.
+ */
+const BURST_PARTICLES = [
+  { tx: "14px", ty: "-2px", color: "#D62828" },
+  { tx: "10px", ty: "-10px", color: "#F59E0B" },
+  { tx: "2px", ty: "-14px", color: "#0F2A47" },
+  { tx: "-10px", ty: "-10px", color: "#D62828" },
+  { tx: "-14px", ty: "2px", color: "#10B981" },
+  { tx: "-10px", ty: "10px", color: "#0F2A47" },
+  { tx: "2px", ty: "14px", color: "#F59E0B" },
+  { tx: "10px", ty: "10px", color: "#10B981" },
+] as const;
+
+function CheckBurst() {
+  return (
+    <span
+      aria-hidden="true"
+      className="pointer-events-none absolute inset-0 flex items-center justify-center"
+    >
+      <span className="edg-burst-ring absolute h-4 w-4 rounded-full ring-2 ring-[#D62828]" />
+      {BURST_PARTICLES.map((p, i) => (
+        <span
+          key={i}
+          className="edg-burst-particle absolute left-1/2 top-1/2 h-1 w-1 rounded-full"
+          style={{
+            ["--tx" as string]: p.tx,
+            ["--ty" as string]: p.ty,
+            backgroundColor: p.color,
+          }}
+        />
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Wraps the shadcn Checkbox so that transitioning from unchecked to
+ * checked plays a one-shot burst animation around the box. Re-mounting
+ * <CheckBurst /> via a numeric key restarts the CSS animation each time.
+ */
+function CelebratingCheckbox(props: ComponentProps<typeof Checkbox>) {
+  const { checked, onCheckedChange, ...rest } = props;
+  const [burst, setBurst] = useState(0);
+  const handleChange = (next: boolean | "indeterminate") => {
+    if (next === true && checked !== true) {
+      setBurst((b) => b + 1);
+    }
+    onCheckedChange?.(next);
+  };
+  return (
+    <span className="relative inline-flex items-center justify-center">
+      <Checkbox
+        {...rest}
+        checked={checked}
+        onCheckedChange={handleChange}
+      />
+      {burst > 0 && <CheckBurst key={burst} />}
+    </span>
+  );
+}
+
 export function ActionItems() {
   const {
     items,
@@ -108,6 +172,42 @@ export function ActionItems() {
   };
   const [filters, setFilters] = useState(defaultFilters);
   const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+
+  /**
+   * Tracks items the user just checked off during this visit to the
+   * Action Items page. Even when the active filter is "uncompleted", we
+   * keep these rows visible (with their checkmark) until the user
+   * navigates away — at which point this component unmounts and the set
+   * resets, so on the next visit the completed items naturally fall out.
+   */
+  const [stickyCompleted, setStickyCompleted] = useState<Set<string>>(
+    () => new Set(),
+  );
+
+  /**
+   * Receives the checkbox's emitted next value directly so the sticky
+   * update is deterministic — no closure on stale `item.done` from the
+   * current render. Then delegates to the context's toggle to flip the
+   * underlying done flag (which mirrors the same intent for one click).
+   */
+  const handleToggleDone = (
+    id: string,
+    next: boolean | "indeterminate",
+  ) => {
+    const willBeDone = next === true;
+    setStickyCompleted((prev) => {
+      const set = new Set(prev);
+      if (willBeDone) {
+        // Item is becoming done → keep it visible until next page nav.
+        set.add(id);
+      } else {
+        // Item is being unchecked → drop from sticky.
+        set.delete(id);
+      }
+      return set;
+    });
+    toggleDone(id);
+  };
 
   const sourceOptions = useMemo(() => {
     const set = new Set<string>();
@@ -233,11 +333,17 @@ export function ActionItems() {
       ) {
         return false;
       }
-      if (appliedFilters.status === "uncompleted" && i.done) return false;
+      if (
+        appliedFilters.status === "uncompleted" &&
+        i.done &&
+        !stickyCompleted.has(i.id)
+      ) {
+        return false;
+      }
       if (appliedFilters.status === "completed" && !i.done) return false;
       return true;
     });
-  }, [items, search, appliedFilters]);
+  }, [items, search, appliedFilters, stickyCompleted]);
 
 
   return (
@@ -446,9 +552,11 @@ export function ActionItems() {
                           }`}
                         />
                       </button>
-                      <Checkbox
+                      <CelebratingCheckbox
                         checked={!!item.done}
-                        onCheckedChange={() => toggleDone(item.id)}
+                        onCheckedChange={(next) =>
+                          handleToggleDone(item.id, next)
+                        }
                         aria-label={`Mark item ${idx + 1} complete`}
                       />
                     </div>
@@ -530,9 +638,11 @@ export function ActionItems() {
               </div>
 
               <div className="flex items-start gap-3">
-                <Checkbox
+                <CelebratingCheckbox
                   checked={!!openItem.done}
-                  onCheckedChange={() => toggleDone(openItem.id)}
+                  onCheckedChange={(next) =>
+                    handleToggleDone(openItem.id, next)
+                  }
                   className="mt-1"
                   aria-label="Mark complete"
                 />
