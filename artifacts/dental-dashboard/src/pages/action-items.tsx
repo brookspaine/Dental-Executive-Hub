@@ -39,6 +39,16 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -74,6 +84,7 @@ export function ActionItems() {
   } = useActionItems();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [editId, setEditId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<{
     title: string;
@@ -595,10 +606,7 @@ export function ActionItems() {
             <div className="border-t px-6 py-4 flex justify-end">
               <button
                 type="button"
-                onClick={() => {
-                  removeItem(openItem.id);
-                  setOpenId(null);
-                }}
+                onClick={() => setConfirmDeleteOpen(true)}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive hover:underline"
               >
                 <Trash2 className="h-4 w-4" />
@@ -609,6 +617,40 @@ export function ActionItems() {
           )}
         </SheetContent>
       </Sheet>
+
+      {/* Confirm delete dialog */}
+      <AlertDialog
+        open={confirmDeleteOpen}
+        onOpenChange={setConfirmDeleteOpen}
+      >
+        <AlertDialogContent className="sm:max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deleting will result in losing this Action Item and cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="sm:justify-start gap-2">
+            <AlertDialogAction
+              onClick={() => {
+                if (openItem) {
+                  removeItem(openItem.id);
+                  setOpenId(null);
+                }
+                setConfirmDeleteOpen(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </AlertDialogAction>
+            <AlertDialogCancel className="mt-0 border-0 shadow-none text-primary font-semibold hover:bg-transparent hover:underline">
+              Cancel
+            </AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Edit slide-over */}
       <Sheet
