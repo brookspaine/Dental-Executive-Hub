@@ -14,6 +14,7 @@ import {
   CalendarDays,
   Phone,
   Mail,
+  Trash2,
 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -69,6 +70,7 @@ export function ActionItems() {
     addItem,
     toggleDone,
     toggleStar,
+    removeItem,
   } = useActionItems();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
@@ -503,6 +505,7 @@ export function ActionItems() {
             </SheetDescription>
           </SheetHeader>
           {openItem && (
+            <>
             <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
               <div className="flex justify-end">
                 <button
@@ -589,6 +592,20 @@ export function ActionItems() {
                 )}
               </div>
             </div>
+            <div className="border-t px-6 py-4 flex justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  removeItem(openItem.id);
+                  setOpenId(null);
+                }}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold text-destructive hover:underline"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Action Item
+              </button>
+            </div>
+            </>
           )}
         </SheetContent>
       </Sheet>
