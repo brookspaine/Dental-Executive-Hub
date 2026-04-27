@@ -113,7 +113,7 @@ function NavList({
   }, [location]);
 
   return (
-    <nav className="flex-1 px-3 space-y-1 overflow-y-auto">
+    <nav className="flex-1 px-3 pt-3 space-y-1 overflow-y-auto">
       {navItems.map((item) => {
         if (isGroup(item)) {
           const open = !!openGroups[item.label];
@@ -125,33 +125,36 @@ function NavList({
                 onClick={() =>
                   setOpenGroups((p) => ({ ...p, [item.label]: !p[item.label] }))
                 }
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                   hasActiveChild
-                    ? "text-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    ? "bg-white/10 text-white"
+                    : "text-slate-300 hover:bg-white/5 hover:text-slate-100"
                 }`}
                 aria-expanded={open}
               >
-                <item.icon className="h-4 w-4 shrink-0" />
+                <item.icon
+                  className={`h-4 w-4 shrink-0 ${hasActiveChild ? "text-[#D62828]" : "text-slate-400"}`}
+                  strokeWidth={hasActiveChild ? 2.5 : 2}
+                />
                 <span className="truncate flex-1 text-left">{item.label}</span>
                 <ChevronDown
-                  className={`h-4 w-4 shrink-0 transition-transform ${
+                  className={`h-4 w-4 shrink-0 transition-transform text-slate-400 ${
                     open ? "rotate-0" : "-rotate-90"
                   }`}
                 />
               </button>
               {open && (
-                <div className="mt-1 ml-7 space-y-1 border-l pl-3">
+                <div className="mt-1 ml-7 space-y-1 border-l border-white/10 pl-3">
                   {item.children.map((child) => {
                     const childActive = location === child.href;
                     return (
                       <Link key={child.href} href={child.href}>
                         <span
                           onClick={onNavigate}
-                          className={`block px-3 py-1.5 rounded-md text-sm transition-colors ${
+                          className={`block px-3 py-1.5 rounded-md text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                             childActive
-                              ? "bg-primary text-primary-foreground font-medium"
-                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              ? "bg-white/10 text-white font-medium"
+                              : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
                           }`}
                         >
                           {child.label}
@@ -169,13 +172,16 @@ function NavList({
           <Link key={item.href} href={item.href}>
             <span
               onClick={onNavigate}
-              className={`flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                 isActive
-                  ? "bg-primary text-primary-foreground"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-white/10 text-white"
+                  : "text-slate-300 hover:bg-white/5 hover:text-slate-100"
               }`}
             >
-              <item.icon className="h-4 w-4 shrink-0" />
+              <item.icon
+                className={`h-4 w-4 shrink-0 ${isActive ? "text-[#D62828]" : "text-slate-400"}`}
+                strokeWidth={isActive ? 2.5 : 2}
+              />
               <span className="truncate">{item.label}</span>
             </span>
           </Link>
@@ -194,17 +200,19 @@ function UserBadge() {
   const photoUrl = resolveAvatarUrl((me as any)?.avatarUrl) ?? undefined;
 
   return (
-    <div className="p-4 border-t">
+    <div className="p-4 border-t border-white/10">
       <div className="flex items-center gap-3 min-w-0">
-        <Avatar className="shrink-0">
+        <Avatar className="shrink-0 border border-white/20">
           {photoUrl && <AvatarImage src={photoUrl} alt={CURRENT_USER_NAME} />}
-          <AvatarFallback>{getInitials(CURRENT_USER_NAME)}</AvatarFallback>
+          <AvatarFallback className="bg-slate-800 text-white text-xs font-medium">
+            {getInitials(CURRENT_USER_NAME)}
+          </AvatarFallback>
         </Avatar>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold truncate">
+          <span className="text-sm font-semibold text-white truncate">
             {CURRENT_USER_NAME}
           </span>
-          <span className="text-xs text-muted-foreground truncate">
+          <span className="text-xs text-slate-400 truncate">
             {CURRENT_USER_TITLE}
           </span>
         </div>
@@ -214,7 +222,26 @@ function UserBadge() {
 }
 
 function BrandHeader() {
-  return <div className="h-4" />;
+  const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
+  const logoSrc = `${baseUrl}edg-logo.jpg`;
+  return (
+    <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="bg-white rounded p-1.5 shadow-sm shrink-0">
+          <img
+            src={logoSrc}
+            alt="Emergency Dental Group"
+            className="h-6 w-auto object-contain"
+          />
+        </div>
+        <span className="font-semibold text-white tracking-tight text-sm leading-tight truncate">
+          Emergency
+          <br />
+          Dental Group
+        </span>
+      </div>
+    </div>
+  );
 }
 
 function shouldHideTopHeader(location: string): boolean {
@@ -244,8 +271,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
-      {/* Persistent sidebar — md and up */}
-      <aside className="hidden md:flex w-64 border-r bg-card flex-col shrink-0">
+      {/* Persistent sidebar — md and up — Navy chrome */}
+      <aside className="hidden md:flex w-64 bg-[#0F2A47] text-slate-300 border-r border-[#0a1e33] shadow-xl flex-col shrink-0 z-10">
         <BrandHeader />
         <NavList location={location} />
         <UserBadge />
@@ -254,18 +281,21 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Main column */}
       <main className="flex-1 flex flex-col overflow-hidden min-w-0">
         {hideTopHeader ? (
-          <header className="h-14 border-b bg-card flex items-center gap-2 px-3 sm:px-4 md:hidden">
+          <header className="h-14 border-b border-white/10 bg-[#0F2A47] text-white flex items-center gap-2 px-3 sm:px-4 md:hidden">
             <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
               <SheetTrigger asChild>
                 <button
                   type="button"
                   aria-label="Open navigation"
-                  className="p-2 -ml-2 rounded-md hover:bg-muted"
+                  className="p-2 -ml-2 rounded-md text-slate-300 hover:text-white hover:bg-white/10"
                 >
                   <Menu className="h-5 w-5" />
                 </button>
               </SheetTrigger>
-              <SheetContent side="left" className="p-0 w-72 flex flex-col">
+              <SheetContent
+                side="left"
+                className="p-0 w-72 flex flex-col bg-[#0F2A47] text-slate-300 border-r border-[#0a1e33]"
+              >
                 <SheetHeader className="sr-only">
                   <SheetTitle>Navigation</SheetTitle>
                 </SheetHeader>
@@ -283,7 +313,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             />
           </header>
         ) : (
-          <header className="h-14 border-b bg-card flex items-center gap-2 px-3 sm:px-4 md:px-6 md:grid md:grid-cols-3">
+          <header className="h-16 border-b border-white/10 bg-[#0F2A47] text-white flex items-center gap-2 px-3 sm:px-4 md:px-8 md:grid md:grid-cols-3">
             {/* Mobile: hamburger + brand */}
             <div className="flex items-center gap-2 md:hidden min-w-0 flex-1">
               <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
@@ -296,7 +326,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
                     <Menu className="h-5 w-5" />
                   </button>
                 </SheetTrigger>
-                <SheetContent side="left" className="p-0 w-72 flex flex-col">
+                <SheetContent
+                  side="left"
+                  className="p-0 w-72 flex flex-col bg-[#0F2A47] text-slate-300 border-r border-[#0a1e33]"
+                >
                   <SheetHeader className="sr-only">
                     <SheetTitle>Navigation</SheetTitle>
                   </SheetHeader>
@@ -314,7 +347,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Desktop: title left, slot center */}
-            <h1 className="hidden md:block text-lg font-semibold tracking-tight truncate">
+            <h1 className="hidden md:block text-xl font-semibold tracking-tight text-white truncate">
               {currentLabel}
             </h1>
             <div
@@ -328,9 +361,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 id="header-actions-mobile"
                 className="md:hidden flex items-center"
               />
-              <button className="relative p-2 text-muted-foreground hover:bg-muted rounded-full transition-colors">
+              <button className="relative p-2 text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-colors">
                 <Bell className="h-5 w-5" />
-                <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-destructive border-2 border-card" />
+                <span className="absolute top-1 right-1 h-3 w-3 rounded-full bg-[#D62828] border-2 border-[#0F2A47]" />
               </button>
             </div>
           </header>

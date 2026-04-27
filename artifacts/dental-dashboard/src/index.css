@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Spline+Sans+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Spline+Sans+Mono:wght@400;500;600&display=swap');
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -68,7 +68,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
-/* LIGHT MODE */
+/* LIGHT MODE — Clinical Trust (Emergency Dental Group) */
 :root {
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
@@ -76,55 +76,61 @@
   --elevate-1: rgba(0,0,0, .03);
   --elevate-2: rgba(0,0,0, .08);
 
-  --background: 210 20% 98%;
-  --foreground: 222 47% 11%;
-  
+  /* slate-50 page background */
+  --background: 210 40% 98%;
+  /* deep navy #0F2A47 — primary text/foreground */
+  --foreground: 211 65% 17%;
+
   --border: 214 32% 91%;
   --input: 214 32% 91%;
-  --ring: 180 100% 25%;
+  /* red focus ring */
+  --ring: 0 69% 50%;
 
   --card: 0 0% 100%;
-  --card-foreground: 222 47% 11%;
+  --card-foreground: 211 65% 17%;
   --card-border: 214 32% 91%;
 
-  --sidebar: 210 20% 98%;
-  --sidebar-foreground: 222 47% 11%;
-  --sidebar-border: 214 32% 91%;
-  --sidebar-primary: 180 100% 25%;
+  /* Navy sidebar chrome */
+  --sidebar: 211 65% 17%;
+  --sidebar-foreground: 215 20% 75%;
+  --sidebar-border: 211 65% 12%;
+  --sidebar-primary: 0 69% 50%;
   --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 214 32% 91%;
-  --sidebar-accent-foreground: 222 47% 11%;
-  --sidebar-ring: 180 100% 25%;
+  --sidebar-accent: 211 50% 25%;
+  --sidebar-accent-foreground: 0 0% 100%;
+  --sidebar-ring: 0 69% 50%;
 
   --popover: 0 0% 100%;
-  --popover-foreground: 222 47% 11%;
+  --popover-foreground: 211 65% 17%;
   --popover-border: 214 32% 91%;
 
-  --primary: 180 100% 25%;
+  /* Primary = EDG red #D62828 */
+  --primary: 0 69% 50%;
   --primary-foreground: 0 0% 100%;
 
   --secondary: 214 32% 91%;
-  --secondary-foreground: 222 47% 11%;
+  --secondary-foreground: 211 65% 17%;
 
   --muted: 210 40% 96%;
   --muted-foreground: 215 16% 47%;
 
-  --accent: 180 100% 95%;
-  --accent-foreground: 180 100% 25%;
+  /* Accent = soft red wash */
+  --accent: 0 80% 96%;
+  --accent-foreground: 0 69% 45%;
 
-  --destructive: 0 84% 60%;
-  --destructive-foreground: 210 40% 98%;
+  --destructive: 0 69% 50%;
+  --destructive-foreground: 0 0% 100%;
 
-  --chart-1: 180 100% 25%;
-  --chart-2: 200 80% 40%;
-  --chart-3: 220 80% 40%;
-  --chart-4: 240 80% 40%;
-  --chart-5: 260 80% 40%;
+  --chart-1: 0 69% 50%;
+  --chart-2: 211 65% 17%;
+  --chart-3: 211 50% 35%;
+  --chart-4: 0 69% 65%;
+  --chart-5: 215 20% 65%;
 
-  --app-font-sans: 'Plus Jakarta Sans', sans-serif;
+  --app-font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --app-font-serif: Georgia, serif;
   --app-font-mono: 'Spline Sans Mono', monospace;
-  --radius: .5rem;
+  --radius: .625rem;
 
   --sidebar-primary-border: hsl(from hsl(var(--sidebar-primary)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
   --sidebar-accent-border: hsl(from hsl(var(--sidebar-accent)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
