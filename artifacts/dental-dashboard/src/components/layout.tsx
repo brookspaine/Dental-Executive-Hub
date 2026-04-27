@@ -13,6 +13,8 @@ import {
   Compass,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useListDirectReports } from "@workspace/api-client-react";
+import { resolveAvatarUrl } from "@/components/editable-report-photo";
 import {
   Sheet,
   SheetContent,
@@ -20,6 +22,19 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+
+const CURRENT_USER_NAME = "Brooks Paine";
+const CURRENT_USER_TITLE = "Chief Executive Officer";
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+}
 
 type NavLeaf = { href: string; label: string; icon: any };
 type NavGroup = {
@@ -171,17 +186,26 @@ function NavList({
 }
 
 function UserBadge() {
+  const { data: reports } = useListDirectReports();
+  const target = CURRENT_USER_NAME.trim().toLowerCase();
+  const me = (reports ?? []).find(
+    (r: any) => (r.name ?? "").trim().toLowerCase() === target,
+  );
+  const photoUrl = resolveAvatarUrl((me as any)?.avatarUrl) ?? undefined;
+
   return (
     <div className="p-4 border-t">
       <div className="flex items-center gap-3 min-w-0">
         <Avatar className="shrink-0">
-          <AvatarImage src="" />
-          <AvatarFallback>JD</AvatarFallback>
+          {photoUrl && <AvatarImage src={photoUrl} alt={CURRENT_USER_NAME} />}
+          <AvatarFallback>{getInitials(CURRENT_USER_NAME)}</AvatarFallback>
         </Avatar>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold truncate">Brooks Paine</span>
+          <span className="text-sm font-semibold truncate">
+            {CURRENT_USER_NAME}
+          </span>
           <span className="text-xs text-muted-foreground truncate">
-            Chief Executive Officer
+            {CURRENT_USER_TITLE}
           </span>
         </div>
       </div>
