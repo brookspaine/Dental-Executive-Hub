@@ -265,6 +265,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   }, [location]);
 
   const currentLabel = findCurrentLabel(location) || "Ideal Week";
+  // Page title in the navy bar is intentionally only shown for Ideal Week.
+  const showTitle = location === "/ideal-week" || location === "/";
 
   const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
   const logoSrc = `${baseUrl}edg-logo.jpg`;
@@ -319,16 +321,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
             alt="Emergency Dental Group"
             className="h-6 w-auto object-contain shrink-0"
           />
-          <span className="font-semibold text-white text-sm tracking-tight truncate">
-            {currentLabel}
-          </span>
+          {showTitle && (
+            <span className="font-semibold text-white text-sm tracking-tight truncate">
+              {currentLabel}
+            </span>
+          )}
         </div>
 
-        {/* Desktop: page title + center slot */}
+        {/* Desktop: page title (Ideal Week only) + center slot */}
         <div className="hidden md:flex items-center gap-6 px-8 flex-1 min-w-0">
-          <h1 className="text-xl font-semibold text-white tracking-tight truncate shrink-0">
-            {currentLabel}
-          </h1>
+          {showTitle && (
+            <h1 className="text-xl font-semibold text-white tracking-tight truncate shrink-0">
+              {currentLabel}
+            </h1>
+          )}
           <div
             id="header-actions"
             className="flex items-center justify-center flex-1 min-w-0"
