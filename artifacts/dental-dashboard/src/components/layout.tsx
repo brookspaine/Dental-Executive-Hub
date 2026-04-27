@@ -46,7 +46,7 @@ type NavItem = NavLeaf | NavGroup;
 
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
-  { href: "/organizations", label: "EDGE", icon: Building2 },
+  { href: "/organizations", label: "Urgent Dental", icon: Building2 },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
   {
@@ -67,7 +67,7 @@ const navItems: NavItem[] = [
       { href: "/meetings/one-on-ones", label: "1-on-1s" },
     ],
   },
-  { href: "/edge-way", label: "The EDGE Way", icon: Compass },
+  { href: "/edge-way", label: "The UD Way", icon: Compass },
 ];
 
 function isGroup(item: NavItem): item is NavGroup {
