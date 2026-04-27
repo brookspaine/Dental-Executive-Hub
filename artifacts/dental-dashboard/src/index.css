@@ -202,3 +202,19 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+/* Header-actions portal slots sit inside the navy top bar — flip text + hover
+ * so portaled page content (e.g. Ideal Week's date controls) renders legibly
+ * without each page having to know it lives on a dark background. */
+#header-actions,
+#header-actions-mobile {
+  color: #fff;
+  --muted-foreground: 215 20% 75%;
+  --accent: 0 0% 100% / 0.1;
+  --accent-foreground: 0 0% 100%;
+}
+#header-actions button:hover,
+#header-actions-mobile button:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}

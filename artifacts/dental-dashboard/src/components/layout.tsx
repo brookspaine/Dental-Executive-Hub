@@ -74,12 +74,23 @@ function isGroup(item: NavItem): item is NavGroup {
   return (item as NavGroup).children !== undefined;
 }
 
-function flattenLabel(item: NavItem, location: string): string | null {
-  if (isGroup(item)) {
-    const child = item.children.find((c) => c.href === location);
-    return child ? child.label : null;
+function findCurrentLabel(location: string): string | null {
+  // Collect every nav href + label (top-level leaves and group children).
+  const candidates: { href: string; label: string }[] = [];
+  for (const item of navItems) {
+    if (isGroup(item)) {
+      for (const c of item.children) candidates.push({ href: c.href, label: c.label });
+    } else {
+      candidates.push({ href: item.href, label: item.label });
+    }
   }
-  return item.href === location ? item.label : null;
+  // Longest prefix wins so nested routes resolve to the deepest nav entry
+  // (e.g. /team/reports beats /team, /meetings/leadership/series/123 → "Leadership Team").
+  candidates.sort((a, b) => b.href.length - a.href.length);
+  const match = candidates.find(
+    (c) => location === c.href || location.startsWith(c.href + "/"),
+  );
+  return match ? match.label : null;
 }
 
 function NavList({
@@ -244,17 +255,6 @@ function BrandHeader() {
   );
 }
 
-function shouldHideTopHeader(location: string): boolean {
-  if (location.startsWith("/organizations")) return true;
-  if (location.startsWith("/urgent-dental")) return true;
-  if (location.startsWith("/org-chart")) return true;
-  if (location.startsWith("/team")) return true;
-  if (location.startsWith("/direct-reports")) return true;
-  if (location.startsWith("/action-items")) return true;
-  if (location.startsWith("/meetings")) return true;
-  return false;
-}
-
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -264,114 +264,108 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setDrawerOpen(false);
   }, [location]);
 
-  const currentLabel =
-    navItems.map((i) => flattenLabel(i, location)).find((l) => l) || "Ideal Week";
+  const currentLabel = findCurrentLabel(location) || "Ideal Week";
 
-  const hideTopHeader = shouldHideTopHeader(location);
+  const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
+  const logoSrc = `${baseUrl}edg-logo.jpg`;
 
   return (
-    <div className="flex h-[100dvh] bg-background overflow-hidden">
-      {/* Persistent sidebar — md and up — White chrome */}
-      <aside className="hidden md:flex w-64 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10">
-        <BrandHeader />
-        <NavList location={location} />
-        <UserBadge />
-      </aside>
-
-      {/* Main column */}
-      <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-        {hideTopHeader ? (
-          <header className="h-14 border-b border-white/10 bg-[#0F2A47] text-white flex items-center gap-2 px-3 sm:px-4 md:hidden">
-            <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-              <SheetTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Open navigation"
-                  className="p-2 -ml-2 rounded-md text-slate-300 hover:text-white hover:bg-white/10"
-                >
-                  <Menu className="h-5 w-5" />
-                </button>
-              </SheetTrigger>
-              <SheetContent
-                side="left"
-                className="p-0 w-72 flex flex-col bg-white text-slate-700 border-r border-slate-200"
-              >
-                <SheetHeader className="sr-only">
-                  <SheetTitle>Navigation</SheetTitle>
-                </SheetHeader>
-                <BrandHeader />
-                <NavList
-                  location={location}
-                  onNavigate={() => setDrawerOpen(false)}
-                />
-                <UserBadge />
-              </SheetContent>
-            </Sheet>
-            <div
-              id="header-actions-mobile"
-              className="ml-auto flex items-center"
-            />
-          </header>
-        ) : (
-          <header className="h-16 border-b border-white/10 bg-[#0F2A47] text-white flex items-center gap-2 px-3 sm:px-4 md:px-8 md:grid md:grid-cols-3">
-            {/* Mobile: hamburger + brand */}
-            <div className="flex items-center gap-2 md:hidden min-w-0 flex-1">
-              <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-                <SheetTrigger asChild>
-                  <button
-                    type="button"
-                    aria-label="Open navigation"
-                    className="p-2 -ml-2 rounded-md hover:bg-muted"
-                  >
-                    <Menu className="h-5 w-5" />
-                  </button>
-                </SheetTrigger>
-                <SheetContent
-                  side="left"
-                  className="p-0 w-72 flex flex-col bg-white text-slate-700 border-r border-slate-200"
-                >
-                  <SheetHeader className="sr-only">
-                    <SheetTitle>Navigation</SheetTitle>
-                  </SheetHeader>
-                  <BrandHeader />
-                  <NavList
-                    location={location}
-                    onNavigate={() => setDrawerOpen(false)}
-                  />
-                  <UserBadge />
-                </SheetContent>
-              </Sheet>
-              <h1 className="text-base font-semibold tracking-tight truncate">
-                {currentLabel}
-              </h1>
-            </div>
-
-            {/* Desktop: title left, slot center */}
-            <h1 className="hidden md:block text-xl font-semibold tracking-tight text-white truncate">
-              {currentLabel}
-            </h1>
-            <div
-              id="header-actions"
-              className="hidden md:flex items-center justify-center"
-            />
-
-            {/* Right side: actions slot (mobile) + bell */}
-            <div className="flex items-center justify-end gap-2 md:gap-3">
-              <div
-                id="header-actions-mobile"
-                className="md:hidden flex items-center"
-              />
-              <button className="relative p-2 text-slate-300 hover:text-white hover:bg-white/5 rounded-full transition-colors">
-                <Bell className="h-5 w-5" />
-                <span className="absolute top-1 right-1 h-3 w-3 rounded-full bg-[#D62828] border-2 border-[#0F2A47]" />
-              </button>
-            </div>
-          </header>
-        )}
-        <div className="flex-1 overflow-auto p-3 sm:p-4">
-          <div className="max-w-6xl mx-auto space-y-4">{children}</div>
+    <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
+      {/* Full-width navy top bar */}
+      <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
+        {/* Brand block — aligned with sidebar width on desktop */}
+        <div className="hidden md:flex w-64 items-center gap-3 px-6 border-r border-white/10 shrink-0">
+          <img
+            src={logoSrc}
+            alt="Emergency Dental Group"
+            className="h-7 w-auto object-contain shrink-0"
+          />
+          <span className="font-semibold text-white tracking-tight text-sm leading-tight truncate">
+            Emergency
+            <br />
+            Dental Group
+          </span>
         </div>
-      </main>
+
+        {/* Mobile: hamburger + condensed brand */}
+        <div className="md:hidden flex items-center gap-2 px-3 flex-1 min-w-0">
+          <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                aria-label="Open navigation"
+                className="p-2 -ml-2 rounded-md text-slate-300 hover:text-white hover:bg-white/10 outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent
+              side="left"
+              className="p-0 w-72 flex flex-col bg-white text-slate-700 border-r border-slate-200"
+            >
+              <SheetHeader className="sr-only">
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              <BrandHeader />
+              <NavList
+                location={location}
+                onNavigate={() => setDrawerOpen(false)}
+              />
+              <UserBadge />
+            </SheetContent>
+          </Sheet>
+          <img
+            src={logoSrc}
+            alt="Emergency Dental Group"
+            className="h-6 w-auto object-contain shrink-0"
+          />
+          <span className="font-semibold text-white text-sm tracking-tight truncate">
+            {currentLabel}
+          </span>
+        </div>
+
+        {/* Desktop: page title + center slot */}
+        <div className="hidden md:flex items-center gap-6 px-8 flex-1 min-w-0">
+          <h1 className="text-xl font-semibold text-white tracking-tight truncate shrink-0">
+            {currentLabel}
+          </h1>
+          <div
+            id="header-actions"
+            className="flex items-center justify-center flex-1 min-w-0"
+          />
+        </div>
+
+        {/* Right: mobile action slot + bell */}
+        <div className="flex items-center justify-end gap-2 md:gap-3 px-3 sm:px-4 md:px-6 shrink-0">
+          <div
+            id="header-actions-mobile"
+            className="md:hidden flex items-center"
+          />
+          <button
+            className="relative p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            aria-label="Notifications"
+          >
+            <Bell className="h-5 w-5" />
+            <span className="absolute top-1 right-1 h-3 w-3 rounded-full bg-[#D62828] border-2 border-[#0F2A47]" />
+          </button>
+        </div>
+      </header>
+
+      {/* Sidebar + main content */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        {/* Persistent sidebar — md and up — White chrome */}
+        <aside className="hidden md:flex w-64 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10">
+          <NavList location={location} />
+          <UserBadge />
+        </aside>
+
+        {/* Main column */}
+        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
+          <div className="flex-1 overflow-auto p-3 sm:p-4">
+            <div className="max-w-6xl mx-auto space-y-4">{children}</div>
+          </div>
+        </main>
+      </div>
     </div>
   );
 }
