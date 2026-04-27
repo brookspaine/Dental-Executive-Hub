@@ -125,15 +125,15 @@ function NavList({
                 onClick={() =>
                   setOpenGroups((p) => ({ ...p, [item.label]: !p[item.label] }))
                 }
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#0F2A47]/30 ${
                   hasActiveChild
-                    ? "bg-white/10 text-white"
-                    : "text-slate-300 hover:bg-white/5 hover:text-slate-100"
+                    ? "bg-slate-100 text-[#0F2A47]"
+                    : "text-slate-600 hover:bg-slate-50 hover:text-[#0F2A47]"
                 }`}
                 aria-expanded={open}
               >
                 <item.icon
-                  className={`h-4 w-4 shrink-0 ${hasActiveChild ? "text-[#D62828]" : "text-slate-400"}`}
+                  className={`h-4 w-4 shrink-0 ${hasActiveChild ? "text-[#D62828]" : "text-slate-500"}`}
                   strokeWidth={hasActiveChild ? 2.5 : 2}
                 />
                 <span className="truncate flex-1 text-left">{item.label}</span>
@@ -144,17 +144,17 @@ function NavList({
                 />
               </button>
               {open && (
-                <div className="mt-1 ml-7 space-y-1 border-l border-white/10 pl-3">
+                <div className="mt-1 ml-7 space-y-1 border-l border-slate-200 pl-3">
                   {item.children.map((child) => {
                     const childActive = location === child.href;
                     return (
                       <Link key={child.href} href={child.href}>
                         <span
                           onClick={onNavigate}
-                          className={`block px-3 py-1.5 rounded-md text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+                          className={`block px-3 py-1.5 rounded-md text-sm transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[#0F2A47]/30 ${
                             childActive
-                              ? "bg-white/10 text-white font-medium"
-                              : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
+                              ? "bg-slate-100 text-[#0F2A47] font-medium"
+                              : "text-slate-600 hover:bg-slate-50 hover:text-[#0F2A47]"
                           }`}
                         >
                           {child.label}
@@ -172,14 +172,14 @@ function NavList({
           <Link key={item.href} href={item.href}>
             <span
               onClick={onNavigate}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-[#0F2A47]/30 ${
                 isActive
-                  ? "bg-white/10 text-white"
-                  : "text-slate-300 hover:bg-white/5 hover:text-slate-100"
+                  ? "bg-slate-100 text-[#0F2A47]"
+                  : "text-slate-600 hover:bg-slate-50 hover:text-[#0F2A47]"
               }`}
             >
               <item.icon
-                className={`h-4 w-4 shrink-0 ${isActive ? "text-[#D62828]" : "text-slate-400"}`}
+                className={`h-4 w-4 shrink-0 ${isActive ? "text-[#D62828]" : "text-slate-500"}`}
                 strokeWidth={isActive ? 2.5 : 2}
               />
               <span className="truncate">{item.label}</span>
@@ -200,19 +200,19 @@ function UserBadge() {
   const photoUrl = resolveAvatarUrl((me as any)?.avatarUrl) ?? undefined;
 
   return (
-    <div className="p-4 border-t border-white/10">
+    <div className="p-4 border-t border-slate-200">
       <div className="flex items-center gap-3 min-w-0">
-        <Avatar className="shrink-0 border border-white/20">
+        <Avatar className="shrink-0 border border-slate-200">
           {photoUrl && <AvatarImage src={photoUrl} alt={CURRENT_USER_NAME} />}
-          <AvatarFallback className="bg-slate-800 text-white text-xs font-medium">
+          <AvatarFallback className="bg-slate-100 text-[#0F2A47] text-xs font-medium">
             {getInitials(CURRENT_USER_NAME)}
           </AvatarFallback>
         </Avatar>
         <div className="flex flex-col min-w-0">
-          <span className="text-sm font-semibold text-white truncate">
+          <span className="text-sm font-semibold text-[#0F2A47] truncate">
             {CURRENT_USER_NAME}
           </span>
-          <span className="text-xs text-slate-400 truncate">
+          <span className="text-xs text-slate-500 truncate">
             {CURRENT_USER_TITLE}
           </span>
         </div>
@@ -225,16 +225,16 @@ function BrandHeader() {
   const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
   const logoSrc = `${baseUrl}edg-logo.jpg`;
   return (
-    <div className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
+    <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
       <div className="flex items-center gap-3 min-w-0">
-        <div className="bg-white rounded p-1.5 shadow-sm shrink-0">
+        <div className="shrink-0">
           <img
             src={logoSrc}
             alt="Emergency Dental Group"
-            className="h-6 w-auto object-contain"
+            className="h-7 w-auto object-contain"
           />
         </div>
-        <span className="font-semibold text-white tracking-tight text-sm leading-tight truncate">
+        <span className="font-semibold text-[#0F2A47] tracking-tight text-sm leading-tight truncate">
           Emergency
           <br />
           Dental Group
@@ -271,8 +271,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex h-[100dvh] bg-background overflow-hidden">
-      {/* Persistent sidebar — md and up — Navy chrome */}
-      <aside className="hidden md:flex w-64 bg-[#0F2A47] text-slate-300 border-r border-[#0a1e33] shadow-xl flex-col shrink-0 z-10">
+      {/* Persistent sidebar — md and up — White chrome */}
+      <aside className="hidden md:flex w-64 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10">
         <BrandHeader />
         <NavList location={location} />
         <UserBadge />
@@ -294,7 +294,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
               </SheetTrigger>
               <SheetContent
                 side="left"
-                className="p-0 w-72 flex flex-col bg-[#0F2A47] text-slate-300 border-r border-[#0a1e33]"
+                className="p-0 w-72 flex flex-col bg-white text-slate-700 border-r border-slate-200"
               >
                 <SheetHeader className="sr-only">
                   <SheetTitle>Navigation</SheetTitle>
@@ -328,7 +328,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
                 </SheetTrigger>
                 <SheetContent
                   side="left"
-                  className="p-0 w-72 flex flex-col bg-[#0F2A47] text-slate-300 border-r border-[#0a1e33]"
+                  className="p-0 w-72 flex flex-col bg-white text-slate-700 border-r border-slate-200"
                 >
                   <SheetHeader className="sr-only">
                     <SheetTitle>Navigation</SheetTitle>
