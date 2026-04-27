@@ -5,7 +5,6 @@ import {
   Building2,
   Users,
   Bell,
-  Zap,
   CalendarCheck,
   Network,
   Menu,
@@ -34,7 +33,6 @@ type NavItem = NavLeaf | NavGroup;
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/organizations", label: "EDGE", icon: Building2 },
-  { href: "/urgent-dental", label: "Urgent Dental", icon: Zap },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
   {
