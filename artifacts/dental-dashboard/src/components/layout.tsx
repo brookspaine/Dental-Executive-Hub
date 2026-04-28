@@ -262,14 +262,17 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
       {/* Full-width navy top bar */}
       <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
-        {/* Brand block — aligned with sidebar width on desktop. White panel
-            so the on-white EDG logo reads cleanly against the navy bar. */}
-        <div className="hidden md:flex w-64 items-center justify-center px-3 bg-white border-r border-slate-200 shrink-0">
-          <img
-            src={edgLogo}
-            alt="Emergency Dental Group"
-            className="h-16 w-auto object-contain"
-          />
+        {/* Brand block — aligned with sidebar width on desktop. The logo
+            sits in a white rounded badge on the navy bar so the on-white
+            EDG mark reads cleanly while the navy header stays intact. */}
+        <div className="hidden md:flex w-64 items-center justify-center px-4 border-r border-white/10 shrink-0">
+          <span className="inline-flex items-center justify-center bg-white rounded-lg px-3 py-1.5 shadow-sm">
+            <img
+              src={edgLogo}
+              alt="Emergency Dental Group"
+              className="h-9 w-auto object-contain"
+            />
+          </span>
         </div>
 
         {/* Mobile: hamburger + condensed brand */}
