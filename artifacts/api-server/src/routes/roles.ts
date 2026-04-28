@@ -565,6 +565,7 @@ router.post("/roles", async (req, res): Promise<void> => {
       seatHolderName: data.seatHolderName ?? "Open",
       seatHolderInitials: data.seatHolderInitials ?? "",
       reportsToRoleId: data.reportsToRoleId ?? null,
+      organizationId: data.organizationId ?? null,
       businessArea: data.businessArea,
       tier: data.tier,
       lastReviewedAt: new Date(),

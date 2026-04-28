@@ -12,6 +12,7 @@ export interface CreateRoleBody {
   seatHolderName?: string;
   seatHolderInitials?: string;
   reportsToRoleId?: number | null;
+  organizationId?: number | null;
   /** @minLength 1 */
   businessArea: string;
   /** @minLength 1 */

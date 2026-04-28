@@ -4,7 +4,9 @@ import { Plus, Search, Users, Network } from "lucide-react";
 import {
   useListRoles,
   useCreateRole,
+  useListOrganizations,
   type Role,
+  type Organization,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +21,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -33,12 +37,23 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { getListRolesQueryKey } from "@workspace/api-client-react";
 
-function NewRoleButton({ roles }: { roles: Role[] }) {
+function NewRoleButton({
+  roles,
+  organizations,
+  defaultOrgId,
+}: {
+  roles: Role[];
+  organizations: Organization[];
+  defaultOrgId: number | null;
+}) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [businessArea, setBusinessArea] = useState<BusinessArea>("Operations");
   const [tier, setTier] = useState<Tier>("Operations Support");
   const [reportsTo, setReportsTo] = useState<string>("__none__");
+  const [orgId, setOrgId] = useState<string>(
+    defaultOrgId !== null ? String(defaultOrgId) : "__none__",
+  );
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const createRole = useCreateRole({
@@ -110,6 +125,22 @@ function NewRoleButton({ roles }: { roles: Role[] }) {
               </div>
             </div>
             <div>
+              <Label>Location</Label>
+              <Select value={orgId} onValueChange={setOrgId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— No location —</SelectItem>
+                  {organizations.map((o) => (
+                    <SelectItem key={o.id} value={String(o.id)}>
+                      {(o.name ?? "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Reports to</Label>
               <Select value={reportsTo} onValueChange={setReportsTo}>
                 <SelectTrigger>
@@ -143,6 +174,8 @@ function NewRoleButton({ roles }: { roles: Role[] }) {
                     tier,
                     reportsToRoleId:
                       reportsTo === "__none__" ? null : Number(reportsTo),
+                    organizationId:
+                      orgId === "__none__" ? null : Number(orgId),
                   },
                 })
               }
@@ -217,18 +250,75 @@ function buildTree(roles: Role[]): {
   return { roots, childrenOf };
 }
 
+const ORG_GROUP_LABEL: Record<string, string> = {
+  edge_dso: "EDGE DSO",
+  edge: "EDGE Locations",
+  urgent_dental: "UD Locations",
+};
+const ORG_GROUP_ORDER = ["edge_dso", "edge", "urgent_dental"];
+
 export function RolesIndex() {
   const { data: roles = [], isLoading } = useListRoles();
+  const { data: organizations = [] } = useListOrganizations();
   const [search, setSearch] = useState("");
+  const [orgFilter, setOrgFilter] = useState<string>("__all__");
+
+  // Group organizations by category for the dropdown.
+  const groupedOrgs = useMemo(() => {
+    const byCat = new Map<string, Organization[]>();
+    for (const o of organizations) {
+      const cat = o.category ?? "other";
+      const arr = byCat.get(cat) ?? [];
+      arr.push(o);
+      byCat.set(cat, arr);
+    }
+    for (const arr of byCat.values()) {
+      arr.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    }
+    return ORG_GROUP_ORDER.flatMap((cat) =>
+      byCat.get(cat) ? [{ cat, orgs: byCat.get(cat)! }] : [],
+    );
+  }, [organizations]);
+
+  // Default org for new roles: prefer the currently filtered org, else the
+  // first UD location, else null.
+  const defaultOrgId = useMemo(() => {
+    if (orgFilter !== "__all__") return Number(orgFilter);
+    const ud = organizations.find((o) => o.category === "urgent_dental");
+    return ud ? ud.id : null;
+  }, [orgFilter, organizations]);
 
   const filtered = useMemo(() => {
+    const allById = new Map<number, Role>(roles.map((r) => [r.id, r]));
+
+    // Step 1: location filter — keep matching roles plus their ancestors so the
+    // tree stays connected (a clinical lead under EDGE DSO still needs to show
+    // when filtering Urgent Dental, otherwise its child cards become orphans).
+    let byLoc: Role[];
+    if (orgFilter === "__all__") {
+      byLoc = roles;
+    } else {
+      const keep = new Set<number>();
+      for (const r of roles) {
+        if (String(r.organizationId ?? "") === orgFilter) {
+          let cur: Role | undefined = r;
+          while (cur && !keep.has(cur.id)) {
+            keep.add(cur.id);
+            cur = cur.reportsToRoleId
+              ? allById.get(cur.reportsToRoleId)
+              : undefined;
+          }
+        }
+      }
+      byLoc = roles.filter((r) => keep.has(r.id));
+    }
+
+    // Step 2: search filter (also keeps ancestors).
     const q = search.trim().toLowerCase();
-    if (!q) return roles;
-    // When searching, return matching roles plus their ancestors so the tree
-    // remains coherent.
-    const byId = new Map<number, Role>(roles.map((r) => [r.id, r]));
+    if (!q) return byLoc;
+    const byId = new Map<number, Role>(byLoc.map((r) => [r.id, r]));
     const keep = new Set<number>();
-    for (const r of roles) {
+    for (const r of byLoc) {
       if (
         r.title.toLowerCase().includes(q) ||
         r.seatHolderName.toLowerCase().includes(q) ||
@@ -242,8 +332,8 @@ export function RolesIndex() {
         }
       }
     }
-    return roles.filter((r) => keep.has(r.id));
-  }, [roles, search]);
+    return byLoc.filter((r) => keep.has(r.id));
+  }, [roles, search, orgFilter]);
 
   const tiers = useMemo(() => {
     const { roots, childrenOf } = buildTree(filtered);
@@ -291,17 +381,43 @@ export function RolesIndex() {
             it run.
           </p>
         </div>
-        <NewRoleButton roles={roles} />
+        <NewRoleButton
+          roles={roles}
+          organizations={organizations}
+          defaultOrgId={defaultOrgId}
+        />
       </header>
 
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-        <Input
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search roles or seat holders…"
-          className="pl-9"
-        />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative w-full max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search roles or seat holders…"
+            className="pl-9"
+          />
+        </div>
+        <Select value={orgFilter} onValueChange={setOrgFilter}>
+          <SelectTrigger className="w-[260px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All locations</SelectItem>
+            {groupedOrgs.map(({ cat, orgs }) => (
+              <SelectGroup key={cat}>
+                <SelectLabel className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                  {ORG_GROUP_LABEL[cat] ?? cat}
+                </SelectLabel>
+                {orgs.map((o) => (
+                  <SelectItem key={o.id} value={String(o.id)}>
+                    {(o.name ?? "").trim()}
+                  </SelectItem>
+                ))}
+              </SelectGroup>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {isLoading ? (

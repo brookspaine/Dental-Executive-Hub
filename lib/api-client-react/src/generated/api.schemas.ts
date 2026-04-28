@@ -723,6 +723,7 @@ export interface Role {
   seatHolderName: string;
   seatHolderInitials: string;
   reportsToRoleId?: number | null;
+  organizationId?: number | null;
   businessArea: string;
   tier: string;
   purposeStatement: string;
@@ -745,6 +746,7 @@ export interface CreateRoleBody {
   seatHolderName?: string;
   seatHolderInitials?: string;
   reportsToRoleId?: number | null;
+  organizationId?: number | null;
   /** @minLength 1 */
   businessArea: string;
   /** @minLength 1 */
@@ -757,6 +759,7 @@ export interface UpdateRoleBody {
   seatHolderName?: string;
   seatHolderInitials?: string;
   reportsToRoleId?: number | null;
+  organizationId?: number | null;
   businessArea?: string;
   tier?: string;
   purposeStatement?: string;

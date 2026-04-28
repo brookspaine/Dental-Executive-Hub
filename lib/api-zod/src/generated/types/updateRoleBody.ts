@@ -15,6 +15,7 @@ export interface UpdateRoleBody {
   seatHolderName?: string;
   seatHolderInitials?: string;
   reportsToRoleId?: number | null;
+  organizationId?: number | null;
   businessArea?: string;
   tier?: string;
   purposeStatement?: string;

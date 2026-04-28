@@ -51,6 +51,7 @@ export const rolesTable = pgTable("roles", {
   seatHolderName: text("seat_holder_name").notNull().default("Open"),
   seatHolderInitials: text("seat_holder_initials").notNull().default(""),
   reportsToRoleId: integer("reports_to_role_id"),
+  organizationId: integer("organization_id"),
   businessArea: text("business_area").notNull().default("Operations"),
   tier: text("tier").notNull().default("Operations Support"),
 

@@ -2890,6 +2890,9 @@ components:
         reportsToRoleId:
           type: integer
           nullable: true
+        organizationId:
+          type: integer
+          nullable: true
         businessArea:
           type: string
         tier:
@@ -2960,6 +2963,9 @@ components:
         reportsToRoleId:
           type: integer
           nullable: true
+        organizationId:
+          type: integer
+          nullable: true
         businessArea:
           type: string
           minLength: 1
@@ -2979,6 +2985,9 @@ components:
         seatHolderInitials:
           type: string
         reportsToRoleId:
+          type: integer
+          nullable: true
+        organizationId:
           type: integer
           nullable: true
         businessArea:
