@@ -14,6 +14,8 @@ export interface CreateBuildoutCardBody {
   ownerName: string;
   /** @minLength 1 */
   category: string;
+  /** @minLength 1 */
+  businessArea: string;
   status?: string;
   position?: number;
   kraLink?: string | null;

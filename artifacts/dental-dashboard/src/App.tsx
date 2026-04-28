@@ -276,16 +276,19 @@ function ClerkProviderWithRoutes() {
     >
       <QueryClientProvider client={queryClient}>
         <ClerkQueryClientCacheInvalidator />
+        {/*
+          AUTH IS CURRENTLY DISABLED while the app is being built — the
+          app always renders as if a teammate is signed in. /sign-in and
+          /sign-up redirect to home so old links don't show a login wall.
+          To re-enable, restore the <Show when="signed-in">/<Show when="signed-out">
+          gate that lived here (see git history) and re-mount SignInPage /
+          SignUpPage on those routes.
+        */}
         <Switch>
-          <Route path="/sign-in/*?" component={SignInPage} />
-          <Route path="/sign-up/*?" component={SignUpPage} />
+          <Route path="/sign-in/*?"><Redirect to="/" /></Route>
+          <Route path="/sign-up/*?"><Redirect to="/" /></Route>
           <Route>
-            <Show when="signed-in">
-              <AuthedApp />
-            </Show>
-            <Show when="signed-out">
-              <Redirect to="/sign-in" />
-            </Show>
+            <AuthedApp />
           </Route>
         </Switch>
         <Toaster />

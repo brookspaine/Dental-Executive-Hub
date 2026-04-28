@@ -46,43 +46,57 @@ export function deriveInitials(name: string): string {
 }
 
 /**
- * Look up the signed-in Clerk user, upsert a row in the `users` table
- * with the latest profile snapshot, and attach `req.authedUser`. Returns
- * 401 if there is no valid session.
+ * AUTH IS CURRENTLY DISABLED while the app is being built — every
+ * request is treated as the local "Dev User" and routes that depend on
+ * `req.authedUser` continue to work unchanged.
  *
- * The denormalized name/email/imageUrl columns let us render owners and
- * other identity fields without round-tripping to Clerk on every read.
+ * To re-enable real Clerk auth, restore the original implementation
+ * (kept in git history): call `getAuth(req)`, 401 on missing userId,
+ * upsert the real Clerk profile into `users`, and attach req.authedUser.
  */
-export async function requireAuth(
-  req: Request,
-  res: Response,
-  next: NextFunction,
-): Promise<void> {
-  const auth = getAuth(req);
-  const userId = auth?.userId;
-  if (!userId) {
-    res.status(401).json({ error: "Unauthorized" });
-    return;
-  }
+const DEV_USER: AuthedUser = {
+  id: "dev-user",
+  name: "Dev User",
+  initials: "DU",
+  email: null,
+  imageUrl: null,
+};
 
+let devUserSeeded = false;
+
+async function ensureDevUserRow(): Promise<void> {
+  if (devUserSeeded) return;
   try {
-    const user = await clerkClient.users.getUser(userId);
-    const name = deriveName(user);
-    const initials = deriveInitials(name);
-    const email = user.emailAddresses?.[0]?.emailAddress ?? null;
-    const imageUrl = user.imageUrl ?? null;
-
     await db
       .insert(usersTable)
-      .values({ id: userId, name, email, imageUrl })
+      .values({
+        id: DEV_USER.id,
+        name: DEV_USER.name,
+        email: DEV_USER.email,
+        imageUrl: DEV_USER.imageUrl,
+      })
       .onConflictDoUpdate({
         target: usersTable.id,
-        set: { name, email, imageUrl, updatedAt: new Date() },
+        set: { name: DEV_USER.name, updatedAt: new Date() },
       });
-
-    req.authedUser = { id: userId, email, name, initials, imageUrl };
-    next();
-  } catch (err) {
-    res.status(500).json({ error: "Failed to load user profile" });
+    devUserSeeded = true;
+  } catch {
+    // Leave devUserSeeded=false so the next request retries; routes that
+    // need ownerUserId can fall back to null.
   }
 }
+
+export async function requireAuth(
+  req: Request,
+  _res: Response,
+  next: NextFunction,
+): Promise<void> {
+  await ensureDevUserRow();
+  req.authedUser = DEV_USER;
+  next();
+}
+
+// Keep these imports referenced so re-enabling real auth is a one-line
+// edit (no need to re-add imports).
+void clerkClient;
+void getAuth;

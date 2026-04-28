@@ -22,10 +22,17 @@ export type ActiveUser = {
   imageUrl: string | null;
 };
 
+/**
+ * AUTH IS CURRENTLY DISABLED while the app is being built — when Clerk
+ * has no signed-in user, we surface this "Dev User" identity so the
+ * sidebar, owner picker, and action item ownership all keep working.
+ * The id matches the `dev-user` row the API server upserts in
+ * requireAuth(), so action_items.ownerUserId still gets a valid FK.
+ */
 const PLACEHOLDER_ACTIVE_USER: ActiveUser = {
-  id: "",
-  name: "",
-  initials: "",
+  id: "dev-user",
+  name: "Dev User",
+  initials: "DU",
   title: "",
   imageUrl: null,
 };

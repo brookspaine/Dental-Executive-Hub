@@ -2485,6 +2485,8 @@ components:
           type: string
         category:
           type: string
+        businessArea:
+          type: string
         status:
           type: string
         position:
@@ -2526,6 +2528,7 @@ components:
         - title
         - ownerName
         - category
+        - businessArea
         - status
         - position
         - definitionOfDone
@@ -2543,6 +2546,9 @@ components:
           type: string
           minLength: 1
         category:
+          type: string
+          minLength: 1
+        businessArea:
           type: string
           minLength: 1
         status:
@@ -2571,6 +2577,7 @@ components:
         - title
         - ownerName
         - category
+        - businessArea
         - definitionOfDone
 
     UpdateBuildoutCardBody:
@@ -2582,6 +2589,8 @@ components:
         ownerName:
           type: string
         category:
+          type: string
+        businessArea:
           type: string
         status:
           type: string

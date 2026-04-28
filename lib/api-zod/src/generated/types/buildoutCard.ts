@@ -13,6 +13,7 @@ export interface BuildoutCard {
   title: string;
   ownerName: string;
   category: string;
+  businessArea: string;
   status: string;
   position: number;
   kraLink?: string | null;

@@ -23,11 +23,13 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const SEED_CARDS = [
+  // ---------- Location ----------
   {
     title:
       "Resolve ECR Exhibit E \u201Cprimary or urgent care facility\u201D language",
     ownerName: "Brooks Paine",
     category: "Lease & Legal",
+    businessArea: "Location",
     status: "in_progress",
     position: 0,
     definitionOfDone:
@@ -45,6 +47,7 @@ const SEED_CARDS = [
     title: "Transmit lease redline to Baker Donelson",
     ownerName: "Adam Webb",
     category: "Lease & Legal",
+    businessArea: "Location",
     status: "waiting_on",
     position: 0,
     definitionOfDone: "Redline sent and receipt confirmed by Baker Donelson.",
@@ -61,6 +64,7 @@ const SEED_CARDS = [
     title: "Submit DNR permit application for emergency dental use",
     ownerName: "Brooks Paine",
     category: "Permitting & DNR",
+    businessArea: "Location",
     status: "backlog",
     position: 0,
     definitionOfDone: "DNR permit application submitted and confirmation # received.",
@@ -77,6 +81,7 @@ const SEED_CARDS = [
     title: "Resolve vinyl color spec on window signage with RSS",
     ownerName: "Brooks Paine",
     category: "Signage",
+    businessArea: "Location",
     status: "in_progress",
     position: 0,
     definitionOfDone:
@@ -90,10 +95,12 @@ const SEED_CARDS = [
       manufactureLeadTime: "3 weeks",
     },
   },
+  // ---------- Operations ----------
   {
     title: "Issue PO for CBCT unit",
     ownerName: "Brooks Paine",
     category: "Equipment & IT",
+    businessArea: "Operations",
     status: "backlog",
     position: 1,
     definitionOfDone: "PO issued, vendor acknowledgement received, deposit wired.",
@@ -110,6 +117,7 @@ const SEED_CARDS = [
     title: "Execute Treloar & Heisel professional liability binder",
     ownerName: "Brooks Paine",
     category: "Vendor Contracts",
+    businessArea: "Operations",
     status: "backlog",
     position: 2,
     definitionOfDone:
@@ -122,6 +130,56 @@ const SEED_CARDS = [
       adamWebbReviewRequired: true,
       counterpartyEntity: "Greyrock Dental Partners LLC",
     },
+  },
+  // ---------- Financials ----------
+  {
+    title: "Open Greyrock operating account at primary bank",
+    ownerName: "Brooks Paine",
+    category: "Banking & Treasury",
+    businessArea: "Financials",
+    status: "backlog",
+    position: 0,
+    definitionOfDone:
+      "Operating account opened in Greyrock Dental Partners LLC name; signers configured; debit card and online banking active.",
+    targetDoneDate: null as string | null,
+    categoryFields: {},
+  },
+  {
+    title: "Finalize pre-opening budget with Frank",
+    ownerName: "Brooks Paine",
+    category: "Budget & Forecasting",
+    businessArea: "Financials",
+    status: "in_progress",
+    position: 0,
+    definitionOfDone:
+      "Pre-opening budget reviewed line-by-line with Frank; signed off; loaded into the financial model.",
+    targetDoneDate: null as string | null,
+    categoryFields: {},
+  },
+  // ---------- People ----------
+  {
+    title: "Draft EDGE Doctor Partner Track one-pager",
+    ownerName: "Brooks Paine",
+    category: "Doctor Recruiting (Partner Track)",
+    businessArea: "People",
+    status: "backlog",
+    position: 0,
+    definitionOfDone:
+      "One-page recruiting doc explaining the EDGE Partner Track economics, vesting, and culture; reviewed by Adam Webb.",
+    targetDoneDate: null as string | null,
+    categoryFields: {},
+  },
+  {
+    title: "Define first clinical hire job description and comp range",
+    ownerName: "Brooks Paine",
+    category: "Clinical Staff Hiring",
+    businessArea: "People",
+    status: "backlog",
+    position: 1,
+    definitionOfDone:
+      "Job description, scope, and salary band finalized for the first clinical hire; ready to post.",
+    targetDoneDate: null as string | null,
+    categoryFields: {},
   },
 ];
 
@@ -278,8 +336,21 @@ router.patch("/buildout-cards/:id", async (req, res): Promise<void> => {
     const to = STATUS_LABELS[parsed.data.status] ?? parsed.data.status;
     logEntries.push({ timestamp: now, text: `Status changed: ${from} → ${to}` });
   }
-  // Detect non-status edits (excluding categoryFields content noise).
-  const otherKeys = Object.keys(parsed.data).filter((k) => k !== "status");
+  if (
+    "businessArea" in parsed.data &&
+    parsed.data.businessArea &&
+    parsed.data.businessArea !== existing.businessArea
+  ) {
+    logEntries.push({
+      timestamp: now,
+      text: `Business area changed: ${existing.businessArea} → ${parsed.data.businessArea}`,
+    });
+  }
+  // Detect non-status / non-area edits (the activity log entry above already
+  // covers status & area moves — avoid logging "details updated" for those).
+  const otherKeys = Object.keys(parsed.data).filter(
+    (k) => k !== "status" && k !== "businessArea",
+  );
   if (otherKeys.length > 0) {
     logEntries.push({ timestamp: now, text: "Card details updated." });
   }
