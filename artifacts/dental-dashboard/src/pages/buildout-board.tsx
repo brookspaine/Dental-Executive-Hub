@@ -856,7 +856,7 @@ function CardModal({
           <DialogDescription>
             {existingCard
               ? "Update fields, log activity, or move between columns."
-              : "Add a new card to the EDGE Buildout Board."}
+              : "Add a new card to the Big Board."}
           </DialogDescription>
         </DialogHeader>
 
@@ -1573,7 +1573,7 @@ export function BuildoutBoard() {
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 flex items-center gap-2">
             <ListChecks className="h-6 w-6 text-[#0F2A47]" />
-            EDGE Buildout Board
+            Big Board
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
             Operations system for the dental practice construction & launch
