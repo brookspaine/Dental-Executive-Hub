@@ -44,7 +44,7 @@ type NavItem = NavLeaf | NavGroup;
 
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
-  { href: "/my-roles", label: "My Roles", icon: IdCard },
+  { href: "/my-roles", label: "My Role", icon: IdCard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
