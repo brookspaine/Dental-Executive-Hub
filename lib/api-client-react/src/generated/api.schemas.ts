@@ -623,6 +623,7 @@ export interface BuildoutCard {
   businessArea: string;
   status: string;
   position: number;
+  organizationId?: number | null;
   kraLink?: string | null;
   targetDoneDate?: string | null;
   definitionOfDone: string;
@@ -650,6 +651,7 @@ export interface CreateBuildoutCardBody {
   businessArea: string;
   status?: string;
   position?: number;
+  organizationId?: number | null;
   kraLink?: string | null;
   targetDoneDate?: string | null;
   definitionOfDone: string;
@@ -670,6 +672,7 @@ export interface UpdateBuildoutCardBody {
   businessArea?: string;
   status?: string;
   position?: number;
+  organizationId?: number | null;
   kraLink?: string | null;
   targetDoneDate?: string | null;
   definitionOfDone?: string;

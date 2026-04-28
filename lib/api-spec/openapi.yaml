@@ -2669,6 +2669,9 @@ components:
           type: string
         position:
           type: integer
+        organizationId:
+          type: integer
+          nullable: true
         kraLink:
           type: string
           nullable: true
@@ -2733,6 +2736,9 @@ components:
           type: string
         position:
           type: integer
+        organizationId:
+          type: integer
+          nullable: true
         kraLink:
           type: string
           nullable: true
@@ -2774,6 +2780,9 @@ components:
           type: string
         position:
           type: integer
+        organizationId:
+          type: integer
+          nullable: true
         kraLink:
           type: string
           nullable: true

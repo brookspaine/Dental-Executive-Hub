@@ -18,6 +18,7 @@ export interface CreateBuildoutCardBody {
   businessArea: string;
   status?: string;
   position?: number;
+  organizationId?: number | null;
   kraLink?: string | null;
   targetDoneDate?: string | null;
   definitionOfDone: string;

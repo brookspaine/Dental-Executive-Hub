@@ -34,8 +34,10 @@ import {
   useUpdateBuildoutCard,
   useDeleteBuildoutCard,
   useAddBuildoutCardActivity,
+  useListOrganizations,
   getListBuildoutCardsQueryKey,
   type BuildoutCard,
+  type Organization,
 } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +46,9 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -689,6 +693,7 @@ type DraftCard = {
   category: string;
   businessArea: BusinessArea;
   status: ColumnId;
+  organizationId: number | null;
   kraLink: string;
   targetDoneDate: string;
   definitionOfDone: string;
@@ -697,7 +702,11 @@ type DraftCard = {
   categoryFields: Record<string, unknown>;
 };
 
-function blankDraft(area: BusinessArea, status: ColumnId): DraftCard {
+function blankDraft(
+  area: BusinessArea,
+  status: ColumnId,
+  organizationId: number | null = null,
+): DraftCard {
   const firstCategory = CATEGORIES_BY_AREA[area][0];
   return {
     title: "",
@@ -705,6 +714,7 @@ function blankDraft(area: BusinessArea, status: ColumnId): DraftCard {
     category: firstCategory,
     businessArea: area,
     status,
+    organizationId,
     kraLink: "",
     targetDoneDate: "",
     definitionOfDone: "",
@@ -724,6 +734,7 @@ function fromCard(card: BuildoutCard): DraftCard {
     category: card.category,
     businessArea: area,
     status: card.status as ColumnId,
+    organizationId: card.organizationId ?? null,
     kraLink: card.kraLink ?? "",
     targetDoneDate: card.targetDoneDate ?? "",
     definitionOfDone: card.definitionOfDone,
@@ -732,6 +743,32 @@ function fromCard(card: BuildoutCard): DraftCard {
     categoryFields:
       (card.categoryFields as Record<string, unknown> | null | undefined) ?? {},
   };
+}
+
+// Organization grouping for filter and modal location pickers.
+const ORG_GROUP_LABEL: Record<string, string> = {
+  edge_dso: "EDGE DSO",
+  edge: "EDGE Locations",
+  urgent_dental: "UD Locations",
+};
+const ORG_GROUP_ORDER = ["edge_dso", "edge", "urgent_dental"];
+
+function groupOrganizations(
+  organizations: Organization[],
+): Array<{ cat: string; orgs: Organization[] }> {
+  const byCat = new Map<string, Organization[]>();
+  for (const o of organizations) {
+    const cat = o.category ?? "other";
+    const arr = byCat.get(cat) ?? [];
+    arr.push(o);
+    byCat.set(cat, arr);
+  }
+  for (const arr of byCat.values()) {
+    arr.sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+  }
+  return ORG_GROUP_ORDER.flatMap((cat) =>
+    byCat.get(cat) ? [{ cat, orgs: byCat.get(cat)! }] : [],
+  );
 }
 
 function CategoryFieldInput({
@@ -815,6 +852,8 @@ function CardModal({
   onOpenChange,
   initialDraft,
   existingCard,
+  organizations,
+  groupedOrgs,
   onSave,
   onDelete,
   onAddActivity,
@@ -823,6 +862,8 @@ function CardModal({
   onOpenChange: (o: boolean) => void;
   initialDraft: DraftCard;
   existingCard: BuildoutCard | null;
+  organizations: Organization[];
+  groupedOrgs: Array<{ cat: string; orgs: Organization[] }>;
   onSave: (draft: DraftCard) => Promise<void>;
   onDelete: (() => Promise<void>) | null;
   onAddActivity: ((text: string) => Promise<void>) | null;
@@ -924,6 +965,42 @@ function CardModal({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            <div>
+              <Label>Location</Label>
+              <Select
+                value={
+                  draft.organizationId === null
+                    ? "__none__"
+                    : String(draft.organizationId)
+                }
+                onValueChange={(v) =>
+                  setDraft({
+                    ...draft,
+                    organizationId: v === "__none__" ? null : Number(v),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— No location —</SelectItem>
+                  {groupedOrgs.map(({ cat, orgs }) => (
+                    <SelectGroup key={cat}>
+                      <SelectLabel className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        {ORG_GROUP_LABEL[cat] ?? cat}
+                      </SelectLabel>
+                      {orgs.map((o) => (
+                        <SelectItem key={o.id} value={String(o.id)}>
+                          {(o.name ?? "").trim()}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
@@ -1385,9 +1462,14 @@ export function BuildoutBoard() {
   // UI state
   const [search, setSearch] = useState("");
   const [filterOwner, setFilterOwner] = useState<string>("all");
-  const [filterCategory, setFilterCategory] = useState<string>("all");
+  const [filterOrg, setFilterOrg] = useState<string>("all");
   const [filterAreas, setFilterAreas] = useState<Set<BusinessArea>>(new Set());
   const [filterBlocked, setFilterBlocked] = useState(false);
+  const { data: organizations = [] } = useListOrganizations();
+  const groupedOrgs = useMemo(
+    () => groupOrganizations(organizations),
+    [organizations],
+  );
   const [view, setView] = useState<"board" | "review">("board");
   const [collapsed, setCollapsed] = useState<Set<BusinessArea>>(new Set());
 
@@ -1411,7 +1493,11 @@ export function BuildoutBoard() {
     return cards.filter((c) => {
       const area = isBusinessArea(c.businessArea) ? c.businessArea : "Operations";
       if (filterOwner !== "all" && c.ownerName !== filterOwner) return false;
-      if (filterCategory !== "all" && c.category !== filterCategory) return false;
+      if (
+        filterOrg !== "all" &&
+        String(c.organizationId ?? "") !== filterOrg
+      )
+        return false;
       if (filterAreas.size > 0 && !filterAreas.has(area)) return false;
       if (filterBlocked && !(c.blocker && c.blocker.trim().length > 0)) return false;
       if (s) {
@@ -1423,7 +1509,7 @@ export function BuildoutBoard() {
       }
       return true;
     });
-  }, [cards, search, filterOwner, filterCategory, filterAreas, filterBlocked]);
+  }, [cards, search, filterOwner, filterOrg, filterAreas, filterBlocked]);
 
   const cardsByArea = useMemo(() => {
     const m: Record<BusinessArea, BuildoutCard[]> = {
@@ -1441,7 +1527,9 @@ export function BuildoutBoard() {
 
   const openNew = (area: BusinessArea, status: ColumnId) => {
     setEditingCard(null);
-    setDraftSeed(blankDraft(area, status));
+    // Pre-select the currently filtered location, when one is active.
+    const seedOrg = filterOrg === "all" ? null : Number(filterOrg);
+    setDraftSeed(blankDraft(area, status, seedOrg));
     setModalOpen(true);
   };
 
@@ -1458,6 +1546,7 @@ export function BuildoutBoard() {
       category: draft.category,
       businessArea: draft.businessArea,
       status: draft.status,
+      organizationId: draft.organizationId,
       kraLink: draft.kraLink || null,
       targetDoneDate: draft.targetDoneDate || null,
       definitionOfDone: draft.definitionOfDone,
@@ -1631,16 +1720,23 @@ export function BuildoutBoard() {
               ))}
             </SelectContent>
           </Select>
-          <Select value={filterCategory} onValueChange={setFilterCategory}>
-            <SelectTrigger className="h-8 w-52">
-              <SelectValue placeholder="Category" />
+          <Select value={filterOrg} onValueChange={setFilterOrg}>
+            <SelectTrigger className="h-8 w-56">
+              <SelectValue placeholder="Location" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All categories</SelectItem>
-              {ALL_CATEGORIES.map((c) => (
-                <SelectItem key={c} value={c}>
-                  {c}
-                </SelectItem>
+              <SelectItem value="all">All locations</SelectItem>
+              {groupedOrgs.map(({ cat, orgs }) => (
+                <SelectGroup key={cat}>
+                  <SelectLabel className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                    {ORG_GROUP_LABEL[cat] ?? cat}
+                  </SelectLabel>
+                  {orgs.map((o) => (
+                    <SelectItem key={o.id} value={String(o.id)}>
+                      {(o.name ?? "").trim()}
+                    </SelectItem>
+                  ))}
+                </SelectGroup>
               ))}
             </SelectContent>
           </Select>
@@ -1682,7 +1778,7 @@ export function BuildoutBoard() {
           </label>
           {(search ||
             filterOwner !== "all" ||
-            filterCategory !== "all" ||
+            filterOrg !== "all" ||
             filterAreas.size > 0 ||
             filterBlocked) && (
             <Button
@@ -1691,7 +1787,7 @@ export function BuildoutBoard() {
               onClick={() => {
                 setSearch("");
                 setFilterOwner("all");
-                setFilterCategory("all");
+                setFilterOrg("all");
                 setFilterAreas(new Set());
                 setFilterBlocked(false);
               }}
@@ -1747,6 +1843,8 @@ export function BuildoutBoard() {
         onOpenChange={setModalOpen}
         initialDraft={draftSeed}
         existingCard={editingCard}
+        organizations={organizations}
+        groupedOrgs={groupedOrgs}
         onSave={handleSave}
         onDelete={editingCard ? handleDelete : null}
         onAddActivity={editingCard ? handleActivity : null}

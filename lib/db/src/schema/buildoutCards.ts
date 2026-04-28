@@ -22,6 +22,7 @@ export const buildoutCardsTable = pgTable("buildout_cards", {
   businessArea: text("business_area").notNull().default("Operations"),
   status: text("status").notNull().default("backlog"),
   position: integer("position").notNull().default(0),
+  organizationId: integer("organization_id"),
   kraLink: text("kra_link"),
   targetDoneDate: text("target_done_date"),
   definitionOfDone: text("definition_of_done").notNull().default(""),
