@@ -266,11 +266,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
             sits in a white rounded badge on the navy bar so the on-white
             EDG mark reads cleanly while the navy header stays intact. */}
         <div className="hidden md:flex w-64 items-center justify-center px-3 border-r border-white/10 shrink-0">
-          <span className="inline-flex items-center justify-center bg-white rounded-lg px-3 py-0.5 shadow-sm">
+          <span className="inline-flex items-center justify-center bg-white rounded-lg px-4 py-1.5 shadow-sm">
             <img
               src={edgLogo}
               alt="Emergency Dental Group"
-              className="h-[60px] w-auto object-contain"
+              className="h-10 w-auto object-contain"
             />
           </span>
         </div>
