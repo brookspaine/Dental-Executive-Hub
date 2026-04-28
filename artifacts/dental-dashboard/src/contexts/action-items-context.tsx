@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+
+const STORAGE_KEY = "dental-dashboard:action-items:v1";
 
 export type ActionItemNote = { label: string; href?: string };
 
@@ -82,8 +84,45 @@ type ActionItemsContextValue = {
 
 const ActionItemsContext = createContext<ActionItemsContextValue | null>(null);
 
+function loadInitialItems(): ActionItem[] {
+  if (typeof window === "undefined") return sampleItems;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return sampleItems;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return sampleItems;
+    return parsed as ActionItem[];
+  } catch {
+    return sampleItems;
+  }
+}
+
 export function ActionItemsProvider({ children }: { children: ReactNode }) {
-  const [items, setItems] = useState<ActionItem[]>(sampleItems);
+  const [items, setItems] = useState<ActionItem[]>(loadInitialItems);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    } catch {
+      // Ignore quota or serialization failures; in-memory state remains correct.
+    }
+  }, [items]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const onStorage = (e: StorageEvent) => {
+      if (e.key !== STORAGE_KEY || e.newValue == null) return;
+      try {
+        const parsed = JSON.parse(e.newValue);
+        if (Array.isArray(parsed)) setItems(parsed as ActionItem[]);
+      } catch {
+        // Ignore malformed cross-tab updates.
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   const addItem: ActionItemsContextValue["addItem"] = ({
     title,
