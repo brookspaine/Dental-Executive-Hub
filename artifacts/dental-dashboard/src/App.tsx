@@ -26,8 +26,6 @@ import { Layout } from "@/components/layout";
 import { Organizations } from "@/pages/organizations";
 import { OrganizationDetail } from "@/pages/organization-detail";
 import { UrgentDental } from "@/pages/urgent-dental";
-import { OrgChart } from "@/pages/org-chart";
-import { SeatDetail } from "@/pages/seat-detail";
 import { IdealWeek } from "@/pages/ideal-week";
 import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
 import { VisionBoard } from "@/pages/vision-board";
@@ -186,8 +184,6 @@ function AppRouter() {
         <Route path="/organizations" component={Organizations} />
         <Route path="/organizations/:id" component={OrganizationDetail} />
         <Route path="/urgent-dental" component={UrgentDental} />
-        <Route path="/org-chart" component={OrgChart} />
-        <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/action-items" component={ActionItems} />
         <Route path="/edge-buildout-board" component={BuildoutBoard} />

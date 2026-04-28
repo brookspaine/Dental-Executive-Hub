@@ -5,7 +5,6 @@ import {
   Users,
   Bell,
   CalendarCheck,
-  Network,
   Menu,
   ChevronDown,
   CalendarDays,
@@ -46,7 +45,6 @@ const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/my-roles", label: "My Role", icon: IdCard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
-  { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
   { href: "/edge-buildout-board", label: "Big Board", icon: KanbanSquare },
   {
