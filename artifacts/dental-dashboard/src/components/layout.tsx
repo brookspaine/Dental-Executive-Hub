@@ -22,7 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import edgLogo from "@assets/White_background-png_1777375136787.png";
+import edgLogo from "@assets/edg-logo-cropped.png";
 
 const CURRENT_USER_NAME = "Brooks Paine";
 const CURRENT_USER_TITLE = "Chief Executive Officer";
