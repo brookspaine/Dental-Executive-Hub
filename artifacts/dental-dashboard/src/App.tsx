@@ -184,6 +184,8 @@ function AppRouter() {
         <Route path="/organizations" component={Organizations} />
         <Route path="/organizations/:id" component={OrganizationDetail} />
         <Route path="/urgent-dental" component={UrgentDental} />
+        <Route path="/org-chart"><Redirect to="/my-roles" /></Route>
+        <Route path="/org-chart/seats/:id"><Redirect to="/my-roles" /></Route>
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/action-items" component={ActionItems} />
         <Route path="/edge-buildout-board" component={BuildoutBoard} />
