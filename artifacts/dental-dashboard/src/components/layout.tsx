@@ -234,21 +234,14 @@ function UserBadge() {
 
 function BrandHeader() {
   const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
-  const logoSrc = `${baseUrl}edg-logo.jpg`;
+  const logoSrc = `${baseUrl}urgent-dental-logo.png`;
   return (
     <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="shrink-0">
-          <img
-            src={logoSrc}
-            alt="Urgent Dental"
-            className="h-7 w-auto object-contain"
-          />
-        </div>
-        <span className="font-semibold text-[#0F2A47] tracking-tight text-sm leading-tight truncate">
-          Urgent Dental
-        </span>
-      </div>
+      <img
+        src={logoSrc}
+        alt="Urgent Dental"
+        className="h-10 w-auto object-contain"
+      />
     </div>
   );
 }
@@ -267,22 +260,23 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const showTitle = location === "/ideal-week" || location === "/";
 
   const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
-  const logoSrc = `${baseUrl}edg-logo.jpg`;
+  const logoSrc = `${baseUrl}urgent-dental-logo.png`;
 
   return (
     <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
       {/* Full-width navy top bar */}
       <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
-        {/* Brand block — aligned with sidebar width on desktop */}
-        <div className="hidden md:flex w-64 items-center gap-3 px-6 border-r border-white/10 shrink-0">
-          <img
-            src={logoSrc}
-            alt="Urgent Dental"
-            className="h-7 w-auto object-contain shrink-0"
-          />
-          <span className="font-semibold text-white tracking-tight text-sm leading-tight truncate">
-            Urgent Dental
-          </span>
+        {/* Brand block — aligned with sidebar width on desktop.
+            The logo's tooth/cross icon uses navy strokes, so we sit it on a
+            white pill to stay legible against the navy header. */}
+        <div className="hidden md:flex w-64 items-center px-3 border-r border-white/10 shrink-0">
+          <div className="flex items-center bg-white rounded-md px-3 py-1.5 shadow-sm">
+            <img
+              src={logoSrc}
+              alt="Urgent Dental"
+              className="h-9 w-auto object-contain shrink-0"
+            />
+          </div>
         </div>
 
         {/* Mobile: hamburger + condensed brand */}
@@ -312,11 +306,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <UserBadge />
             </SheetContent>
           </Sheet>
-          <img
-            src={logoSrc}
-            alt="Urgent Dental"
-            className="h-6 w-auto object-contain shrink-0"
-          />
+          <div className="flex items-center bg-white rounded-md px-2 py-1 shadow-sm shrink-0">
+            <img
+              src={logoSrc}
+              alt="Urgent Dental"
+              className="h-7 w-auto object-contain"
+            />
+          </div>
           {showTitle && (
             <span className="font-semibold text-white text-sm tracking-tight truncate">
               {currentLabel}
