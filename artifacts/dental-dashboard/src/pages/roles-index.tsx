@@ -467,7 +467,7 @@ export function RolesIndex() {
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-semibold text-[#0F2A47]">
             <Users className="h-6 w-6" />
-            My Role
+            Organizational Chart
           </h1>
           <p className="mt-1 text-sm text-slate-600">
             Every seat in the practice — click any position to see what it
