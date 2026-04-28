@@ -270,7 +270,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <img
               src={edgLogo}
               alt="Emergency Dental Group"
-              className="h-10 w-auto object-contain"
+              className="h-12 w-auto object-contain"
             />
           </span>
         </div>
