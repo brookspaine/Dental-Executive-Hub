@@ -1,96 +1,81 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
+import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { useUser } from "@clerk/react";
+import { getInitials } from "@/lib/current-user";
 
 /**
  * The "active user" is the persona the dashboard is acting as for the
- * current browser session. Until real authentication is wired up, we
- * persist this choice in localStorage so each browser/session can
- * represent a different teammate. The default is the CEO (Brooks
- * Paine) so existing single-user installs behave the same as before.
+ * current browser session. It now mirrors the signed-in Clerk user so
+ * every consumer (header, owner picker, action item ownership) sees a
+ * consistent identity for the actual logged-in teammate.
  *
- * This is intentionally a thin abstraction: when real auth lands, the
- * provider can be swapped to read from the auth session and `useActiveUser`
- * keeps its same contract for every consumer.
+ * The context is intentionally a thin wrapper around `useUser` so the
+ * rest of the codebase can stay agnostic of the auth provider. Until
+ * Clerk has finished loading, we surface a placeholder value with an
+ * empty `id`; downstream components should treat `id === ""` as
+ * "auth not yet ready" and avoid using it as an FK.
  */
 export type ActiveUser = {
+  id: string;
   name: string;
   initials: string;
   title: string;
+  imageUrl: string | null;
 };
 
-const STORAGE_KEY = "dental-dashboard:active-user:v1";
-
-export const DEFAULT_ACTIVE_USER: ActiveUser = {
-  name: "Brooks Paine",
-  initials: "BP",
-  title: "Chief Executive Officer",
+const PLACEHOLDER_ACTIVE_USER: ActiveUser = {
+  id: "",
+  name: "",
+  initials: "",
+  title: "",
+  imageUrl: null,
 };
 
 type ActiveUserContextValue = {
   activeUser: ActiveUser;
-  setActiveUser: (next: ActiveUser) => void;
-  resetActiveUser: () => void;
 };
 
 const ActiveUserContext = createContext<ActiveUserContextValue | null>(null);
 
-function readStored(): ActiveUser | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (
-      parsed &&
-      typeof parsed.name === "string" &&
-      parsed.name.trim().length > 0 &&
-      typeof parsed.initials === "string" &&
-      parsed.initials.trim().length > 0
-    ) {
-      return {
-        name: parsed.name,
-        initials: parsed.initials,
-        title:
-          typeof parsed.title === "string" && parsed.title.length > 0
-            ? parsed.title
-            : "",
-      };
-    }
-  } catch {
-    // ignore corrupted entries; fall back to default
+function pickName(user: {
+  firstName?: string | null;
+  lastName?: string | null;
+  username?: string | null;
+  primaryEmailAddress?: { emailAddress?: string | null } | null;
+  emailAddresses?: { emailAddress: string }[];
+}): string {
+  const parts = [user.firstName ?? "", user.lastName ?? ""]
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length > 0) return parts.join(" ");
+  if (user.username && user.username.trim().length > 0) {
+    return user.username.trim();
   }
-  return null;
+  const email =
+    user.primaryEmailAddress?.emailAddress ??
+    user.emailAddresses?.[0]?.emailAddress ??
+    "";
+  if (email) return email.split("@")[0];
+  return "Teammate";
 }
 
 export function ActiveUserProvider({ children }: { children: ReactNode }) {
-  const [activeUser, setActiveUserState] = useState<ActiveUser>(
-    () => readStored() ?? DEFAULT_ACTIVE_USER,
-  );
+  const { user, isLoaded } = useUser();
 
-  const setActiveUser = useCallback((next: ActiveUser) => {
-    setActiveUserState(next);
-    if (typeof window === "undefined") return;
-    try {
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // localStorage may be unavailable; in-memory state is still updated
+  const value = useMemo<ActiveUserContextValue>(() => {
+    if (!isLoaded || !user) {
+      return { activeUser: PLACEHOLDER_ACTIVE_USER };
     }
-  }, []);
-
-  const resetActiveUser = useCallback(() => {
-    setActiveUser(DEFAULT_ACTIVE_USER);
-  }, [setActiveUser]);
-
-  const value = useMemo<ActiveUserContextValue>(
-    () => ({ activeUser, setActiveUser, resetActiveUser }),
-    [activeUser, setActiveUser, resetActiveUser],
-  );
+    const name = pickName(user);
+    return {
+      activeUser: {
+        id: user.id,
+        name,
+        initials: getInitials(name),
+        title: (user.publicMetadata?.title as string | undefined) ?? "",
+        imageUrl: user.imageUrl ?? null,
+      },
+    };
+  }, [isLoaded, user]);
 
   return (
     <ActiveUserContext.Provider value={value}>

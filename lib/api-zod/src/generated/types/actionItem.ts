@@ -11,6 +11,7 @@ export interface ActionItem {
   id: number;
   title: string;
   source: string;
+  ownerUserId?: string | null;
   ownerName: string;
   ownerInitials: string;
   dueBy: string;

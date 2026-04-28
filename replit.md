@@ -44,6 +44,15 @@ A full-stack dental practice CEO dashboard built with React + Vite frontend and 
 - `direct_report_view_as_me_grants` - "View as Me" access grants between team members (directReportId → granteeReportId, unique per pair)
 - `direct_report_additional_viewers` - Additional Viewer grants for a team member's personal Weekly Reports (directReportId → viewerReportId, unique per pair)
 - `buildout_cards` - EDGE Buildout Board cards with universal fields (title, owner_name, category, status, position, kra_link, target_done_date, definition_of_done, blocker, escalation_trigger), JSONB `category_fields` for category-specific data, JSONB `activity_log` for timestamped entries, `waiting_since` set when status enters 'waiting_on'
+- `users` - Signed-in account profiles upserted from Clerk (id = Clerk userId, plus name, email, imageUrl). Used as the FK target for `action_items.ownerUserId`.
+
+## Authentication
+
+- **Provider**: Clerk (Replit-managed). Server uses `@clerk/express` (`clerkMiddleware()` + `getAuth(req)`); web uses `@clerk/react` with the `shadcn` theme branded to navy `#0F2A47` / red `#D62828`.
+- **Routes**: `/sign-in/*?` and `/sign-up/*?` render branded Clerk pages; signed-out users on protected routes redirect to `/sign-in`; signed-in users on `/` redirect to `/ideal-week`.
+- **Server**: `requireAuth` middleware (`artifacts/api-server/src/lib/auth.ts`) upserts the Clerk user into the `users` table on every protected request and attaches `req.authedUser`. New `GET /api/me` endpoint returns the current user.
+- **Action item ownership**: `POST /api/action-items` derives the owner from `req.authedUser` when the request body's `owner.name` is missing or matches the signed-in user (case-insensitive); in that case it also sets `ownerUserId = req.authedUser.id`. Bodies that name a different person are trusted as before (with `ownerUserId` left null). `PATCH` mirrors this when an item is reassigned to "me". Imports default missing owners to the authed user.
+- **Frontend identity**: `ActiveUserProvider` (`src/contexts/active-user-context.tsx`) wraps Clerk's `useUser` so the rest of the app sees a consistent `{ id, name, initials, title, imageUrl }` for the signed-in teammate. The sidebar `UserBadge` shows the real name/avatar and exposes a Sign Out action; the Action Items owner picker defaults to the signed-in user as `"<name> (me)"`.
 
 ## Key Commands
 

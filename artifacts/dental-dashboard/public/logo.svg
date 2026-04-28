@@ -1,0 +1,5 @@
+<svg width="220" height="56" viewBox="0 0 220 56" xmlns="http://www.w3.org/2000/svg">
+  <rect x="0" y="0" width="56" height="56" rx="12" fill="#0F2A47"/>
+  <path d="M16 18 H40 V24 H22 V26 H38 V32 H22 V34 H40 V40 H16 Z" fill="#FFFFFF"/>
+  <text x="68" y="36" font-family="Inter, system-ui, sans-serif" font-size="22" font-weight="700" fill="#0F2A47">EDG Dashboard</text>
+</svg>

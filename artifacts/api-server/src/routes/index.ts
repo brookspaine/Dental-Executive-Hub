@@ -18,6 +18,7 @@ import weeklyReviewRouter from "./weeklyReview";
 import leadershipMeetingsRouter from "./leadershipMeetings";
 import actionItemsRouter from "./actionItems";
 import buildoutCardsRouter from "./buildoutCards";
+import meRouter from "./me";
 
 const router: IRouter = Router();
 
@@ -40,5 +41,6 @@ router.use(weeklyReviewRouter);
 router.use(leadershipMeetingsRouter);
 router.use(actionItemsRouter);
 router.use(buildoutCardsRouter);
+router.use(meRouter);
 
 export default router;

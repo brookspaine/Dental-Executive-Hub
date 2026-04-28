@@ -544,6 +544,14 @@ export interface UpdateVendorPasswordBody {
   sortOrder?: number;
 }
 
+export interface CurrentUser {
+  id: string;
+  email?: string | null;
+  name: string;
+  initials: string;
+  imageUrl?: string | null;
+}
+
 export interface ActionItemNote {
   label: string;
   href?: string;
@@ -553,6 +561,7 @@ export interface ActionItem {
   id: number;
   title: string;
   source: string;
+  ownerUserId?: string | null;
   ownerName: string;
   ownerInitials: string;
   dueBy: string;
@@ -569,10 +578,9 @@ export interface CreateActionItemBody {
   /** @minLength 1 */
   title: string;
   source: string;
-  /** @minLength 1 */
-  ownerName: string;
-  /** @minLength 1 */
-  ownerInitials: string;
+  ownerUserId?: string | null;
+  ownerName?: string;
+  ownerInitials?: string;
   dueBy?: string;
   dueByFull?: string;
   notes?: ActionItemNote[] | null;
@@ -585,6 +593,7 @@ export interface UpdateActionItemBody {
   /** @minLength 1 */
   title?: string;
   source?: string;
+  ownerUserId?: string | null;
   ownerName?: string;
   ownerInitials?: string;
   dueBy?: string;

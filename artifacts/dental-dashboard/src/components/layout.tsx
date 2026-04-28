@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Building2,
@@ -11,12 +11,11 @@ import {
   CalendarDays,
   ListChecks,
   Compass,
-  Check,
   KanbanSquare,
+  LogOut,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useListDirectReports } from "@workspace/api-client-react";
-import { resolveAvatarUrl } from "@/components/editable-report-photo";
+import { useClerk } from "@clerk/react";
 import {
   Sheet,
   SheetContent,
@@ -29,10 +28,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import {
-  useActiveUser,
-  DEFAULT_ACTIVE_USER,
-} from "@/contexts/active-user-context";
+import { useActiveUser } from "@/contexts/active-user-context";
 import { getInitials } from "@/lib/current-user";
 import edgLogo from "@assets/edg-logo-cropped.png";
 
@@ -204,69 +200,46 @@ function NavList({
 }
 
 function UserBadge() {
-  const { data: reports } = useListDirectReports();
-  const { activeUser, setActiveUser } = useActiveUser();
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const { activeUser } = useActiveUser();
+  const { signOut } = useClerk();
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const activeKey = activeUser.name.trim().toLowerCase();
-  const matchingReport = (reports ?? []).find(
-    (r: any) => (r.name ?? "").trim().toLowerCase() === activeKey,
-  );
-  const photoUrl =
-    resolveAvatarUrl((matchingReport as any)?.avatarUrl) ?? undefined;
-
-  /**
-   * Until real authentication is wired up, the user can switch which
-   * teammate the dashboard is acting as. The list is the default user
-   * (the CEO) plus every direct report so that each browser session
-   * can represent a different person and own action items individually.
-   */
-  type UserOption = { name: string; initials: string; title: string };
-  const userOptions = useMemo<UserOption[]>(() => {
-    const seen = new Set<string>();
-    const list: UserOption[] = [];
-    list.push({ ...DEFAULT_ACTIVE_USER });
-    seen.add(DEFAULT_ACTIVE_USER.name.trim().toLowerCase());
-    for (const r of (reports ?? []) as any[]) {
-      const name = typeof r?.name === "string" ? r.name.trim() : "";
-      if (!name) continue;
-      const k = name.toLowerCase();
-      if (seen.has(k)) continue;
-      seen.add(k);
-      list.push({
-        name,
-        initials: getInitials(name),
-        title:
-          typeof r?.title === "string" && r.title.length > 0 ? r.title : "",
-      });
-    }
-    return list;
-  }, [reports]);
+  // While Clerk is still loading we render a quiet skeleton so the
+  // header doesn't flicker between an empty placeholder and the real
+  // identity.
+  const isReady = activeUser.id !== "";
+  const displayName = isReady ? activeUser.name : "Loading…";
+  const displayTitle = isReady && activeUser.title ? activeUser.title : "";
+  const initials =
+    activeUser.initials || (isReady ? getInitials(activeUser.name) : "");
 
   return (
     <div className="p-4 border-t border-slate-200">
-      <Popover open={pickerOpen} onOpenChange={setPickerOpen}>
+      <Popover open={menuOpen} onOpenChange={setMenuOpen}>
         <PopoverTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-3 min-w-0 w-full text-left rounded-md hover:bg-slate-50 active:bg-slate-100 transition-colors p-1 -m-1"
-            aria-label="Switch active user"
+            className="flex items-center gap-3 min-w-0 w-full text-left rounded-md hover:bg-slate-50 active:bg-slate-100 transition-colors p-1 -m-1 disabled:opacity-50"
+            aria-label="Open user menu"
+            disabled={!isReady}
           >
             <Avatar className="shrink-0 border border-slate-200">
-              {photoUrl && (
-                <AvatarImage src={photoUrl} alt={activeUser.name} />
+              {activeUser.imageUrl && (
+                <AvatarImage src={activeUser.imageUrl} alt={activeUser.name} />
               )}
               <AvatarFallback className="bg-slate-100 text-[#0F2A47] text-xs font-medium">
-                {activeUser.initials || getInitials(activeUser.name)}
+                {initials || "—"}
               </AvatarFallback>
             </Avatar>
             <div className="flex flex-col min-w-0 flex-1">
               <span className="text-sm font-semibold text-[#0F2A47] truncate">
-                {activeUser.name}
+                {displayName}
               </span>
-              <span className="text-xs text-slate-500 truncate">
-                {activeUser.title}
-              </span>
+              {displayTitle && (
+                <span className="text-xs text-slate-500 truncate">
+                  {displayTitle}
+                </span>
+              )}
             </div>
             <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
           </button>
@@ -274,40 +247,29 @@ function UserBadge() {
         <PopoverContent
           align="start"
           side="top"
-          className="p-1 w-64 max-h-72 overflow-y-auto"
+          className="p-1 w-64"
         >
-          <div className="px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
-            Sign in as
+          <div className="px-3 py-2 border-b border-slate-100">
+            <div className="text-sm font-semibold text-[#0F2A47] truncate">
+              {displayName}
+            </div>
+            {displayTitle && (
+              <div className="text-xs text-slate-500 truncate">
+                {displayTitle}
+              </div>
+            )}
           </div>
-          {userOptions.map((u) => {
-            const isActive =
-              u.name.trim().toLowerCase() === activeKey;
-            return (
-              <button
-                key={u.name}
-                type="button"
-                onClick={() => {
-                  setActiveUser({
-                    name: u.name,
-                    initials: u.initials,
-                    title: u.title,
-                  });
-                  setPickerOpen(false);
-                }}
-                className="w-full flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-slate-100 text-left"
-              >
-                <Avatar className="h-6 w-6 border border-slate-200">
-                  <AvatarFallback className="bg-slate-100 text-[#0F2A47] text-[10px] font-medium">
-                    {u.initials}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="flex-1 truncate">{u.name}</span>
-                {isActive && (
-                  <Check className="h-4 w-4 text-[#0F2A47]" />
-                )}
-              </button>
-            );
-          })}
+          <button
+            type="button"
+            onClick={() => {
+              setMenuOpen(false);
+              void signOut();
+            }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 text-left text-slate-700"
+          >
+            <LogOut className="h-4 w-4" />
+            Sign out
+          </button>
         </PopoverContent>
       </Popover>
     </div>

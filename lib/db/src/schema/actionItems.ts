@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
 } from "drizzle-orm/pg-core";
+import { usersTable } from "./users";
 
 export type ActionItemNoteJson = { label: string; href?: string };
 
@@ -14,6 +15,15 @@ export const actionItemsTable = pgTable("action_items", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
   source: text("source").notNull(),
+  /**
+   * Optional FK to the canonical user identity. When set, the owner
+   * survives display-name changes (rename of the teammate's profile).
+   * Null for items assigned to teammates who have never signed in yet —
+   * those continue to rely on the denormalized name + initials.
+   */
+  ownerUserId: text("owner_user_id").references(() => usersTable.id, {
+    onDelete: "set null",
+  }),
   ownerName: text("owner_name").notNull(),
   ownerInitials: text("owner_initials").notNull(),
   dueBy: text("due_by").notNull().default("—"),

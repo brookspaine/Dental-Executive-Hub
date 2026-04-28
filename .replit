@@ -54,3 +54,6 @@ externalPort = 4200
 [userenv]
 
 [userenv.production]
+
+[userenv.shared]
+VITE_CLERK_PUBLISHABLE_KEY = "pk_test_ZmFzdC1waG9lbml4LTkuY2xlcmsuYWNjb3VudHMuZGV2JA"

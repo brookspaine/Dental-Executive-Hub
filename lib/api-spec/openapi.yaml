@@ -28,6 +28,8 @@ tags:
     description: Words of Wisdom quote pool
   - name: actionItems
     description: Shared action items synchronized across devices and users
+  - name: me
+    description: Authenticated user identity
   - name: Storage
     description: Object storage upload and serving endpoints.
 
@@ -603,6 +605,21 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Announcement"
+
+  /me:
+    get:
+      operationId: getCurrentUser
+      tags: [me]
+      summary: Get the currently signed-in user
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CurrentUser"
+        "401":
+          description: Not signed in
 
   /action-items:
     get:
@@ -2289,6 +2306,26 @@ components:
         sortOrder:
           type: integer
 
+    CurrentUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          nullable: true
+        name:
+          type: string
+        initials:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
+        - initials
+
     ActionItemNote:
       type: object
       properties:
@@ -2308,6 +2345,9 @@ components:
           type: string
         source:
           type: string
+        ownerUserId:
+          type: string
+          nullable: true
         ownerName:
           type: string
         ownerInitials:
@@ -2355,12 +2395,13 @@ components:
           minLength: 1
         source:
           type: string
+        ownerUserId:
+          type: string
+          nullable: true
         ownerName:
           type: string
-          minLength: 1
         ownerInitials:
           type: string
-          minLength: 1
         dueBy:
           type: string
         dueByFull:
@@ -2379,8 +2420,6 @@ components:
       required:
         - title
         - source
-        - ownerName
-        - ownerInitials
 
     UpdateActionItemBody:
       type: object
@@ -2390,6 +2429,9 @@ components:
           minLength: 1
         source:
           type: string
+        ownerUserId:
+          type: string
+          nullable: true
         ownerName:
           type: string
         ownerInitials:

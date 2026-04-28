@@ -10,6 +10,7 @@ import {
   ListActionItemsResponse,
   UpdateActionItemResponse,
 } from "@workspace/api-zod";
+import { requireAuth } from "../lib/auth";
 
 const router: IRouter = Router();
 
@@ -92,7 +93,7 @@ function serializeRow(row: typeof actionItemsTable.$inferSelect) {
   };
 }
 
-router.get("/action-items", async (_req, res): Promise<void> => {
+router.get("/action-items", requireAuth, async (_req, res): Promise<void> => {
   await ensureSeeded();
   const items = await db
     .select()
@@ -101,82 +102,176 @@ router.get("/action-items", async (_req, res): Promise<void> => {
   res.json(ListActionItemsResponse.parse(items.map(serializeRow)));
 });
 
-router.post("/action-items", async (req, res): Promise<void> => {
+router.post("/action-items", requireAuth, async (req, res): Promise<void> => {
   const parsed = CreateActionItemBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
   }
 
+  const me = req.authedUser!;
+
+  /**
+   * Owner resolution rules:
+   *   - If the body explicitly provides an owner (name + initials), trust
+   *     it. This is what the UI sends when assigning an item to a
+   *     teammate via the picker.
+   *   - If the body's owner matches the signed-in user (or no owner is
+   *     set), default to the authenticated identity. We always set
+   *     `ownerUserId` in that case so future renames don't break the
+   *     reassignment.
+   *   - When `ownerUserId` is provided in the body and matches the
+   *     signed-in user, we still re-derive the canonical name + initials
+   *     from the session so the client can't impersonate someone else.
+   */
+  const bodyHasOwnerName =
+    typeof parsed.data.ownerName === "string" &&
+    parsed.data.ownerName.trim().length > 0;
+  const bodyHasOwnerInitials =
+    typeof parsed.data.ownerInitials === "string" &&
+    parsed.data.ownerInitials.trim().length > 0;
+  const bodyOwnerUserId = parsed.data.ownerUserId ?? null;
+
+  const isSelf =
+    !bodyHasOwnerName ||
+    bodyOwnerUserId === me.id ||
+    parsed.data.ownerName!.trim().toLowerCase() === me.name.trim().toLowerCase();
+
+  const ownerUserId = isSelf ? me.id : bodyOwnerUserId;
+  const ownerName = isSelf
+    ? me.name
+    : (parsed.data.ownerName as string);
+  const ownerInitials = isSelf
+    ? me.initials
+    : bodyHasOwnerInitials
+      ? (parsed.data.ownerInitials as string)
+      : me.initials;
+
   const [item] = await db
     .insert(actionItemsTable)
     .values({
-      ...parsed.data,
+      title: parsed.data.title,
+      source: parsed.data.source,
+      ownerUserId,
+      ownerName,
+      ownerInitials,
+      dueBy: parsed.data.dueBy ?? "—",
+      dueByFull: parsed.data.dueByFull ?? "",
       notes: parsed.data.notes ?? null,
+      starred: parsed.data.starred ?? false,
+      done: parsed.data.done ?? false,
+      position: parsed.data.position ?? 0,
     })
     .returning();
 
   res.status(201).json(UpdateActionItemResponse.parse(serializeRow(item)));
 });
 
-router.post("/action-items/import", async (req, res): Promise<void> => {
-  const parsed = ImportActionItemsBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+router.post(
+  "/action-items/import",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const parsed = ImportActionItemsBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  await ensureSeeded();
+    await ensureSeeded();
 
-  if (parsed.data.items.length > 0) {
-    await db.insert(actionItemsTable).values(
-      parsed.data.items.map((item) => ({
-        ...item,
-        notes: item.notes ?? null,
-      })),
-    );
-  }
+    const me = req.authedUser!;
 
-  const items = await db
-    .select()
-    .from(actionItemsTable)
-    .orderBy(asc(actionItemsTable.position), asc(actionItemsTable.id));
-  res.json(ListActionItemsResponse.parse(items.map(serializeRow)));
-});
+    if (parsed.data.items.length > 0) {
+      await db.insert(actionItemsTable).values(
+        parsed.data.items.map((item) => {
+          const hasName =
+            typeof item.ownerName === "string" &&
+            item.ownerName.trim().length > 0;
+          const isSelf =
+            !hasName ||
+            item.ownerName!.trim().toLowerCase() ===
+              me.name.trim().toLowerCase();
+          return {
+            title: item.title,
+            source: item.source,
+            ownerUserId: isSelf ? me.id : (item.ownerUserId ?? null),
+            ownerName: isSelf ? me.name : (item.ownerName as string),
+            ownerInitials: isSelf
+              ? me.initials
+              : (item.ownerInitials ?? me.initials),
+            dueBy: item.dueBy ?? "—",
+            dueByFull: item.dueByFull ?? "",
+            notes: item.notes ?? null,
+            starred: item.starred ?? false,
+            done: item.done ?? false,
+            position: item.position ?? 0,
+          };
+        }),
+      );
+    }
 
-router.patch("/action-items/:id", async (req, res): Promise<void> => {
-  const params = UpdateActionItemParams.safeParse(req.params);
-  if (!params.success) {
-    res.status(400).json({ error: params.error.message });
-    return;
-  }
+    const items = await db
+      .select()
+      .from(actionItemsTable)
+      .orderBy(asc(actionItemsTable.position), asc(actionItemsTable.id));
+    res.json(ListActionItemsResponse.parse(items.map(serializeRow)));
+  },
+);
 
-  const parsed = UpdateActionItemBody.safeParse(req.body);
-  if (!parsed.success) {
-    res.status(400).json({ error: parsed.error.message });
-    return;
-  }
+router.patch(
+  "/action-items/:id",
+  requireAuth,
+  async (req, res): Promise<void> => {
+    const params = UpdateActionItemParams.safeParse(req.params);
+    if (!params.success) {
+      res.status(400).json({ error: params.error.message });
+      return;
+    }
 
-  const updates: Record<string, unknown> = { ...parsed.data, updatedAt: new Date() };
-  if ("notes" in parsed.data) {
-    updates.notes = parsed.data.notes ?? null;
-  }
+    const parsed = UpdateActionItemBody.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: parsed.error.message });
+      return;
+    }
 
-  const [item] = await db
-    .update(actionItemsTable)
-    .set(updates)
-    .where(eq(actionItemsTable.id, params.data.id))
-    .returning();
+    const updates: Record<string, unknown> = {
+      ...parsed.data,
+      updatedAt: new Date(),
+    };
+    if ("notes" in parsed.data) {
+      updates.notes = parsed.data.notes ?? null;
+    }
+    /**
+     * If the owner is being changed and the new owner matches the
+     * signed-in user, attach their stable user id so future renames
+     * still resolve to them.
+     */
+    const me = req.authedUser!;
+    if (
+      typeof parsed.data.ownerName === "string" &&
+      parsed.data.ownerName.trim().toLowerCase() ===
+        me.name.trim().toLowerCase() &&
+      !("ownerUserId" in parsed.data)
+    ) {
+      updates.ownerUserId = me.id;
+    }
 
-  if (!item) {
-    res.status(404).json({ error: "Action item not found" });
-    return;
-  }
+    const [item] = await db
+      .update(actionItemsTable)
+      .set(updates)
+      .where(eq(actionItemsTable.id, params.data.id))
+      .returning();
 
-  res.json(UpdateActionItemResponse.parse(serializeRow(item)));
-});
+    if (!item) {
+      res.status(404).json({ error: "Action item not found" });
+      return;
+    }
 
-router.delete("/action-items/:id", async (req, res): Promise<void> => {
+    res.json(UpdateActionItemResponse.parse(serializeRow(item)));
+  },
+);
+
+router.delete("/action-items/:id", requireAuth, async (req, res): Promise<void> => {
   const params = DeleteActionItemParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

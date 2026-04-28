@@ -36,6 +36,7 @@ export * from "./createSeatTaskBody";
 export * from "./createVendorPasswordBody";
 export * from "./createViewAsMeGrantBody";
 export * from "./createWisdomQuoteBody";
+export * from "./currentUser";
 export * from "./dailyTop3Item";
 export * from "./dashboardSummary";
 export * from "./directReport";

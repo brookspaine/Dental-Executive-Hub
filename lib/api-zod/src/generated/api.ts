@@ -448,12 +448,24 @@ export const CreateAnnouncementBody = zod.object({
 });
 
 /**
+ * @summary Get the currently signed-in user
+ */
+export const GetCurrentUserResponse = zod.object({
+  id: zod.string(),
+  email: zod.string().nullish(),
+  name: zod.string(),
+  initials: zod.string(),
+  imageUrl: zod.string().nullish(),
+});
+
+/**
  * @summary List all action items
  */
 export const ListActionItemsResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
   source: zod.string(),
+  ownerUserId: zod.string().nullish(),
   ownerName: zod.string(),
   ownerInitials: zod.string(),
   dueBy: zod.string(),
@@ -481,8 +493,9 @@ export const ListActionItemsResponse = zod.array(ListActionItemsResponseItem);
 export const CreateActionItemBody = zod.object({
   title: zod.string().min(1),
   source: zod.string(),
-  ownerName: zod.string().min(1),
-  ownerInitials: zod.string().min(1),
+  ownerUserId: zod.string().nullish(),
+  ownerName: zod.string().optional(),
+  ownerInitials: zod.string().optional(),
   dueBy: zod.string().optional(),
   dueByFull: zod.string().optional(),
   notes: zod
@@ -507,8 +520,9 @@ export const ImportActionItemsBody = zod.object({
     zod.object({
       title: zod.string().min(1),
       source: zod.string(),
-      ownerName: zod.string().min(1),
-      ownerInitials: zod.string().min(1),
+      ownerUserId: zod.string().nullish(),
+      ownerName: zod.string().optional(),
+      ownerInitials: zod.string().optional(),
       dueBy: zod.string().optional(),
       dueByFull: zod.string().optional(),
       notes: zod
@@ -530,6 +544,7 @@ export const ImportActionItemsResponseItem = zod.object({
   id: zod.number(),
   title: zod.string(),
   source: zod.string(),
+  ownerUserId: zod.string().nullish(),
   ownerName: zod.string(),
   ownerInitials: zod.string(),
   dueBy: zod.string(),
@@ -562,6 +577,7 @@ export const UpdateActionItemParams = zod.object({
 export const UpdateActionItemBody = zod.object({
   title: zod.string().min(1).optional(),
   source: zod.string().optional(),
+  ownerUserId: zod.string().nullish(),
   ownerName: zod.string().optional(),
   ownerInitials: zod.string().optional(),
   dueBy: zod.string().optional(),
@@ -583,6 +599,7 @@ export const UpdateActionItemResponse = zod.object({
   id: zod.number(),
   title: zod.string(),
   source: zod.string(),
+  ownerUserId: zod.string().nullish(),
   ownerName: zod.string(),
   ownerInitials: zod.string(),
   dueBy: zod.string(),
