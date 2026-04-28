@@ -481,8 +481,8 @@ export const ListActionItemsResponse = zod.array(ListActionItemsResponseItem);
 export const CreateActionItemBody = zod.object({
   title: zod.string().min(1),
   source: zod.string(),
-  ownerName: zod.string().optional(),
-  ownerInitials: zod.string().optional(),
+  ownerName: zod.string().min(1),
+  ownerInitials: zod.string().min(1),
   dueBy: zod.string().optional(),
   dueByFull: zod.string().optional(),
   notes: zod
@@ -507,8 +507,8 @@ export const ImportActionItemsBody = zod.object({
     zod.object({
       title: zod.string().min(1),
       source: zod.string(),
-      ownerName: zod.string().optional(),
-      ownerInitials: zod.string().optional(),
+      ownerName: zod.string().min(1),
+      ownerInitials: zod.string().min(1),
       dueBy: zod.string().optional(),
       dueByFull: zod.string().optional(),
       notes: zod

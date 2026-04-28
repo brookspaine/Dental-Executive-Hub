@@ -72,6 +72,88 @@ import {
 
 import { useActionItems } from "@/contexts/action-items-context";
 import type { ActionItem } from "@/contexts/action-items-context";
+import { getInitials } from "@/lib/current-user";
+import { useActiveUser } from "@/contexts/active-user-context";
+import { useListDirectReports } from "@workspace/api-client-react";
+
+type OwnerOption = { name: string; initials: string; isMe: boolean };
+
+function ownerKey(o: { name: string; initials: string }): string {
+  return `${o.name.trim().toLowerCase()}::${o.initials.trim().toUpperCase()}`;
+}
+
+function OwnerPicker({
+  value,
+  options,
+  onChange,
+}: {
+  value: { name: string; initials: string };
+  options: OwnerOption[];
+  onChange: (next: { name: string; initials: string }) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const me = options.find((o) => o.isMe);
+  const isMe =
+    !!me && me.name === value.name && me.initials === value.initials;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
+        >
+          <div className="flex items-center gap-2">
+            <Avatar className="h-6 w-6">
+              <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
+                {value.initials}
+              </AvatarFallback>
+            </Avatar>
+            <span>
+              {value.name}
+              {isMe ? " (me)" : ""}
+            </span>
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        className="w-[var(--radix-popover-trigger-width)] p-0 max-h-72 overflow-y-auto"
+      >
+        <ul className="py-1">
+          {options.map((o) => {
+            const selected =
+              o.name === value.name && o.initials === value.initials;
+            return (
+              <li key={ownerKey(o)}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange({ name: o.name, initials: o.initials });
+                    setOpen(false);
+                  }}
+                  className={`flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-muted/50 ${
+                    selected ? "bg-muted/40 font-medium" : ""
+                  }`}
+                >
+                  <Avatar className="h-6 w-6">
+                    <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
+                      {o.initials}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1">
+                    {o.name}
+                    {o.isMe ? " (me)" : ""}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 /**
  * Particle palette for the small celebratory burst around the checkbox
@@ -146,6 +228,7 @@ export function ActionItems() {
     toggleStar,
     removeItem,
   } = useActionItems();
+  const { activeUser } = useActiveUser();
   const [search, setSearch] = useState("");
   const [openId, setOpenId] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -155,7 +238,14 @@ export function ActionItems() {
     dueDate: string;
     notes: string;
     dailyTop3: boolean;
-  }>({ title: "", dueDate: "", notes: "", dailyTop3: false });
+    owner: { name: string; initials: string };
+  }>({
+    title: "",
+    dueDate: "",
+    notes: "",
+    dailyTop3: false,
+    owner: { name: "", initials: "" },
+  });
   const [notifOpen, setNotifOpen] = useState(false);
   const [notifPrefs, setNotifPrefs] = useState({
     textUpcoming: false,
@@ -215,7 +305,61 @@ export function ActionItems() {
     return Array.from(set).sort();
   }, [items]);
 
+  /**
+   * Owner picker options shown in the New / Edit Action Item dialogs.
+   * The current user is always first (and tagged isMe), followed by all
+   * direct reports, deduped by case-insensitive name. We fall back to
+   * just the current user while the direct-reports query is loading or
+   * fails so the picker is never empty.
+   */
+  const { data: directReports } = useListDirectReports();
+  const ownerOptions = useMemo<OwnerOption[]>(() => {
+    const seen = new Set<string>();
+    const list: OwnerOption[] = [];
+    const me: OwnerOption = {
+      name: activeUser.name,
+      initials: activeUser.initials,
+      isMe: true,
+    };
+    list.push(me);
+    seen.add(me.name.trim().toLowerCase());
+    for (const r of directReports ?? []) {
+      const name = r.name?.trim();
+      if (!name) continue;
+      const k = name.toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      list.push({ name, initials: getInitials(name), isMe: false });
+    }
+    return list;
+  }, [directReports, activeUser]);
+
+  /**
+   * Owner filter options reflect every distinct owner currently visible
+   * in the action items list (plus an explicit "Me" entry tied to the
+   * signed-in user). This keeps the filter useful even for owners who
+   * are no longer on the team and also when the user has reassigned
+   * items to teammates that aren't direct reports.
+   */
+  const ownerFilterOptions = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { value: string; label: string }[] = [];
+    out.push({ value: "all", label: "All" });
+    out.push({ value: "me", label: `${activeUser.name} (me)` });
+    seen.add(activeUser.name.trim().toLowerCase());
+    for (const i of items) {
+      const k = i.owner.name.trim().toLowerCase();
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push({ value: i.owner.name, label: i.owner.name });
+    }
+    return out;
+  }, [items, activeUser]);
+
   const filterLabel = (key: keyof typeof defaultFilters, value: string) => {
+    const ownerMap = Object.fromEntries(
+      ownerFilterOptions.map((o) => [o.value, o.label]),
+    );
     const map: Record<string, Record<string, string>> = {
       source: {
         all: "All",
@@ -226,7 +370,7 @@ export function ActionItems() {
         uncompleted: "Uncompleted",
         completed: "Completed",
       },
-      owner: { all: "All", me: "Brooks Paine" },
+      owner: ownerMap,
       dueDate: {
         all: "All",
         overdue: "Overdue",
@@ -246,12 +390,24 @@ export function ActionItems() {
     setFilters(defaultFilters);
     setAppliedFilters(defaultFilters);
   };
-  const [newForm, setNewForm] = useState({
+  const defaultOwner = useMemo(
+    () => ({ name: activeUser.name, initials: activeUser.initials }),
+    [activeUser],
+  );
+  const [newForm, setNewForm] = useState<{
+    title: string;
+    context: string;
+    dueDate: string;
+    notes: string;
+    dailyTop3: boolean;
+    owner: { name: string; initials: string };
+  }>({
     title: "",
     context: "none",
     dueDate: "",
     notes: "",
     dailyTop3: false,
+    owner: defaultOwner,
   });
 
   const resetNewForm = () =>
@@ -261,6 +417,7 @@ export function ActionItems() {
       dueDate: "",
       notes: "",
       dailyTop3: false,
+      owner: defaultOwner,
     });
 
   const saveNewItem = () => {
@@ -268,6 +425,8 @@ export function ActionItems() {
     addItem({
       title: newForm.title,
       source: newForm.context === "none" ? "Manual" : newForm.context,
+      ownerName: newForm.owner.name,
+      ownerInitials: newForm.owner.initials,
       dueDate: newForm.dueDate,
       notes: newForm.notes,
     });
@@ -289,6 +448,7 @@ export function ActionItems() {
       dueDate: item.dueByFull,
       notes: (item.notes ?? []).map((n) => n.label).join("\n"),
       dailyTop3: false,
+      owner: { name: item.owner.name, initials: item.owner.initials },
     });
     setEditId(id);
   };
@@ -302,6 +462,10 @@ export function ActionItems() {
               ...i,
               title: editForm.title,
               dueByFull: editForm.dueDate,
+              owner: {
+                name: editForm.owner.name,
+                initials: editForm.owner.initials,
+              },
               notes: editForm.notes
                 .split("\n")
                 .map((s) => s.trim())
@@ -341,9 +505,16 @@ export function ActionItems() {
         return false;
       }
       if (appliedFilters.status === "completed" && !i.done) return false;
+      if (appliedFilters.owner !== "all") {
+        const want =
+          appliedFilters.owner === "me"
+            ? activeUser.name.trim().toLowerCase()
+            : appliedFilters.owner.trim().toLowerCase();
+        if (i.owner.name.trim().toLowerCase() !== want) return false;
+      }
       return true;
     });
-  }, [items, search, appliedFilters, stickyCompleted]);
+  }, [items, search, appliedFilters, stickyCompleted, activeUser]);
 
 
   return (
@@ -366,7 +537,10 @@ export function ActionItems() {
           </button>
           <button
             type="button"
-            onClick={() => setNewOpen(true)}
+            onClick={() => {
+              resetNewForm();
+              setNewOpen(true);
+            }}
             className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
           >
             <Plus className="h-4 w-4" />
@@ -428,10 +602,7 @@ export function ActionItems() {
                     {
                       key: "owner",
                       label: "Owner",
-                      options: [
-                        { value: "all", label: "All" },
-                        { value: "me", label: "Brooks Paine" },
-                      ],
+                      options: ownerFilterOptions,
                     },
                     {
                       key: "dueDate",
@@ -803,20 +974,13 @@ export function ActionItems() {
 
                 <div className="space-y-1.5">
                   <Label className="text-sm">Owner</Label>
-                  <button
-                    type="button"
-                    className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
-                  >
-                    <div className="flex items-center gap-2">
-                      <Avatar className="h-6 w-6">
-                        <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
-                          {editItem.owner.initials}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span>{editItem.owner.name} (me)</span>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                  </button>
+                  <OwnerPicker
+                    value={editForm.owner}
+                    options={ownerOptions}
+                    onChange={(next) =>
+                      setEditForm((f) => ({ ...f, owner: next }))
+                    }
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -1058,20 +1222,13 @@ export function ActionItems() {
 
               <div className="space-y-1.5">
                 <Label className="text-sm font-semibold">Owner</Label>
-                <button
-                  type="button"
-                  className="w-full flex items-center justify-between gap-2 rounded-md border px-3 py-2 text-sm hover:bg-muted/50"
-                >
-                  <div className="flex items-center gap-2">
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="bg-pink-500 text-white text-xs font-semibold">
-                        BP
-                      </AvatarFallback>
-                    </Avatar>
-                    <span>Brooks Paine (me)</span>
-                  </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                </button>
+                <OwnerPicker
+                  value={newForm.owner}
+                  options={ownerOptions}
+                  onChange={(next) =>
+                    setNewForm((f) => ({ ...f, owner: next }))
+                  }
+                />
               </div>
 
               <div className="space-y-1.5">

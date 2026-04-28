@@ -2243,8 +2243,10 @@ components:
           type: string
         ownerName:
           type: string
+          minLength: 1
         ownerInitials:
           type: string
+          minLength: 1
         dueBy:
           type: string
         dueByFull:
@@ -2263,6 +2265,8 @@ components:
       required:
         - title
         - source
+        - ownerName
+        - ownerInitials
 
     UpdateActionItemBody:
       type: object

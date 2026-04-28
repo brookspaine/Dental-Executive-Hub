@@ -22,6 +22,7 @@ import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
 import { TeamPlaceholder } from "@/pages/team-placeholder";
 import { ActionItems } from "@/pages/action-items";
 import { ActionItemsProvider } from "@/contexts/action-items-context";
+import { ActiveUserProvider } from "@/contexts/active-user-context";
 
 const queryClient = new QueryClient();
 
@@ -80,12 +81,14 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <ActionItemsProvider>
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </ActionItemsProvider>
+        <ActiveUserProvider>
+          <ActionItemsProvider>
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </ActionItemsProvider>
+        </ActiveUserProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

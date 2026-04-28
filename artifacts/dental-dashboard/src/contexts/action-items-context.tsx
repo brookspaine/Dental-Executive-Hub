@@ -18,6 +18,7 @@ import {
   type CreateActionItemBody,
   type UpdateActionItemBody,
 } from "@workspace/api-client-react";
+import { useActiveUser } from "@/contexts/active-user-context";
 
 const LEGACY_STORAGE_KEY = "dental-dashboard:action-items:v1";
 const MIGRATION_FLAG_KEY = "dental-dashboard:action-items:migrated:v1";
@@ -57,6 +58,8 @@ type ActionItemsContextValue = {
   addItem: (input: {
     title: string;
     source: string;
+    ownerName: string;
+    ownerInitials: string;
     dueDate?: string;
     notes?: string;
   }) => void;
@@ -99,7 +102,10 @@ type LegacyItem = {
   done?: boolean;
 };
 
-function readLegacyItems(): CreateActionItemBody[] {
+function readLegacyItems(fallback: {
+  name: string;
+  initials: string;
+}): CreateActionItemBody[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = window.localStorage.getItem(LEGACY_STORAGE_KEY);
@@ -111,8 +117,8 @@ function readLegacyItems(): CreateActionItemBody[] {
       .map((i, idx) => ({
         title: i.title!.trim(),
         source: typeof i.source === "string" ? i.source : "Manual",
-        ownerName: i.owner?.name ?? "Brooks Paine",
-        ownerInitials: i.owner?.initials ?? "BP",
+        ownerName: i.owner?.name ?? fallback.name,
+        ownerInitials: i.owner?.initials ?? fallback.initials,
         dueBy: typeof i.dueBy === "string" ? i.dueBy : "—",
         dueByFull: typeof i.dueByFull === "string" ? i.dueByFull : "",
         notes: i.notes ?? null,
@@ -127,6 +133,7 @@ function readLegacyItems(): CreateActionItemBody[] {
 
 export function ActionItemsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
+  const { activeUser } = useActiveUser();
   const { data, isLoading } = useListActionItems({
     query: { staleTime: 30_000 },
   });
@@ -157,7 +164,10 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
     if (migrationStartedRef.current) return;
     if (window.localStorage.getItem(MIGRATION_FLAG_KEY)) return;
 
-    const legacyItems = readLegacyItems();
+    const legacyItems = readLegacyItems({
+      name: activeUser.name,
+      initials: activeUser.initials,
+    });
     if (legacyItems.length === 0) {
       window.localStorage.setItem(MIGRATION_FLAG_KEY, "1");
       window.localStorage.removeItem(LEGACY_STORAGE_KEY);
@@ -199,6 +209,8 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
   const addItem: ActionItemsContextValue["addItem"] = ({
     title,
     source,
+    ownerName,
+    ownerInitials,
     dueDate,
     notes,
   }) => {
@@ -214,8 +226,8 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
     const body: CreateActionItemBody = {
       title: trimmed,
       source,
-      ownerName: "Brooks Paine",
-      ownerInitials: "BP",
+      ownerName,
+      ownerInitials,
       dueBy: dueDate || "—",
       dueByFull: dueDate || "",
       notes: noteList,

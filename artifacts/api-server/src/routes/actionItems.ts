@@ -13,10 +13,14 @@ import {
 
 const router: IRouter = Router();
 
+const SEED_OWNER = { name: "Brooks Paine", initials: "BP" };
+
 const SAMPLE_SEED = [
   {
     title: "Check out the Leadership Team Meeting tool.",
     source: "Setup Journey",
+    ownerName: SEED_OWNER.name,
+    ownerInitials: SEED_OWNER.initials,
     dueBy: "Apr 23",
     dueByFull: "4/23/2026",
     notes: [{ label: "Review your agenda." }],
@@ -25,6 +29,8 @@ const SAMPLE_SEED = [
   {
     title: "Decide the details for your strategy meeting.",
     source: "Setup Journey",
+    ownerName: SEED_OWNER.name,
+    ownerInitials: SEED_OWNER.initials,
     dueBy: "Apr 23",
     dueByFull: "4/23/2026",
     position: 1,
@@ -32,6 +38,8 @@ const SAMPLE_SEED = [
   {
     title: "Strategy Meeting Prep: Plan your talking points.",
     source: "Setup Journey",
+    ownerName: SEED_OWNER.name,
+    ownerInitials: SEED_OWNER.initials,
     dueBy: "Apr 23",
     dueByFull: "4/23/2026",
     position: 2,
@@ -39,6 +47,8 @@ const SAMPLE_SEED = [
   {
     title: "Strategy Meeting Prep: Review your numbers.",
     source: "Setup Journey",
+    ownerName: SEED_OWNER.name,
+    ownerInitials: SEED_OWNER.initials,
     dueBy: "Apr 23",
     dueByFull: "4/23/2026",
     position: 3,
@@ -46,6 +56,8 @@ const SAMPLE_SEED = [
   {
     title: "Invite Your Team to Elite.",
     source: "Setup Journey",
+    ownerName: SEED_OWNER.name,
+    ownerInitials: SEED_OWNER.initials,
     dueBy: "Apr 23",
     dueByFull: "4/23/2026",
     position: 4,
@@ -53,6 +65,8 @@ const SAMPLE_SEED = [
   {
     title: "Host the Annual Strategy meeting.",
     source: "Setup Journey",
+    ownerName: SEED_OWNER.name,
+    ownerInitials: SEED_OWNER.initials,
     dueBy: "Apr 23",
     dueByFull: "4/23/2026",
     position: 5,

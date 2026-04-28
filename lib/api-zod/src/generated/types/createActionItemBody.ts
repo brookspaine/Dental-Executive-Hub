@@ -11,8 +11,10 @@ export interface CreateActionItemBody {
   /** @minLength 1 */
   title: string;
   source: string;
-  ownerName?: string;
-  ownerInitials?: string;
+  /** @minLength 1 */
+  ownerName: string;
+  /** @minLength 1 */
+  ownerInitials: string;
   dueBy?: string;
   dueByFull?: string;
   notes?: ActionItemNote[] | null;
