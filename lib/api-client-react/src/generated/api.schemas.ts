@@ -686,16 +686,6 @@ export interface AddBuildoutCardActivityBody {
   text: string;
 }
 
-export interface RoleKpi {
-  id: string;
-  name: string;
-  description: string;
-  target: string;
-  frequency: string;
-  dataSource: string;
-  owner: string;
-}
-
 export interface RoleChecklistItem {
   id: string;
   task: string;
@@ -733,9 +723,7 @@ export interface Role {
   missionAlignment: string;
   culturalAlignment: string;
   vegStyleImpact: string;
-  impactStatement: string;
-  kpisLeading: RoleKpi[];
-  kpisLagging: RoleKpi[];
+  keyResultsArea: string[];
   checklists: RoleChecklists;
   decisions: RoleDecision[];
   lastReviewedAt?: string | null;
@@ -769,9 +757,7 @@ export interface UpdateRoleBody {
   missionAlignment?: string;
   culturalAlignment?: string;
   vegStyleImpact?: string;
-  impactStatement?: string;
-  kpisLeading?: RoleKpi[];
-  kpisLagging?: RoleKpi[];
+  keyResultsArea?: string[];
   checklists?: RoleChecklists;
   decisions?: RoleDecision[];
 }

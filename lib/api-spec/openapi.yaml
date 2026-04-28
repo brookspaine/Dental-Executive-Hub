@@ -2811,25 +2811,6 @@ components:
       required:
         - text
 
-    RoleKpi:
-      type: object
-      properties:
-        id:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        target:
-          type: string
-        frequency:
-          type: string
-        dataSource:
-          type: string
-        owner:
-          type: string
-      required: [id, name, description, target, frequency, dataSource, owner]
-
     RoleChecklistItem:
       type: object
       properties:
@@ -2914,16 +2895,10 @@ components:
           type: string
         vegStyleImpact:
           type: string
-        impactStatement:
-          type: string
-        kpisLeading:
+        keyResultsArea:
           type: array
           items:
-            $ref: "#/components/schemas/RoleKpi"
-        kpisLagging:
-          type: array
-          items:
-            $ref: "#/components/schemas/RoleKpi"
+            type: string
         checklists:
           $ref: "#/components/schemas/RoleChecklists"
         decisions:
@@ -2951,9 +2926,7 @@ components:
         - missionAlignment
         - culturalAlignment
         - vegStyleImpact
-        - impactStatement
-        - kpisLeading
-        - kpisLagging
+        - keyResultsArea
         - checklists
         - decisions
         - createdAt
@@ -3011,16 +2984,10 @@ components:
           type: string
         vegStyleImpact:
           type: string
-        impactStatement:
-          type: string
-        kpisLeading:
+        keyResultsArea:
           type: array
           items:
-            $ref: "#/components/schemas/RoleKpi"
-        kpisLagging:
-          type: array
-          items:
-            $ref: "#/components/schemas/RoleKpi"
+            type: string
         checklists:
           $ref: "#/components/schemas/RoleChecklists"
         decisions:

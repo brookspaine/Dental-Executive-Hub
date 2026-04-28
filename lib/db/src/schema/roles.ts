@@ -7,16 +7,6 @@ import {
   timestamp,
 } from "drizzle-orm/pg-core";
 
-export type RoleKpi = {
-  id: string;
-  name: string;
-  description: string;
-  target: string;
-  frequency: "Daily" | "Weekly" | "Monthly" | "Quarterly";
-  dataSource: string;
-  owner: string;
-};
-
 export type RoleChecklistItem = {
   id: string;
   task: string;
@@ -61,10 +51,12 @@ export const rolesTable = pgTable("roles", {
   culturalAlignment: text("cultural_alignment").notNull().default(""),
   vegStyleImpact: text("veg_style_impact").notNull().default(""),
 
-  // Section 2: KPIs
-  impactStatement: text("impact_statement").notNull().default(""),
-  kpisLeading: jsonb("kpis_leading").$type<RoleKpi[]>().notNull().default([]),
-  kpisLagging: jsonb("kpis_lagging").$type<RoleKpi[]>().notNull().default([]),
+  // Section 2: Key Results Area — bullet list of measurable outcomes,
+  // mirroring the Practice Org Chart "Key Results Area" pattern.
+  keyResultsArea: jsonb("key_results_area")
+    .$type<string[]>()
+    .notNull()
+    .default([]),
 
   // Section 3: Daily Operations Protocol
   checklists: jsonb("checklists")

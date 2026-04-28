@@ -1352,29 +1352,7 @@ export const ListRolesResponseItem = zod.object({
   missionAlignment: zod.string(),
   culturalAlignment: zod.string(),
   vegStyleImpact: zod.string(),
-  impactStatement: zod.string(),
-  kpisLeading: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      description: zod.string(),
-      target: zod.string(),
-      frequency: zod.string(),
-      dataSource: zod.string(),
-      owner: zod.string(),
-    }),
-  ),
-  kpisLagging: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      description: zod.string(),
-      target: zod.string(),
-      frequency: zod.string(),
-      dataSource: zod.string(),
-      owner: zod.string(),
-    }),
-  ),
+  keyResultsArea: zod.array(zod.string()),
   checklists: zod.object({
     startOfDay: zod.array(
       zod.object({
@@ -1455,29 +1433,7 @@ export const GetRoleResponse = zod.object({
   missionAlignment: zod.string(),
   culturalAlignment: zod.string(),
   vegStyleImpact: zod.string(),
-  impactStatement: zod.string(),
-  kpisLeading: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      description: zod.string(),
-      target: zod.string(),
-      frequency: zod.string(),
-      dataSource: zod.string(),
-      owner: zod.string(),
-    }),
-  ),
-  kpisLagging: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      description: zod.string(),
-      target: zod.string(),
-      frequency: zod.string(),
-      dataSource: zod.string(),
-      owner: zod.string(),
-    }),
-  ),
+  keyResultsArea: zod.array(zod.string()),
   checklists: zod.object({
     startOfDay: zod.array(
       zod.object({
@@ -1542,33 +1498,7 @@ export const UpdateRoleBody = zod.object({
   missionAlignment: zod.string().optional(),
   culturalAlignment: zod.string().optional(),
   vegStyleImpact: zod.string().optional(),
-  impactStatement: zod.string().optional(),
-  kpisLeading: zod
-    .array(
-      zod.object({
-        id: zod.string(),
-        name: zod.string(),
-        description: zod.string(),
-        target: zod.string(),
-        frequency: zod.string(),
-        dataSource: zod.string(),
-        owner: zod.string(),
-      }),
-    )
-    .optional(),
-  kpisLagging: zod
-    .array(
-      zod.object({
-        id: zod.string(),
-        name: zod.string(),
-        description: zod.string(),
-        target: zod.string(),
-        frequency: zod.string(),
-        dataSource: zod.string(),
-        owner: zod.string(),
-      }),
-    )
-    .optional(),
+  keyResultsArea: zod.array(zod.string()).optional(),
   checklists: zod
     .object({
       startOfDay: zod.array(
@@ -1628,29 +1558,7 @@ export const UpdateRoleResponse = zod.object({
   missionAlignment: zod.string(),
   culturalAlignment: zod.string(),
   vegStyleImpact: zod.string(),
-  impactStatement: zod.string(),
-  kpisLeading: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      description: zod.string(),
-      target: zod.string(),
-      frequency: zod.string(),
-      dataSource: zod.string(),
-      owner: zod.string(),
-    }),
-  ),
-  kpisLagging: zod.array(
-    zod.object({
-      id: zod.string(),
-      name: zod.string(),
-      description: zod.string(),
-      target: zod.string(),
-      frequency: zod.string(),
-      dataSource: zod.string(),
-      owner: zod.string(),
-    }),
-  ),
+  keyResultsArea: zod.array(zod.string()),
   checklists: zod.object({
     startOfDay: zod.array(
       zod.object({

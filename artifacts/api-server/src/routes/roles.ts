@@ -5,7 +5,6 @@ import {
   rolesTable,
   type RoleChecklists,
   type RoleDecision,
-  type RoleKpi,
 } from "@workspace/db";
 import {
   CreateRoleBody,
@@ -33,9 +32,7 @@ type SeedRole = {
   missionAlignment: string;
   culturalAlignment: string;
   vegStyleImpact: string;
-  impactStatement: string;
-  kpisLeading: RoleKpi[];
-  kpisLagging: RoleKpi[];
+  keyResultsArea: string[];
   checklists: RoleChecklists;
   decisions: RoleDecision[];
 };
@@ -56,65 +53,13 @@ const SEED_ROLES: SeedRole[] = [
       "Lives the EDGE Cultural Code daily: \"Patient first, ego last,\" \"Move at the speed of pain,\" and \"Teach what you know.\" The Lead Dentist's tone in the operatory sets the tone for the whole team.",
     vegStyleImpact:
       "Every emergency patient walks in scared and leaves understood. The Lead Dentist owns the warm handoff from front desk to chair, the calm explanation of options, and the unhurried treatment of patients who've been turned away elsewhere — the experience traditional dental practices simply do not offer.",
-    impactStatement:
-      "I make an impact by being the doctor patients in pain can actually see today. I diagnose accurately under pressure, present treatment plans honestly, and leave every patient feeling heard — even the ones I can't fully treat in one visit. I also build the bench: every associate who works with me leaves better than they came in.",
-    kpisLeading: [
-      {
-        id: "k1",
-        name: "Same-day emergency slots filled",
-        description: "Walk-in / urgent slots used per day vs. available.",
-        target: ">= 85%",
-        frequency: "Daily",
-        dataSource: "Practice Management Software",
-        owner: "Lead Dentist",
-      },
-      {
-        id: "k2",
-        name: "Treatment plan presentation rate",
-        description: "Percentage of completed exams that result in a presented plan same-visit.",
-        target: ">= 95%",
-        frequency: "Daily",
-        dataSource: "Practice Management Software",
-        owner: "Lead Dentist",
-      },
-      {
-        id: "k3",
-        name: "Associate coaching touchpoints",
-        description: "1-on-1 chairside teaching moments logged per week.",
-        target: ">= 5 / week",
-        frequency: "Weekly",
-        dataSource: "Manual Tally",
-        owner: "Lead Dentist",
-      },
-    ],
-    kpisLagging: [
-      {
-        id: "k4",
-        name: "Case acceptance rate",
-        description: "Percentage of presented plans accepted within 30 days.",
-        target: ">= 70%",
-        frequency: "Monthly",
-        dataSource: "Practice Management Software",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k5",
-        name: "Patient NPS (post-visit)",
-        description: "Net Promoter Score from emergency-visit survey.",
-        target: ">= 75",
-        frequency: "Monthly",
-        dataSource: "Patient Survey",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k6",
-        name: "Production per clinical hour",
-        description: "Total production divided by chair hours worked.",
-        target: ">= $850/hr",
-        frequency: "Monthly",
-        dataSource: "Practice Management Software",
-        owner: "Practice Manager",
-      },
+    keyResultsArea: [
+      "Same-day emergency slots filled at >= 85% utilization.",
+      "Treatment plans presented same-visit on >= 95% of completed exams.",
+      "Case acceptance rate of >= 70% within 30 days of presentation.",
+      "Production per clinical hour of >= $850.",
+      "Patient NPS (post-visit) of >= 75.",
+      ">= 5 chairside coaching touchpoints with associates per week.",
     ],
     checklists: {
       startOfDay: [
@@ -202,65 +147,13 @@ const SEED_ROLES: SeedRole[] = [
       "Embodies \"Make the right thing the easy thing\" and \"Own the outcome.\" The Practice Manager is the most accountable seat in the building.",
     vegStyleImpact:
       "Patients feel a calm, well-run practice from check-in to checkout. Team members know their schedule, their role, and who has their back.",
-    impactStatement:
-      "I make an impact by making sure every patient is seen on time, every team member knows what to do, and every doctor walks into an operatory that is ready. When something breaks, I am the first to know and the first to fix it.",
-    kpisLeading: [
-      {
-        id: "k1",
-        name: "Daily huddle held",
-        description: "Was the morning huddle held with full team present?",
-        target: "100%",
-        frequency: "Daily",
-        dataSource: "Manual Tally",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k2",
-        name: "Open A/R follow-ups closed",
-        description: "Outstanding-payment calls completed per day.",
-        target: ">= 10/day",
-        frequency: "Daily",
-        dataSource: "Practice Management Software",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k3",
-        name: "Schedule-block utilization (next 7 days)",
-        description: "% of clinical chair time booked vs. available.",
-        target: ">= 85%",
-        frequency: "Weekly",
-        dataSource: "Practice Management Software",
-        owner: "Practice Manager",
-      },
-    ],
-    kpisLagging: [
-      {
-        id: "k4",
-        name: "Collections rate",
-        description: "Collections divided by production for the month.",
-        target: ">= 96%",
-        frequency: "Monthly",
-        dataSource: "Practice Management Software",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k5",
-        name: "Team retention (rolling 12mo)",
-        description: "Voluntary turnover among clinical and front-desk staff.",
-        target: "<= 15%",
-        frequency: "Quarterly",
-        dataSource: "Manual Tally",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k6",
-        name: "Patient wait time (avg)",
-        description: "Average minutes from check-in to seated.",
-        target: "<= 12 min",
-        frequency: "Monthly",
-        dataSource: "Patient Survey",
-        owner: "Practice Manager",
-      },
+    keyResultsArea: [
+      "Morning huddle held 100% of operating days with full team present.",
+      ">= 10 open A/R follow-ups closed per day.",
+      "Schedule-block utilization (next 7 days) at >= 85%.",
+      "Collections rate of >= 96% of production each month.",
+      "Voluntary team turnover <= 15% over rolling 12 months.",
+      "Average patient wait time (check-in to seated) <= 12 minutes.",
     ],
     checklists: {
       startOfDay: [
@@ -336,47 +229,12 @@ const SEED_ROLES: SeedRole[] = [
       "Embodies \"Patient first, ego last\" and \"Speed of pain.\" Answers every call within three rings; never lets a walk-in stand for more than 30 seconds without acknowledgement.",
     vegStyleImpact:
       "Every patient is greeted by name when possible, walked back personally, and given a clear, written summary of next steps before they leave. The lobby never feels like a waiting room — it feels like a host station.",
-    impactStatement:
-      "I make an impact by being the calm voice on the phone and the warm face in the lobby. I get patients in pain onto the schedule today, I keep the front of the house running, and I make sure every patient leaves with a clear plan and a paid bill.",
-    kpisLeading: [
-      {
-        id: "k1",
-        name: "Calls answered within 3 rings",
-        description: "% of inbound calls answered within 3 rings during open hours.",
-        target: ">= 95%",
-        frequency: "Daily",
-        dataSource: "Phone System",
-        owner: "Patient Coordinator",
-      },
-      {
-        id: "k2",
-        name: "Same-day emergency conversion",
-        description: "% of pain-related calls converted to a same-day appointment.",
-        target: ">= 80%",
-        frequency: "Daily",
-        dataSource: "Practice Management Software",
-        owner: "Patient Coordinator",
-      },
-    ],
-    kpisLagging: [
-      {
-        id: "k3",
-        name: "Patient lobby NPS",
-        description: "Front-of-house experience Net Promoter Score.",
-        target: ">= 80",
-        frequency: "Monthly",
-        dataSource: "Patient Survey",
-        owner: "Practice Manager",
-      },
-      {
-        id: "k4",
-        name: "Recall booking rate",
-        description: "% of patients leaving with a follow-up booked.",
-        target: ">= 90%",
-        frequency: "Monthly",
-        dataSource: "Practice Management Software",
-        owner: "Practice Manager",
-      },
+    keyResultsArea: [
+      ">= 95% of inbound calls answered within 3 rings during open hours.",
+      ">= 80% of pain-related calls converted to a same-day appointment.",
+      ">= 90% of patients leave with a follow-up appointment booked.",
+      "Patient lobby NPS of >= 80.",
+      "Insurance verified for 100% of next-day patients before end of business.",
     ],
     checklists: {
       startOfDay: [

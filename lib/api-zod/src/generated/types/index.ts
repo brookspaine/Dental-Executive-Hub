@@ -63,7 +63,6 @@ export * from "./role";
 export * from "./roleChecklistItem";
 export * from "./roleChecklists";
 export * from "./roleDecision";
-export * from "./roleKpi";
 export * from "./scheduleBlock";
 export * from "./seatKeyResult";
 export * from "./seatTask";

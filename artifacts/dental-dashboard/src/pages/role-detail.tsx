@@ -15,7 +15,6 @@ import {
   Target,
   BookOpen,
   Sparkles,
-  GripVertical,
 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -32,21 +31,6 @@ import {
   type Role,
   type Playbook,
 } from "@workspace/api-client-react";
-import {
-  DndContext,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  useSortable,
-  arrayMove,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -59,7 +43,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -85,7 +68,6 @@ import {
   TIERS,
   AUTHORITY_LEVELS,
   DECISION_CATEGORIES,
-  KPI_FREQUENCIES,
   areaStyle,
   type BusinessArea,
 } from "@/lib/role-styles";
@@ -97,7 +79,6 @@ import { cn } from "@/lib/utils";
 
 type Mode = "reference" | "daily" | "edit";
 
-type Kpi = Role["kpisLeading"][number];
 type ChecklistItem = Role["checklists"]["startOfDay"][number];
 type DecisionRow = Role["decisions"][number];
 
@@ -111,7 +92,7 @@ const CHECKLIST_PHASES: { key: ChecklistPhase; label: string }[] = [
 
 const SECTIONS = [
   { id: "purpose", label: "Purpose", icon: Sparkles },
-  { id: "kpis", label: "What Success Looks Like", icon: Target },
+  { id: "kra", label: "Key Results Area", icon: Target },
   { id: "daily-ops", label: "Daily Operations", icon: ListChecks },
   { id: "decisions", label: "Decisions to Own", icon: CheckSquare },
   { id: "playbooks", label: "Playbooks & Procedures", icon: BookOpen },
@@ -201,9 +182,7 @@ export function RoleDetail() {
         missionAlignment: draft.missionAlignment,
         culturalAlignment: draft.culturalAlignment,
         vegStyleImpact: draft.vegStyleImpact,
-        impactStatement: draft.impactStatement,
-        kpisLeading: draft.kpisLeading,
-        kpisLagging: draft.kpisLagging,
+        keyResultsArea: draft.keyResultsArea,
         checklists: draft.checklists,
         decisions: draft.decisions,
       },
@@ -372,7 +351,7 @@ export function RoleDetail() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
         <div className="min-w-0 space-y-6">
           <Section1Purpose view={view} mode={mode} patch={patchDraft} style={style} />
-          <Section2Kpis view={view} mode={mode} patch={patchDraft} />
+          <Section2Kra view={view} mode={mode} patch={patchDraft} />
           <Section3DailyOps view={view} mode={mode} patch={patchDraft} roleId={id} />
           <Section4Decisions view={view} mode={mode} patch={patchDraft} />
           <Section5Playbooks
@@ -568,9 +547,14 @@ function RichField({
   );
 }
 
-// ----- Section 2: KPIs -----
+// ----- Section 2: Key Results Area -----
+//
+// Mirrors the "Key Results Area" pattern on Practice Org Chart positions:
+// a free-text bullet list of measurable outcomes the seat owns. In edit mode
+// the list is one-bullet-per-line in a textarea; in reference mode it renders
+// as a clean bulleted list.
 
-function Section2Kpis({
+function Section2Kra({
   view,
   mode,
   patch,
@@ -579,197 +563,56 @@ function Section2Kpis({
   mode: Mode;
   patch: (p: Partial<Role>) => void;
 }) {
-  return (
-    <SectionShell
-      id="kpis"
-      title="What Success Looks Like"
-      icon={Target}
-    >
-      <div className="space-y-5">
-        <RichField
-          label='"How I make an impact" statement'
-          value={view.impactStatement}
-          mode={mode}
-          rows={3}
-          onChange={(v) => patch({ impactStatement: v })}
-        />
-        <Tabs defaultValue="leading">
-          <TabsList>
-            <TabsTrigger value="leading">Leading indicators</TabsTrigger>
-            <TabsTrigger value="lagging">Lagging indicators</TabsTrigger>
-          </TabsList>
-          <TabsContent value="leading">
-            <KpiTable
-              kpis={view.kpisLeading}
-              mode={mode}
-              onChange={(kpis) => patch({ kpisLeading: kpis })}
-            />
-          </TabsContent>
-          <TabsContent value="lagging">
-            <KpiTable
-              kpis={view.kpisLagging}
-              mode={mode}
-              onChange={(kpis) => patch({ kpisLagging: kpis })}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
-    </SectionShell>
-  );
-}
-
-function KpiTable({
-  kpis,
-  mode,
-  onChange,
-}: {
-  kpis: Kpi[];
-  mode: Mode;
-  onChange: (kpis: Kpi[]) => void;
-}) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 4 } }));
   const editing = mode === "edit";
-
-  function handleDragEnd(e: DragEndEvent) {
-    const { active, over } = e;
-    if (!over || active.id === over.id) return;
-    const oldIndex = kpis.findIndex((k) => k.id === active.id);
-    const newIndex = kpis.findIndex((k) => k.id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    onChange(arrayMove(kpis, oldIndex, newIndex));
-  }
-
-  if (kpis.length === 0 && !editing) {
-    return <p className="mt-3 text-sm italic text-slate-400">No KPIs captured yet.</p>;
-  }
-
-  const ids = kpis.map((k) => k.id);
+  const items = view.keyResultsArea ?? [];
 
   return (
-    <div className="mt-3 overflow-hidden rounded-md border border-slate-200">
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {editing && <TableHead className="w-8" />}
-                <TableHead className="min-w-[180px]">KPI</TableHead>
-                <TableHead className="min-w-[200px]">Description</TableHead>
-                <TableHead className="min-w-[100px]">Target</TableHead>
-                {editing && <TableHead className="w-10" />}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kpis.map((k, i) => (
-                <KpiRow
-                  key={k.id}
-                  kpi={k}
-                  editing={editing}
-                  onChange={(next) => {
-                    const arr = kpis.slice();
-                    arr[i] = next;
-                    onChange(arr);
-                  }}
-                  onDelete={() => onChange(kpis.filter((x) => x.id !== k.id))}
-                />
-              ))}
-            </TableBody>
-          </Table>
-        </SortableContext>
-      </DndContext>
-      {editing && (
-        <div className="border-t border-slate-200 bg-slate-50 px-3 py-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5"
-            onClick={() =>
-              onChange([
-                ...kpis,
-                {
-                  id: newId(),
-                  name: "",
-                  description: "",
-                  target: "",
-                  frequency: "Daily",
-                  dataSource: "",
-                  owner: "",
-                },
-              ])
-            }
-          >
-            <Plus className="h-3.5 w-3.5" /> Add KPI
-          </Button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function KpiRow({
-  kpi,
-  editing,
-  onChange,
-  onDelete,
-}: {
-  kpi: Kpi;
-  editing: boolean;
-  onChange: (k: Kpi) => void;
-  onDelete: () => void;
-}) {
-  const sortable = useSortable({ id: kpi.id, disabled: !editing });
-  const style = {
-    transform: CSS.Transform.toString(sortable.transform),
-    transition: sortable.transition,
-  };
-
-  if (!editing) {
-    return (
-      <TableRow ref={sortable.setNodeRef as any} style={style}>
-        <TableCell className="font-medium text-slate-800">{kpi.name || "—"}</TableCell>
-        <TableCell className="text-sm text-slate-700">{kpi.description || "—"}</TableCell>
-        <TableCell className="font-mono text-sm">{kpi.target || "—"}</TableCell>
-      </TableRow>
-    );
-  }
-
-  return (
-    <TableRow ref={sortable.setNodeRef as any} style={style}>
-      <TableCell className="w-8 align-middle">
-        <button
-          type="button"
-          {...sortable.attributes}
-          {...sortable.listeners}
-          className="cursor-grab text-slate-400 hover:text-slate-700 active:cursor-grabbing"
-          aria-label="Reorder"
-        >
-          <GripVertical className="h-4 w-4" />
-        </button>
-      </TableCell>
-      <TableCell>
-        <Input value={kpi.name} onChange={(e) => onChange({ ...kpi, name: e.target.value })} />
-      </TableCell>
-      <TableCell>
+    <SectionShell id="kra" title="Key Results Area" icon={Target}>
+      <p className="text-sm text-slate-500">
+        The measurable outcomes this seat is accountable for. One bullet per
+        line.
+      </p>
+      {editing ? (
         <Textarea
-          value={kpi.description}
-          onChange={(e) => onChange({ ...kpi, description: e.target.value })}
-          rows={1}
+          className="mt-3 font-mono text-sm"
+          rows={Math.max(6, items.length + 1)}
+          value={items.join("\n")}
+          onChange={(e) =>
+            patch({
+              keyResultsArea: e.target.value
+                .split("\n")
+                .map((s) => s.trimStart())
+                .filter((s, i, arr) =>
+                  // keep blank lines while typing only if not at the very end
+                  s.length > 0 || i < arr.length - 1
+                ),
+            })
+          }
+          placeholder={
+            "e.g. Same-day emergency slots filled at >= 85% utilization."
+          }
         />
-      </TableCell>
-      <TableCell>
-        <Input value={kpi.target} onChange={(e) => onChange({ ...kpi, target: e.target.value })} />
-      </TableCell>
-      <TableCell>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-slate-400 hover:text-rose-600"
-          onClick={onDelete}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </TableCell>
-    </TableRow>
+      ) : items.length === 0 ? (
+        <p className="mt-3 text-sm italic text-slate-400">
+          No key results captured yet.
+        </p>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {items.map((kra, i) => (
+            <li
+              key={i}
+              className="flex gap-2 text-sm leading-relaxed text-slate-800"
+            >
+              <span
+                aria-hidden
+                className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0F2A47]"
+              />
+              <span>{kra}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SectionShell>
   );
 }
 

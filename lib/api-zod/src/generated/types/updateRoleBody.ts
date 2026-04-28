@@ -7,7 +7,6 @@
  */
 import type { RoleChecklists } from "./roleChecklists";
 import type { RoleDecision } from "./roleDecision";
-import type { RoleKpi } from "./roleKpi";
 
 export interface UpdateRoleBody {
   /** @minLength 1 */
@@ -22,9 +21,7 @@ export interface UpdateRoleBody {
   missionAlignment?: string;
   culturalAlignment?: string;
   vegStyleImpact?: string;
-  impactStatement?: string;
-  kpisLeading?: RoleKpi[];
-  kpisLagging?: RoleKpi[];
+  keyResultsArea?: string[];
   checklists?: RoleChecklists;
   decisions?: RoleDecision[];
 }
