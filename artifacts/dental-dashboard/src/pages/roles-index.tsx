@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Plus, Users, Network } from "lucide-react";
 import {
@@ -217,7 +217,7 @@ const ORG_GROUP_ORDER = ["edge_dso", "edge", "urgent_dental"];
 export function RolesIndex() {
   const { data: roles = [], isLoading } = useListRoles();
   const { data: organizations = [] } = useListOrganizations();
-  const [orgFilter, setOrgFilter] = useState<string>("__all__");
+  const [orgFilter, setOrgFilter] = useState<string>("");
 
   // Group organizations by category for the dropdown.
   const groupedOrgs = useMemo(() => {
@@ -236,21 +236,26 @@ export function RolesIndex() {
     );
   }, [organizations]);
 
-  // Default org for new roles: prefer the currently filtered org, else the
-  // first UD location, else null.
-  const defaultOrgId = useMemo(() => {
-    if (orgFilter !== "__all__") return Number(orgFilter);
-    const ud = organizations.find((o) => o.category === "urgent_dental");
-    return ud ? ud.id : null;
-  }, [orgFilter, organizations]);
+  // Auto-select the first available org once organizations load.
+  useEffect(() => {
+    if (orgFilter !== "" || groupedOrgs.length === 0) return;
+    const firstOrg = groupedOrgs[0]?.orgs[0];
+    if (firstOrg) setOrgFilter(String(firstOrg.id));
+  }, [orgFilter, groupedOrgs]);
+
+  // Default org for new roles is whichever location is currently selected.
+  const defaultOrgId = useMemo(
+    () => (orgFilter ? Number(orgFilter) : null),
+    [orgFilter],
+  );
 
   const filtered = useMemo(() => {
+    if (!orgFilter) return [];
     const allById = new Map<number, Role>(roles.map((r) => [r.id, r]));
 
     // Location filter — keep matching roles plus their ancestors so the tree
     // stays connected (a clinical lead under EDGE DSO still needs to show when
     // filtering Urgent Dental, otherwise its child cards become orphans).
-    if (orgFilter === "__all__") return roles;
     const keep = new Set<number>();
     for (const r of roles) {
       if (String(r.organizationId ?? "") === orgFilter) {
@@ -325,7 +330,6 @@ export function RolesIndex() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__all__">All locations</SelectItem>
             {groupedOrgs.map(({ cat, orgs }) => (
               <SelectGroup key={cat}>
                 <SelectLabel className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
