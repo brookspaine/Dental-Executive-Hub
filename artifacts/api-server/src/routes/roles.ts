@@ -43,7 +43,7 @@ type SeedRole = {
 const SEED_ROLES: SeedRole[] = [
   // -------------------- Lead Emergency Dentist --------------------
   {
-    title: "Lead Emergency Dentist",
+    title: "Associate Dentist",
     seatHolderName: "Open",
     seatHolderInitials: "",
     businessArea: "Operations",
@@ -189,7 +189,7 @@ const SEED_ROLES: SeedRole[] = [
   },
   // -------------------- Practice Manager --------------------
   {
-    title: "Practice Manager",
+    title: "Office Manager",
     seatHolderName: "Open",
     seatHolderInitials: "",
     businessArea: "Operations",
@@ -323,7 +323,7 @@ const SEED_ROLES: SeedRole[] = [
   },
   // -------------------- Front Desk / Patient Coordinator --------------------
   {
-    title: "Front Desk / Patient Coordinator",
+    title: "Front Desk",
     seatHolderName: "Open",
     seatHolderInitials: "",
     businessArea: "People",

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Users, ArrowRight } from "lucide-react";
+import { Plus, Search, Users, Network } from "lucide-react";
 import {
   useListRoles,
   useCreateRole,
@@ -26,7 +26,6 @@ import {
 import {
   BUSINESS_AREAS,
   TIERS,
-  AREA_STYLES,
   areaStyle,
   type BusinessArea,
   type Tier,
@@ -34,11 +33,12 @@ import {
 import { useQueryClient } from "@tanstack/react-query";
 import { getListRolesQueryKey } from "@workspace/api-client-react";
 
-function NewRoleButton() {
+function NewRoleButton({ roles }: { roles: Role[] }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [businessArea, setBusinessArea] = useState<BusinessArea>("Operations");
   const [tier, setTier] = useState<Tier>("Operations Support");
+  const [reportsTo, setReportsTo] = useState<string>("__none__");
   const qc = useQueryClient();
   const [, setLocation] = useLocation();
   const createRole = useCreateRole({
@@ -47,6 +47,7 @@ function NewRoleButton() {
         qc.invalidateQueries({ queryKey: getListRolesQueryKey() });
         setOpen(false);
         setTitle("");
+        setReportsTo("__none__");
         setLocation(`/my-roles/${created.id}`);
       },
     },
@@ -108,6 +109,25 @@ function NewRoleButton() {
                 </Select>
               </div>
             </div>
+            <div>
+              <Label>Reports to</Label>
+              <Select value={reportsTo} onValueChange={setReportsTo}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Top level —</SelectItem>
+                  {roles.map((r) => (
+                    <SelectItem key={r.id} value={String(r.id)}>
+                      {r.title}
+                      {r.seatHolderName && r.seatHolderName !== "Open"
+                        ? ` — ${r.seatHolderName}`
+                        : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
@@ -117,7 +137,13 @@ function NewRoleButton() {
               disabled={!title.trim() || createRole.isPending}
               onClick={() =>
                 createRole.mutate({
-                  data: { title: title.trim(), businessArea, tier },
+                  data: {
+                    title: title.trim(),
+                    businessArea,
+                    tier,
+                    reportsToRoleId:
+                      reportsTo === "__none__" ? null : Number(reportsTo),
+                  },
                 })
               }
             >
@@ -130,37 +156,75 @@ function NewRoleButton() {
   );
 }
 
-function RoleCard({ role }: { role: Role }) {
+function initialsOf(name: string): string {
+  if (!name || name === "Open") return "";
+  const parts = name.trim().split(/\s+/);
+  return (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
+}
+
+function RoleNodeCard({ role, compact }: { role: Role; compact: boolean }) {
   const style = areaStyle(role.businessArea);
+  const isOpen = !role.seatHolderName || role.seatHolderName === "Open";
   return (
     <Link href={`/my-roles/${role.id}`}>
-      <div className="group cursor-pointer rounded-xl border border-slate-200 bg-white p-4 transition-shadow hover:shadow-md">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <div className="text-sm font-semibold text-slate-900 group-hover:text-[#0F2A47]">
+      <div
+        className={`group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-xl border-2 bg-white transition-all hover:-translate-y-0.5 hover:shadow-md ${style.ring}`}
+      >
+        <div className={`h-1 w-full ${style.bar}`} />
+        <div className={`flex flex-1 flex-col items-center gap-2 px-3 ${compact ? "py-4" : "pt-4 pb-3"}`}>
+          <div
+            className={`flex items-center justify-center rounded-full text-sm font-semibold ${
+              isOpen
+                ? "border-2 border-dashed border-amber-300 bg-amber-50 text-amber-700"
+                : "bg-[#0F2A47] text-white"
+            } ${compact ? "h-12 w-12" : "h-10 w-10"}`}
+          >
+            {isOpen ? "?" : initialsOf(role.seatHolderName)}
+          </div>
+          <div className="text-center">
+            <div className={`font-semibold leading-tight text-slate-900 group-hover:text-[#0F2A47] ${compact ? "text-sm" : "text-[13px]"}`}>
               {role.title}
             </div>
-            <div className="mt-0.5 text-xs text-slate-500">
-              {role.seatHolderName === "Open" ? (
-                <span className="text-amber-700">Open</span>
+            <div className="mt-0.5 text-[11px] text-slate-500">
+              {isOpen ? (
+                <span className="text-amber-700">Open seat</span>
               ) : (
                 role.seatHolderName
               )}
             </div>
           </div>
-          <ArrowRight className="h-4 w-4 shrink-0 text-slate-300 group-hover:text-[#0F2A47]" />
-        </div>
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${style.pill}`}>
-            {role.businessArea}
-          </span>
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-700">
-            {role.tier}
-          </span>
+          {!compact && (
+            <div className="mt-1 flex flex-wrap justify-center gap-1">
+              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${style.pill}`}>
+                {role.businessArea}
+              </span>
+              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-700">
+                {role.tier}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </Link>
   );
+}
+
+function buildTree(roles: Role[]): {
+  roots: Role[];
+  childrenOf: Map<number | null, Role[]>;
+} {
+  const childrenOf = new Map<number | null, Role[]>();
+  for (const r of roles) {
+    const key = r.reportsToRoleId ?? null;
+    const arr = childrenOf.get(key) ?? [];
+    arr.push(r);
+    childrenOf.set(key, arr);
+  }
+  for (const arr of childrenOf.values()) {
+    arr.sort((a, b) => a.title.localeCompare(b.title));
+  }
+  const roots = childrenOf.get(null) ?? [];
+  return { roots, childrenOf };
 }
 
 export function RolesIndex() {
@@ -170,32 +234,57 @@ export function RolesIndex() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return roles;
-    return roles.filter(
-      (r) =>
+    // When searching, return matching roles plus their ancestors so the tree
+    // remains coherent.
+    const byId = new Map<number, Role>(roles.map((r) => [r.id, r]));
+    const keep = new Set<number>();
+    for (const r of roles) {
+      if (
         r.title.toLowerCase().includes(q) ||
-        r.seatHolderName.toLowerCase().includes(q),
-    );
-  }, [roles, search]);
-
-  // Group: Business Area → Tier → roles
-  const grouped = useMemo(() => {
-    const map = new Map<BusinessArea, Map<Tier, Role[]>>();
-    for (const area of BUSINESS_AREAS) {
-      map.set(area, new Map());
-      for (const tier of TIERS) {
-        map.get(area)!.set(tier, []);
+        r.seatHolderName.toLowerCase().includes(q) ||
+        r.businessArea.toLowerCase().includes(q) ||
+        r.tier.toLowerCase().includes(q)
+      ) {
+        let cur: Role | undefined = r;
+        while (cur && !keep.has(cur.id)) {
+          keep.add(cur.id);
+          cur = cur.reportsToRoleId ? byId.get(cur.reportsToRoleId) : undefined;
+        }
       }
     }
-    for (const r of filtered) {
-      const area = (BUSINESS_AREAS as readonly string[]).includes(r.businessArea)
-        ? (r.businessArea as BusinessArea)
-        : "Operations";
-      const tier = (TIERS as readonly string[]).includes(r.tier)
-        ? (r.tier as Tier)
-        : "Operations Support";
-      map.get(area)!.get(tier)!.push(r);
+    return roles.filter((r) => keep.has(r.id));
+  }, [roles, search]);
+
+  const tiers = useMemo(() => {
+    const { roots, childrenOf } = buildTree(filtered);
+    const depthOf = new Map<number, number>();
+    const queue: { id: number; depth: number }[] = roots.map((r) => ({
+      id: r.id,
+      depth: 0,
+    }));
+    while (queue.length > 0) {
+      const { id, depth } = queue.shift()!;
+      if (depthOf.has(id)) continue;
+      depthOf.set(id, depth);
+      for (const c of childrenOf.get(id) ?? []) {
+        queue.push({ id: c.id, depth: depth + 1 });
+      }
     }
-    return map;
+    // Orphans (shouldn't normally happen) default to depth 0.
+    for (const r of filtered) {
+      if (!depthOf.has(r.id)) depthOf.set(r.id, 0);
+    }
+    const byDepth = new Map<number, Role[]>();
+    for (const r of filtered) {
+      const d = depthOf.get(r.id) ?? 0;
+      const arr = byDepth.get(d) ?? [];
+      arr.push(r);
+      byDepth.set(d, arr);
+    }
+    for (const arr of byDepth.values()) {
+      arr.sort((a, b) => a.title.localeCompare(b.title));
+    }
+    return Array.from(byDepth.entries()).sort((a, b) => a[0] - b[0]);
   }, [filtered]);
 
   return (
@@ -207,11 +296,12 @@ export function RolesIndex() {
             My Roles
           </h1>
           <p className="mt-1 text-sm text-slate-600">
-            Every seat in the practice — what it exists to do, what success
-            looks like, and the playbooks that make it run.
+            Every seat in the practice — click any position to see what it
+            exists to do, what success looks like, and the playbooks that make
+            it run.
           </p>
         </div>
-        <NewRoleButton />
+        <NewRoleButton roles={roles} />
       </header>
 
       <div className="relative max-w-md">
@@ -228,53 +318,46 @@ export function RolesIndex() {
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
           Loading roles…
         </div>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+          <Network className="mx-auto h-10 w-10 text-slate-300" />
+          <p className="mt-3 text-sm text-slate-500">
+            {search.trim()
+              ? "No roles match your search."
+              : "No roles defined yet. Add your first role to get started."}
+          </p>
+        </div>
       ) : (
-        <div className="space-y-6">
-          {BUSINESS_AREAS.map((area) => {
-            const tierMap = grouped.get(area)!;
-            const totalInArea = TIERS.reduce(
-              (sum, t) => sum + (tierMap.get(t)?.length ?? 0),
-              0,
-            );
-            if (totalInArea === 0 && search.trim()) return null;
-            const style = AREA_STYLES[area];
-            return (
-              <section key={area} className={`rounded-xl border ${style.ring} ${style.tint} p-4`}>
-                <div className="mb-3 flex items-center gap-2">
-                  <div className={`h-5 w-1 rounded-full ${style.bar}`} />
-                  <h2 className={`text-sm font-semibold uppercase tracking-wide ${style.label}`}>
-                    {area}
-                  </h2>
-                  <span className="text-xs text-slate-500">
-                    {totalInArea} {totalInArea === 1 ? "role" : "roles"}
-                  </span>
-                </div>
-                <div className="space-y-4">
-                  {TIERS.map((tier) => {
-                    const tierRoles = tierMap.get(tier)!;
-                    if (tierRoles.length === 0) return null;
-                    return (
-                      <div key={tier}>
-                        <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-500">
-                          {tier}
-                        </div>
-                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {tierRoles.map((r) => (
-                            <RoleCard key={r.id} role={r} />
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {totalInArea === 0 && (
-                    <div className="rounded-md border border-dashed border-slate-300 bg-white/50 p-3 text-xs text-slate-500">
-                      No roles in this area yet.
+        <div className="space-y-8 overflow-x-auto rounded-xl border border-slate-200 bg-white p-6 pb-8">
+          {tiers.map(([depth, tierRoles], idx) => (
+            <div key={depth} className="relative">
+              {idx > 0 && (
+                <div
+                  aria-hidden
+                  className="absolute -top-8 left-1/2 h-4 w-px -translate-x-1/2 bg-slate-200"
+                />
+              )}
+              <div className="flex flex-wrap justify-center gap-4">
+                {tierRoles.map((r) => {
+                  const isOwnerTier = depth === 0;
+                  return (
+                    <div
+                      key={r.id}
+                      className={`relative ${isOwnerTier ? "w-52" : "w-44"}`}
+                    >
+                      {idx > 0 && (
+                        <div
+                          aria-hidden
+                          className="absolute -top-4 left-1/2 h-4 w-px -translate-x-1/2 bg-slate-200"
+                        />
+                      )}
+                      <RoleNodeCard role={r} compact={isOwnerTier} />
                     </div>
-                  )}
-                </div>
-              </section>
-            );
-          })}
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
