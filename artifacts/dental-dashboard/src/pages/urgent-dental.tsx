@@ -262,21 +262,6 @@ export function UrgentDental() {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {[
-              { title: "Financials", icon: DollarSign },
-              { title: "Location", icon: MapPin },
-              { title: "People", icon: UsersIcon },
-              { title: "Operations", icon: Settings },
-            ].map(({ title, icon: Icon }) => (
-              <CategoryActionCard
-                key={title}
-                title={title}
-                icon={Icon}
-                scopeId={`ud-location-${location.id}`}
-              />
-            ))}
-          </div>
         </div>
       )}
     </div>

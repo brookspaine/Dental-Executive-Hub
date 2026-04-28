@@ -380,14 +380,6 @@ export function Organizations() {
         addLabel="Add UD Location"
       />
 
-      {[
-        { title: "Financials", icon: DollarSign },
-        { title: "Location", icon: MapPin },
-        { title: "People", icon: Users },
-        { title: "Operations", icon: Settings },
-      ].map(({ title, icon: Icon }) => (
-        <CategoryActionCard key={title} title={title} icon={Icon} />
-      ))}
     </div>
   );
 }
