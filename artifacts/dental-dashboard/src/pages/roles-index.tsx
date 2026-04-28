@@ -27,13 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  BUSINESS_AREAS,
-  TIERS,
-  areaStyle,
-  type BusinessArea,
-  type Tier,
-} from "@/lib/role-styles";
+import { areaStyle } from "@/lib/role-styles";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListRolesQueryKey } from "@workspace/api-client-react";
 
@@ -48,8 +42,6 @@ function NewRoleButton({
 }) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [businessArea, setBusinessArea] = useState<BusinessArea>("Operations");
-  const [tier, setTier] = useState<Tier>("Operations Support");
   const [reportsTo, setReportsTo] = useState<string>("__none__");
   const [orgId, setOrgId] = useState<string>(
     defaultOrgId !== null ? String(defaultOrgId) : "__none__",
@@ -88,41 +80,6 @@ function NewRoleButton({
                 placeholder="e.g. Clinical Assistant"
                 autoFocus
               />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Business area</Label>
-                <Select
-                  value={businessArea}
-                  onValueChange={(v) => setBusinessArea(v as BusinessArea)}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {BUSINESS_AREAS.map((a) => (
-                      <SelectItem key={a} value={a}>
-                        {a}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Tier</Label>
-                <Select value={tier} onValueChange={(v) => setTier(v as Tier)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TIERS.map((t) => (
-                      <SelectItem key={t} value={t}>
-                        {t}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
             <div>
               <Label>Location</Label>
@@ -170,8 +127,8 @@ function NewRoleButton({
                 createRole.mutate({
                   data: {
                     title: title.trim(),
-                    businessArea,
-                    tier,
+                    businessArea: "Operations",
+                    tier: "Operations Support",
                     reportsToRoleId:
                       reportsTo === "__none__" ? null : Number(reportsTo),
                     organizationId:
