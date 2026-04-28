@@ -265,12 +265,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Brand block — aligned with sidebar width on desktop. The logo
             sits in a white rounded badge on the navy bar so the on-white
             EDG mark reads cleanly while the navy header stays intact. */}
-        <div className="hidden md:flex w-64 items-center justify-center px-4 border-r border-white/10 shrink-0">
-          <span className="inline-flex items-center justify-center bg-white rounded-lg px-5 py-1.5 shadow-sm">
+        <div className="hidden md:flex w-64 items-center justify-center px-3 border-r border-white/10 shrink-0">
+          <span className="inline-flex items-center justify-center bg-white rounded-lg px-5 py-1 shadow-sm">
             <img
               src={edgLogo}
               alt="Emergency Dental Group"
-              className="h-12 w-auto object-contain"
+              className="h-14 w-auto object-contain"
             />
           </span>
         </div>
