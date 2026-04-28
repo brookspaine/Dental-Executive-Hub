@@ -17,8 +17,10 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  ActionItem,
   ActivityItem,
   Announcement,
+  CreateActionItemBody,
   CreateAdditionalViewerBody,
   CreateAnnouncementBody,
   CreateDailyTop3Body,
@@ -39,6 +41,7 @@ import type {
   HealthStatus,
   IdealWeekCompletion,
   IdealWeekRitual,
+  ImportActionItemsBody,
   ListIdealWeekCompletionsParams,
   OrgChartSeat,
   OrgPerformance,
@@ -47,6 +50,7 @@ import type {
   SeatKeyResult,
   SeatTask,
   ToggleIdealWeekCompletionBody,
+  UpdateActionItemBody,
   UpdateDailyTop3Body,
   UpdateDirectReportBody,
   UpdateIdealWeekRitualBody,
@@ -2584,6 +2588,424 @@ export const useCreateAnnouncement = <
   TContext
 > => {
   return useMutation(getCreateAnnouncementMutationOptions(options));
+};
+
+/**
+ * @summary List all action items
+ */
+export const getListActionItemsUrl = () => {
+  return `/api/action-items`;
+};
+
+export const listActionItems = async (
+  options?: RequestInit,
+): Promise<ActionItem[]> => {
+  return customFetch<ActionItem[]>(getListActionItemsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListActionItemsQueryKey = () => {
+  return [`/api/action-items`] as const;
+};
+
+export const getListActionItemsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listActionItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listActionItems>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListActionItemsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listActionItems>>> = ({
+    signal,
+  }) => listActionItems({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listActionItems>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListActionItemsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listActionItems>>
+>;
+export type ListActionItemsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all action items
+ */
+
+export function useListActionItems<
+  TData = Awaited<ReturnType<typeof listActionItems>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listActionItems>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListActionItemsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create an action item
+ */
+export const getCreateActionItemUrl = () => {
+  return `/api/action-items`;
+};
+
+export const createActionItem = async (
+  createActionItemBody: CreateActionItemBody,
+  options?: RequestInit,
+): Promise<ActionItem> => {
+  return customFetch<ActionItem>(getCreateActionItemUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createActionItemBody),
+  });
+};
+
+export const getCreateActionItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createActionItem>>,
+    TError,
+    { data: BodyType<CreateActionItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createActionItem>>,
+  TError,
+  { data: BodyType<CreateActionItemBody> },
+  TContext
+> => {
+  const mutationKey = ["createActionItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createActionItem>>,
+    { data: BodyType<CreateActionItemBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createActionItem(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateActionItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createActionItem>>
+>;
+export type CreateActionItemMutationBody = BodyType<CreateActionItemBody>;
+export type CreateActionItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create an action item
+ */
+export const useCreateActionItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createActionItem>>,
+    TError,
+    { data: BodyType<CreateActionItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createActionItem>>,
+  TError,
+  { data: BodyType<CreateActionItemBody> },
+  TContext
+> => {
+  return useMutation(getCreateActionItemMutationOptions(options));
+};
+
+/**
+ * @summary Import a batch of action items (used for one-time client migration)
+ */
+export const getImportActionItemsUrl = () => {
+  return `/api/action-items/import`;
+};
+
+export const importActionItems = async (
+  importActionItemsBody: ImportActionItemsBody,
+  options?: RequestInit,
+): Promise<ActionItem[]> => {
+  return customFetch<ActionItem[]>(getImportActionItemsUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(importActionItemsBody),
+  });
+};
+
+export const getImportActionItemsMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importActionItems>>,
+    TError,
+    { data: BodyType<ImportActionItemsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importActionItems>>,
+  TError,
+  { data: BodyType<ImportActionItemsBody> },
+  TContext
+> => {
+  const mutationKey = ["importActionItems"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importActionItems>>,
+    { data: BodyType<ImportActionItemsBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return importActionItems(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportActionItemsMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importActionItems>>
+>;
+export type ImportActionItemsMutationBody = BodyType<ImportActionItemsBody>;
+export type ImportActionItemsMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Import a batch of action items (used for one-time client migration)
+ */
+export const useImportActionItems = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importActionItems>>,
+    TError,
+    { data: BodyType<ImportActionItemsBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importActionItems>>,
+  TError,
+  { data: BodyType<ImportActionItemsBody> },
+  TContext
+> => {
+  return useMutation(getImportActionItemsMutationOptions(options));
+};
+
+/**
+ * @summary Update an action item
+ */
+export const getUpdateActionItemUrl = (id: number) => {
+  return `/api/action-items/${id}`;
+};
+
+export const updateActionItem = async (
+  id: number,
+  updateActionItemBody: UpdateActionItemBody,
+  options?: RequestInit,
+): Promise<ActionItem> => {
+  return customFetch<ActionItem>(getUpdateActionItemUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateActionItemBody),
+  });
+};
+
+export const getUpdateActionItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateActionItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateActionItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateActionItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateActionItemBody> },
+  TContext
+> => {
+  const mutationKey = ["updateActionItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateActionItem>>,
+    { id: number; data: BodyType<UpdateActionItemBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateActionItem(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateActionItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateActionItem>>
+>;
+export type UpdateActionItemMutationBody = BodyType<UpdateActionItemBody>;
+export type UpdateActionItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update an action item
+ */
+export const useUpdateActionItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateActionItem>>,
+    TError,
+    { id: number; data: BodyType<UpdateActionItemBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateActionItem>>,
+  TError,
+  { id: number; data: BodyType<UpdateActionItemBody> },
+  TContext
+> => {
+  return useMutation(getUpdateActionItemMutationOptions(options));
+};
+
+/**
+ * @summary Delete an action item
+ */
+export const getDeleteActionItemUrl = (id: number) => {
+  return `/api/action-items/${id}`;
+};
+
+export const deleteActionItem = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteActionItemUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteActionItemMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteActionItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteActionItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteActionItem"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteActionItem>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteActionItem(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteActionItemMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteActionItem>>
+>;
+
+export type DeleteActionItemMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete an action item
+ */
+export const useDeleteActionItem = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteActionItem>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteActionItem>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteActionItemMutationOptions(options));
 };
 
 /**

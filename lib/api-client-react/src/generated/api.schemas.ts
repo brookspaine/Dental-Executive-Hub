@@ -544,6 +544,59 @@ export interface UpdateVendorPasswordBody {
   sortOrder?: number;
 }
 
+export interface ActionItemNote {
+  label: string;
+  href?: string;
+}
+
+export interface ActionItem {
+  id: number;
+  title: string;
+  source: string;
+  ownerName: string;
+  ownerInitials: string;
+  dueBy: string;
+  dueByFull: string;
+  notes?: ActionItemNote[] | null;
+  starred: boolean;
+  done: boolean;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateActionItemBody {
+  /** @minLength 1 */
+  title: string;
+  source: string;
+  ownerName?: string;
+  ownerInitials?: string;
+  dueBy?: string;
+  dueByFull?: string;
+  notes?: ActionItemNote[] | null;
+  starred?: boolean;
+  done?: boolean;
+  position?: number;
+}
+
+export interface UpdateActionItemBody {
+  /** @minLength 1 */
+  title?: string;
+  source?: string;
+  ownerName?: string;
+  ownerInitials?: string;
+  dueBy?: string;
+  dueByFull?: string;
+  notes?: ActionItemNote[] | null;
+  starred?: boolean;
+  done?: boolean;
+  position?: number;
+}
+
+export interface ImportActionItemsBody {
+  items: CreateActionItemBody[];
+}
+
 export type CreateViewAsMeGrantBody = {
   granteeReportId: number;
 };

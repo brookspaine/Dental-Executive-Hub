@@ -448,6 +448,168 @@ export const CreateAnnouncementBody = zod.object({
 });
 
 /**
+ * @summary List all action items
+ */
+export const ListActionItemsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  source: zod.string(),
+  ownerName: zod.string(),
+  ownerInitials: zod.string(),
+  dueBy: zod.string(),
+  dueByFull: zod.string(),
+  notes: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        href: zod.string().optional(),
+      }),
+    )
+    .nullish(),
+  starred: zod.boolean(),
+  done: zod.boolean(),
+  position: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListActionItemsResponse = zod.array(ListActionItemsResponseItem);
+
+/**
+ * @summary Create an action item
+ */
+
+export const CreateActionItemBody = zod.object({
+  title: zod.string().min(1),
+  source: zod.string(),
+  ownerName: zod.string().optional(),
+  ownerInitials: zod.string().optional(),
+  dueBy: zod.string().optional(),
+  dueByFull: zod.string().optional(),
+  notes: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        href: zod.string().optional(),
+      }),
+    )
+    .nullish(),
+  starred: zod.boolean().optional(),
+  done: zod.boolean().optional(),
+  position: zod.number().optional(),
+});
+
+/**
+ * @summary Import a batch of action items (used for one-time client migration)
+ */
+
+export const ImportActionItemsBody = zod.object({
+  items: zod.array(
+    zod.object({
+      title: zod.string().min(1),
+      source: zod.string(),
+      ownerName: zod.string().optional(),
+      ownerInitials: zod.string().optional(),
+      dueBy: zod.string().optional(),
+      dueByFull: zod.string().optional(),
+      notes: zod
+        .array(
+          zod.object({
+            label: zod.string(),
+            href: zod.string().optional(),
+          }),
+        )
+        .nullish(),
+      starred: zod.boolean().optional(),
+      done: zod.boolean().optional(),
+      position: zod.number().optional(),
+    }),
+  ),
+});
+
+export const ImportActionItemsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  source: zod.string(),
+  ownerName: zod.string(),
+  ownerInitials: zod.string(),
+  dueBy: zod.string(),
+  dueByFull: zod.string(),
+  notes: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        href: zod.string().optional(),
+      }),
+    )
+    .nullish(),
+  starred: zod.boolean(),
+  done: zod.boolean(),
+  position: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ImportActionItemsResponse = zod.array(
+  ImportActionItemsResponseItem,
+);
+
+/**
+ * @summary Update an action item
+ */
+export const UpdateActionItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateActionItemBody = zod.object({
+  title: zod.string().min(1).optional(),
+  source: zod.string().optional(),
+  ownerName: zod.string().optional(),
+  ownerInitials: zod.string().optional(),
+  dueBy: zod.string().optional(),
+  dueByFull: zod.string().optional(),
+  notes: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        href: zod.string().optional(),
+      }),
+    )
+    .nullish(),
+  starred: zod.boolean().optional(),
+  done: zod.boolean().optional(),
+  position: zod.number().optional(),
+});
+
+export const UpdateActionItemResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  source: zod.string(),
+  ownerName: zod.string(),
+  ownerInitials: zod.string(),
+  dueBy: zod.string(),
+  dueByFull: zod.string(),
+  notes: zod
+    .array(
+      zod.object({
+        label: zod.string(),
+        href: zod.string().optional(),
+      }),
+    )
+    .nullish(),
+  starred: zod.boolean(),
+  done: zod.boolean(),
+  position: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete an action item
+ */
+export const DeleteActionItemParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary Delete an announcement
  */
 export const DeleteAnnouncementParams = zod.object({

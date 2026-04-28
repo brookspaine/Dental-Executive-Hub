@@ -19,3 +19,4 @@ export * from "./weeklyReview";
 export * from "./leadershipMeetings";
 export * from "./viewAsMeGrants";
 export * from "./additionalViewers";
+export * from "./actionItems";

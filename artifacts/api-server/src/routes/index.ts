@@ -16,6 +16,7 @@ import storageRouter from "./storage";
 import yearlyPlanningRouter from "./yearlyPlanning";
 import weeklyReviewRouter from "./weeklyReview";
 import leadershipMeetingsRouter from "./leadershipMeetings";
+import actionItemsRouter from "./actionItems";
 
 const router: IRouter = Router();
 
@@ -36,5 +37,6 @@ router.use(storageRouter);
 router.use(yearlyPlanningRouter);
 router.use(weeklyReviewRouter);
 router.use(leadershipMeetingsRouter);
+router.use(actionItemsRouter);
 
 export default router;

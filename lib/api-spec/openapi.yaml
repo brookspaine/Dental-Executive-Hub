@@ -26,6 +26,8 @@ tags:
     description: Ideal Week ritual tracking
   - name: wisdomQuotes
     description: Words of Wisdom quote pool
+  - name: actionItems
+    description: Shared action items synchronized across devices and users
   - name: Storage
     description: Object storage upload and serving endpoints.
 
@@ -601,6 +603,97 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Announcement"
+
+  /action-items:
+    get:
+      operationId: listActionItems
+      tags: [actionItems]
+      summary: List all action items
+      responses:
+        "200":
+          description: List of action items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActionItem"
+    post:
+      operationId: createActionItem
+      tags: [actionItems]
+      summary: Create an action item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateActionItemBody"
+      responses:
+        "201":
+          description: Created action item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionItem"
+
+  /action-items/import:
+    post:
+      operationId: importActionItems
+      tags: [actionItems]
+      summary: Import a batch of action items (used for one-time client migration)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImportActionItemsBody"
+      responses:
+        "200":
+          description: Updated full list of action items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ActionItem"
+
+  /action-items/{id}:
+    patch:
+      operationId: updateActionItem
+      tags: [actionItems]
+      summary: Update an action item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateActionItemBody"
+      responses:
+        "200":
+          description: Updated action item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionItem"
+    delete:
+      operationId: deleteActionItem
+      tags: [actionItems]
+      summary: Delete an action item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
 
   /announcements/{id}:
     delete:
@@ -2081,3 +2174,130 @@ components:
           nullable: true
         sortOrder:
           type: integer
+
+    ActionItemNote:
+      type: object
+      properties:
+        label:
+          type: string
+        href:
+          type: string
+      required:
+        - label
+
+    ActionItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        source:
+          type: string
+        ownerName:
+          type: string
+        ownerInitials:
+          type: string
+        dueBy:
+          type: string
+        dueByFull:
+          type: string
+        notes:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ActionItemNote"
+        starred:
+          type: boolean
+        done:
+          type: boolean
+        position:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - source
+        - ownerName
+        - ownerInitials
+        - dueBy
+        - dueByFull
+        - starred
+        - done
+        - position
+        - createdAt
+        - updatedAt
+
+    CreateActionItemBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        source:
+          type: string
+        ownerName:
+          type: string
+        ownerInitials:
+          type: string
+        dueBy:
+          type: string
+        dueByFull:
+          type: string
+        notes:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ActionItemNote"
+        starred:
+          type: boolean
+        done:
+          type: boolean
+        position:
+          type: integer
+      required:
+        - title
+        - source
+
+    UpdateActionItemBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        source:
+          type: string
+        ownerName:
+          type: string
+        ownerInitials:
+          type: string
+        dueBy:
+          type: string
+        dueByFull:
+          type: string
+        notes:
+          type: array
+          nullable: true
+          items:
+            $ref: "#/components/schemas/ActionItemNote"
+        starred:
+          type: boolean
+        done:
+          type: boolean
+        position:
+          type: integer
+
+    ImportActionItemsBody:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CreateActionItemBody"
+      required:
+        - items
