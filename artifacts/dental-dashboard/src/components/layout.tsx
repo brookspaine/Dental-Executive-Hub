@@ -241,14 +241,12 @@ function BrandHeader() {
         <div className="shrink-0">
           <img
             src={logoSrc}
-            alt="Emergency Dental Group"
+            alt="Urgent Dental"
             className="h-7 w-auto object-contain"
           />
         </div>
         <span className="font-semibold text-[#0F2A47] tracking-tight text-sm leading-tight truncate">
-          Emergency
-          <br />
-          Dental Group
+          Urgent Dental
         </span>
       </div>
     </div>
@@ -279,13 +277,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <div className="hidden md:flex w-64 items-center gap-3 px-6 border-r border-white/10 shrink-0">
           <img
             src={logoSrc}
-            alt="Emergency Dental Group"
+            alt="Urgent Dental"
             className="h-7 w-auto object-contain shrink-0"
           />
           <span className="font-semibold text-white tracking-tight text-sm leading-tight truncate">
-            Emergency
-            <br />
-            Dental Group
+            Urgent Dental
           </span>
         </div>
 
@@ -318,7 +314,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           </Sheet>
           <img
             src={logoSrc}
-            alt="Emergency Dental Group"
+            alt="Urgent Dental"
             className="h-6 w-auto object-contain shrink-0"
           />
           {showTitle && (
