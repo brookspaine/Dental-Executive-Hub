@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Check, Pencil, Plus, Users, Network } from "lucide-react";
+import { Check, Pencil, Plus, Trash2, Users, Network } from "lucide-react";
 import {
   useListRoles,
   useCreateRole,
   useUpdateRole,
+  useDeleteRole,
   useListOrganizations,
   getGetRoleQueryKey,
   type Role,
@@ -228,6 +229,7 @@ function EditRoleDialog({
 }) {
   const [title, setTitle] = useState("");
   const [seatHolderName, setSeatHolderName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const qc = useQueryClient();
   const updateRole = useUpdateRole({
     mutation: {
@@ -238,11 +240,21 @@ function EditRoleDialog({
       },
     },
   });
+  const deleteRole = useDeleteRole({
+    mutation: {
+      onSuccess: () => {
+        qc.invalidateQueries({ queryKey: getListRolesQueryKey() });
+        setConfirmDelete(false);
+        onClose();
+      },
+    },
+  });
 
   useEffect(() => {
     if (role) {
       setTitle(role.title);
       setSeatHolderName(role.seatHolderName === "Open" ? "" : role.seatHolderName);
+      setConfirmDelete(false);
     }
   }, [role]);
 
@@ -282,25 +294,56 @@ function EditRoleDialog({
             />
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button
-            disabled={!title.trim() || updateRole.isPending}
-            onClick={() =>
-              updateRole.mutate({
-                id: role.id,
-                data: {
-                  title: title.trim(),
-                  seatHolderName: trimmedName || "Open",
-                  seatHolderInitials: initials,
-                },
-              })
-            }
-          >
-            Save
-          </Button>
+        <DialogFooter className="sm:justify-between">
+          {confirmDelete ? (
+            <div className="flex items-center gap-2 text-sm text-red-700">
+              <span>Delete this role?</span>
+              <Button
+                size="sm"
+                variant="destructive"
+                disabled={deleteRole.isPending}
+                onClick={() => deleteRole.mutate({ id: role.id })}
+              >
+                Yes, delete
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setConfirmDelete(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          ) : (
+            <Button
+              variant="ghost"
+              className="gap-1.5 text-red-600 hover:bg-red-50 hover:text-red-700"
+              onClick={() => setConfirmDelete(true)}
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete role
+            </Button>
+          )}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!title.trim() || updateRole.isPending || confirmDelete}
+              onClick={() =>
+                updateRole.mutate({
+                  id: role.id,
+                  data: {
+                    title: title.trim(),
+                    seatHolderName: trimmedName || "Open",
+                    seatHolderInitials: initials,
+                  },
+                })
+              }
+            >
+              Save
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
