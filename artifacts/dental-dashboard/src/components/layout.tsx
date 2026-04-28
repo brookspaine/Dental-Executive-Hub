@@ -240,7 +240,7 @@ function BrandHeader() {
       <img
         src={logoSrc}
         alt="Urgent Dental"
-        className="h-10 w-auto object-contain"
+        className="h-8 w-auto object-contain"
       />
     </div>
   );
@@ -269,12 +269,12 @@ export function Layout({ children }: { children: React.ReactNode }) {
         {/* Brand block — aligned with sidebar width on desktop.
             The logo's tooth/cross icon uses navy strokes, so we sit it on a
             white pill to stay legible against the navy header. */}
-        <div className="hidden md:flex w-64 items-center px-3 border-r border-white/10 shrink-0">
+        <div className="hidden md:flex w-64 items-center justify-center px-3 border-r border-white/10 shrink-0">
           <div className="flex items-center bg-white rounded-md px-3 py-1.5 shadow-sm">
             <img
               src={logoSrc}
               alt="Urgent Dental"
-              className="h-9 w-auto object-contain shrink-0"
+              className="h-7 w-auto object-contain shrink-0"
             />
           </div>
         </div>
@@ -310,7 +310,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
             <img
               src={logoSrc}
               alt="Urgent Dental"
-              className="h-7 w-auto object-contain"
+              className="h-5 w-auto object-contain"
             />
           </div>
           {showTitle && (
