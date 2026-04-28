@@ -24,7 +24,6 @@ import {
 } from "@/components/ui/sheet";
 
 const CURRENT_USER_NAME = "Brooks Paine";
-const CURRENT_USER_TITLE = "Chief Executive Officer";
 
 function getInitials(name: string) {
   return name
@@ -222,9 +221,6 @@ function UserBadge() {
         <div className="flex flex-col min-w-0">
           <span className="text-sm font-semibold text-[#0F2A47] truncate">
             {CURRENT_USER_NAME}
-          </span>
-          <span className="text-xs text-slate-500 truncate">
-            {CURRENT_USER_TITLE}
           </span>
         </div>
       </div>
