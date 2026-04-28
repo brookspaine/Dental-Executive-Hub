@@ -1612,6 +1612,153 @@ export const DeleteRoleParams = zod.object({
 });
 
 /**
+ * @summary List key results for a role
+ */
+export const ListRoleKeyResultsParams = zod.object({
+  roleId: zod.coerce.number(),
+});
+
+export const ListRoleKeyResultsResponseItem = zod.object({
+  id: zod.number(),
+  roleId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListRoleKeyResultsResponse = zod.array(
+  ListRoleKeyResultsResponseItem,
+);
+
+/**
+ * @summary Create a key result for a role
+ */
+export const CreateRoleKeyResultParams = zod.object({
+  roleId: zod.coerce.number(),
+});
+
+export const CreateRoleKeyResultBody = zod.object({
+  title: zod.string().min(1),
+  description: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a role key result
+ */
+export const UpdateRoleKeyResultParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateRoleKeyResultBody = zod.object({
+  title: zod.string().min(1).optional(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateRoleKeyResultResponse = zod.object({
+  id: zod.number(),
+  roleId: zod.number(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a role key result
+ */
+export const DeleteRoleKeyResultParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List tasks for a role
+ */
+export const ListRoleTasksParams = zod.object({
+  roleId: zod.coerce.number(),
+});
+
+export const ListRoleTasksResponseItem = zod.object({
+  id: zod.number(),
+  roleId: zod.number(),
+  keyResultId: zod.number().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.string(),
+  priority: zod.string(),
+  assignee: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  completed: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListRoleTasksResponse = zod.array(ListRoleTasksResponseItem);
+
+/**
+ * @summary Create a task for a role
+ */
+export const CreateRoleTaskParams = zod.object({
+  roleId: zod.coerce.number(),
+});
+
+export const CreateRoleTaskBody = zod.object({
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.string().optional(),
+  priority: zod.string().optional(),
+  assignee: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  sortOrder: zod.number().optional(),
+  keyResultId: zod.number().nullish(),
+});
+
+/**
+ * @summary Update a role task
+ */
+export const UpdateRoleTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateRoleTaskBody = zod.object({
+  title: zod.string().optional(),
+  description: zod.string().nullish(),
+  status: zod.string().optional(),
+  priority: zod.string().optional(),
+  assignee: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  completed: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+  keyResultId: zod.number().nullish(),
+});
+
+export const UpdateRoleTaskResponse = zod.object({
+  id: zod.number(),
+  roleId: zod.number(),
+  keyResultId: zod.number().nullish(),
+  title: zod.string(),
+  description: zod.string().nullish(),
+  status: zod.string(),
+  priority: zod.string(),
+  assignee: zod.string().nullish(),
+  dueDate: zod.string().nullish(),
+  completed: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a role task
+ */
+export const DeleteRoleTaskParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List all playbooks
  */
 export const ListPlaybooksResponseItem = zod.object({

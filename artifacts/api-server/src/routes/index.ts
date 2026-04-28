@@ -19,6 +19,8 @@ import leadershipMeetingsRouter from "./leadershipMeetings";
 import actionItemsRouter from "./actionItems";
 import buildoutCardsRouter from "./buildoutCards";
 import rolesRouter from "./roles";
+import roleKeyResultsRouter from "./roleKeyResults";
+import roleTasksRouter from "./roleTasks";
 import playbooksRouter from "./playbooks";
 import meRouter from "./me";
 
@@ -44,6 +46,8 @@ router.use(leadershipMeetingsRouter);
 router.use(actionItemsRouter);
 router.use(buildoutCardsRouter);
 router.use(rolesRouter);
+router.use(roleKeyResultsRouter);
+router.use(roleTasksRouter);
 router.use(playbooksRouter);
 router.use(meRouter);
 

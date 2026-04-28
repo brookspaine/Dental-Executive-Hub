@@ -511,6 +511,69 @@ export interface UpdateSeatKeyResultBody {
   sortOrder?: number;
 }
 
+export interface RoleKeyResult {
+  id: number;
+  roleId: number;
+  title: string;
+  description?: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRoleKeyResultBody {
+  /** @minLength 1 */
+  title: string;
+  description?: string | null;
+  sortOrder?: number;
+}
+
+export interface UpdateRoleKeyResultBody {
+  /** @minLength 1 */
+  title?: string;
+  description?: string | null;
+  sortOrder?: number;
+}
+
+export interface RoleTask {
+  id: number;
+  roleId: number;
+  keyResultId?: number | null;
+  title: string;
+  description?: string | null;
+  status: string;
+  priority: string;
+  assignee?: string | null;
+  dueDate?: string | null;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRoleTaskBody {
+  title: string;
+  description?: string | null;
+  status?: string;
+  priority?: string;
+  assignee?: string | null;
+  dueDate?: string | null;
+  sortOrder?: number;
+  keyResultId?: number | null;
+}
+
+export interface UpdateRoleTaskBody {
+  title?: string;
+  description?: string | null;
+  status?: string;
+  priority?: string;
+  assignee?: string | null;
+  dueDate?: string | null;
+  completed?: boolean;
+  sortOrder?: number;
+  keyResultId?: number | null;
+}
+
 export interface VendorPassword {
   id: number;
   seatId: number;

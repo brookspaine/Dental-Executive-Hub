@@ -22,5 +22,7 @@ export * from "./additionalViewers";
 export * from "./actionItems";
 export * from "./buildoutCards";
 export * from "./roles";
+export * from "./roleKeyResults";
+export * from "./roleTasks";
 export * from "./playbooks";
 export * from "./users";

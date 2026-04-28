@@ -11,12 +11,17 @@ import {
   Trash2,
   CheckSquare,
   AlertTriangle,
+  AlertCircle,
+  Calendar,
+  ChevronDown,
+  Info,
   ListChecks,
   Target,
   BookOpen,
   Sparkles,
+  User,
 } from "lucide-react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useGetRole,
   useUpdateRole,
@@ -28,9 +33,37 @@ import {
   getGetRoleQueryKey,
   getListRolesQueryKey,
   getListPlaybooksQueryKey,
+  listRoleKeyResults,
+  createRoleKeyResult,
+  updateRoleKeyResult,
+  deleteRoleKeyResult,
+  getListRoleKeyResultsQueryKey,
+  listRoleTasks,
+  createRoleTask,
+  updateRoleTask,
+  deleteRoleTask,
+  getListRoleTasksQueryKey,
+  listOrganizations,
+  listOrgChartSeats,
   type Role,
   type Playbook,
+  type RoleKeyResult,
+  type RoleTask,
 } from "@workspace/api-client-react";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useToast } from "@/hooks/use-toast";
+import { resolvePhotoUrl } from "@/components/editable-photo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -351,7 +384,7 @@ export function RoleDetail() {
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_220px]">
         <div className="min-w-0 space-y-6">
           <Section1Purpose view={view} mode={mode} patch={patchDraft} style={style} />
-          <Section2Kra view={view} mode={mode} patch={patchDraft} />
+          <Section2Kra roleId={id} />
           <Section3DailyOps view={view} mode={mode} patch={patchDraft} roleId={id} />
           <Section4Decisions view={view} mode={mode} patch={patchDraft} />
           <Section5Playbooks
@@ -549,70 +582,849 @@ function RichField({
 
 // ----- Section 2: Key Results Area -----
 //
-// Mirrors the "Key Results Area" pattern on Practice Org Chart positions:
-// a free-text bullet list of measurable outcomes the seat owns. In edit mode
-// the list is one-bullet-per-line in a textarea; in reference mode it renders
-// as a clean bulleted list.
+// Mirrors the rich "Key Results" pattern on Practice Org Chart seats: each
+// Key Result is its own card with action items (assignee, due date, status)
+// and a deadline-driven progress bar. Action items can also live "unfiled"
+// when no Key Result is set.
 
-function Section2Kra({
-  view,
-  mode,
-  patch,
-}: {
-  view: Role;
-  mode: Mode;
-  patch: (p: Partial<Role>) => void;
-}) {
-  const editing = mode === "edit";
-  const items = view.keyResultsArea ?? [];
+type SeatLite = {
+  id: number;
+  organizationId: number;
+  name?: string | null;
+  photoUrl?: string | null;
+};
+
+const KRA_UNASSIGNED = "__unassigned__";
+
+type KraTaskForm = {
+  title: string;
+  assignee: string;
+  status: string;
+  dueDate: string;
+  keyResultId: number | null;
+};
+
+const EMPTY_KRA_TASK_FORM: KraTaskForm = {
+  title: "",
+  assignee: "",
+  status: "todo",
+  dueDate: "",
+  keyResultId: null,
+};
+
+function formatKraDueDate(d: string): string {
+  return new Date(d + "T00:00:00").toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function isKraOverdue(d?: string | null, completed?: boolean): boolean {
+  if (!d || completed) return false;
+  const today = new Date(
+    new Date().toISOString().slice(0, 10) + "T00:00:00",
+  ).getTime();
+  return new Date(d + "T00:00:00").getTime() < today;
+}
+
+function Section2Kra({ roleId }: { roleId: number }) {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+
+  const errToast = (label: string) => (err: any) => {
+    const msg = err?.response?.data?.error ?? err?.message ?? "Something went wrong";
+    toast({
+      title: label,
+      description: typeof msg === "string" ? msg : "Something went wrong",
+      variant: "destructive",
+    });
+  };
+
+  // For the assignee dropdown: list everyone with a name across every
+  // organization in the org chart, so any team member can be picked.
+  const allOrgsQuery = useQuery({
+    queryKey: ["organizations", "all-for-role-assignees"],
+    queryFn: () => listOrganizations(),
+  });
+  const allOrgs =
+    (allOrgsQuery.data as Array<{ id: number }> | undefined) ?? [];
+  const allSeatsQuery = useQuery({
+    queryKey: ["org-chart-seats", "all-for-role-assignees", allOrgs.map((o) => o.id).sort()],
+    queryFn: async () => {
+      const lists = await Promise.all(
+        allOrgs.map((o) => listOrgChartSeats(o.id) as Promise<SeatLite[]>),
+      );
+      return lists.flat();
+    },
+    enabled: allOrgs.length > 0,
+  });
+  const everyoneSeats: SeatLite[] =
+    (allSeatsQuery.data as SeatLite[] | undefined) ?? [];
+
+  const directReports = useMemo(() => {
+    const seen = new Set<string>();
+    return everyoneSeats
+      .filter((s) => {
+        const name = s.name?.trim();
+        if (!name) return false;
+        const key = name.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) =>
+        (a.name ?? "").localeCompare(b.name ?? "", undefined, {
+          sensitivity: "base",
+        }),
+      );
+  }, [everyoneSeats]);
+
+  const seatByName = useMemo(() => {
+    const m = new Map<string, SeatLite>();
+    for (const s of everyoneSeats) {
+      if (s.name && s.name.trim() && !m.has(s.name.trim())) {
+        m.set(s.name.trim(), s);
+      }
+    }
+    return m;
+  }, [everyoneSeats]);
+
+  const krasQuery = useQuery({
+    queryKey: getListRoleKeyResultsQueryKey(roleId),
+    queryFn: () => listRoleKeyResults(roleId),
+    enabled: Number.isFinite(roleId),
+  });
+  const keyResults: RoleKeyResult[] =
+    (krasQuery.data as RoleKeyResult[] | undefined) ?? [];
+
+  const tasksQuery = useQuery({
+    queryKey: getListRoleTasksQueryKey(roleId),
+    queryFn: () => listRoleTasks(roleId),
+    enabled: Number.isFinite(roleId),
+  });
+  const tasks: RoleTask[] = (tasksQuery.data as RoleTask[] | undefined) ?? [];
+
+  const tasksByKra = useMemo(() => {
+    const validKraIds = new Set(keyResults.map((k) => k.id));
+    const m = new Map<number | "none", RoleTask[]>();
+    for (const t of tasks) {
+      // Bucket dangling/unknown keyResultIds under "none" so they render
+      // in Unfiled rather than disappearing from the UI.
+      const krId = t.keyResultId ?? null;
+      const key =
+        krId === null || !validKraIds.has(krId) ? "none" : (krId as number);
+      const arr = m.get(key) ?? [];
+      arr.push(t);
+      m.set(key, arr);
+    }
+    return m;
+  }, [tasks, keyResults]);
+
+  const isInitialLoading = krasQuery.isLoading || tasksQuery.isLoading;
+
+  const invalidateKras = () =>
+    qc.invalidateQueries({ queryKey: getListRoleKeyResultsQueryKey(roleId) });
+  const invalidateTasks = () =>
+    qc.invalidateQueries({ queryKey: getListRoleTasksQueryKey(roleId) });
+
+  const createKraMut = useMutation({
+    mutationFn: (data: any) => createRoleKeyResult(roleId, data),
+    onSuccess: invalidateKras,
+    onError: errToast("Could not add key result"),
+  });
+  const updateKraMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      updateRoleKeyResult(id, data),
+    onSuccess: invalidateKras,
+    onError: errToast("Could not save key result"),
+  });
+  const deleteKraMut = useMutation({
+    mutationFn: (id: number) => deleteRoleKeyResult(id),
+    onSuccess: () => {
+      invalidateKras();
+      invalidateTasks();
+    },
+    onError: errToast("Could not delete key result"),
+  });
+
+  const createTaskMut = useMutation({
+    mutationFn: (data: any) => createRoleTask(roleId, data),
+    onSuccess: invalidateTasks,
+    onError: errToast("Could not add action item"),
+  });
+  const updateTaskMut = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: any }) =>
+      updateRoleTask(id, data),
+    onSuccess: invalidateTasks,
+    onError: errToast("Could not save action item"),
+  });
+  const deleteTaskMut = useMutation({
+    mutationFn: (id: number) => deleteRoleTask(id),
+    onSuccess: invalidateTasks,
+    onError: errToast("Could not delete action item"),
+  });
+
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [editingTask, setEditingTask] = useState<RoleTask | null>(null);
+  const [form, setForm] = useState<KraTaskForm>(EMPTY_KRA_TASK_FORM);
+
+  const openAdd = (keyResultId: number | null = null) => {
+    setEditingTask(null);
+    setForm({ ...EMPTY_KRA_TASK_FORM, keyResultId });
+    setDialogOpen(true);
+  };
+  const openEdit = (t: RoleTask) => {
+    setEditingTask(t);
+    setForm({
+      title: t.title,
+      assignee: t.assignee ?? "",
+      status: t.status ?? "todo",
+      dueDate: t.dueDate ?? "",
+      keyResultId: t.keyResultId ?? null,
+    });
+    setDialogOpen(true);
+  };
+  const closeDialog = () => {
+    setDialogOpen(false);
+    setEditingTask(null);
+  };
+  const saveTask = () => {
+    if (!form.title.trim()) return;
+    const payload = {
+      title: form.title.trim(),
+      assignee: form.assignee.trim() ? form.assignee.trim() : null,
+      status: form.status,
+      dueDate: form.dueDate ? form.dueDate : null,
+      completed: form.status === "done",
+      keyResultId: form.keyResultId,
+    };
+    if (editingTask) {
+      updateTaskMut.mutate(
+        { id: editingTask.id, data: payload },
+        { onSuccess: closeDialog },
+      );
+    } else {
+      createTaskMut.mutate(payload, { onSuccess: closeDialog });
+    }
+  };
 
   return (
     <SectionShell id="kra" title="Key Results Area" icon={Target}>
-      <p className="text-sm text-slate-500">
-        The measurable outcomes this seat is accountable for. One bullet per
-        line.
-      </p>
-      {editing ? (
-        <Textarea
-          className="mt-3 font-mono text-sm"
-          rows={Math.max(6, items.length + 1)}
-          value={items.join("\n")}
-          onChange={(e) =>
-            patch({
-              keyResultsArea: e.target.value
-                .split("\n")
-                .map((s) => s.trimStart())
-                .filter((s, i, arr) =>
-                  // keep blank lines while typing only if not at the very end
-                  s.length > 0 || i < arr.length - 1
-                ),
-            })
-          }
-          placeholder={
-            "e.g. Same-day emergency slots filled at >= 85% utilization."
-          }
-        />
-      ) : items.length === 0 ? (
-        <p className="mt-3 text-sm italic text-slate-400">
-          No key results captured yet.
-        </p>
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {items.map((kra, i) => (
-            <li
-              key={i}
-              className="flex gap-2 text-sm leading-relaxed text-slate-800"
-            >
-              <span
-                aria-hidden
-                className="mt-1.5 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#0F2A47]"
+      <div className="space-y-3">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <h3 className="text-base font-semibold text-[#0F2A47]">
+              Key Results
+            </h3>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="About Key Results"
+                >
+                  <Info className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent
+                side="right"
+                className="max-w-xs bg-slate-700 text-white"
+              >
+                What winning looks like in this role and how you make an
+                impact. Break each Key Result into action items.
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          <Button
+            size="sm"
+            onClick={() =>
+              createKraMut.mutate({
+                title: "New Key Result",
+                sortOrder: keyResults.length,
+              })
+            }
+            disabled={createKraMut.isPending || isInitialLoading}
+          >
+            <Plus className="h-4 w-4 mr-1" /> Add Key Result
+          </Button>
+        </div>
+
+        {isInitialLoading && (
+          <Card>
+            <CardContent className="p-6 text-center text-sm text-muted-foreground">
+              Loading Key Results…
+            </CardContent>
+          </Card>
+        )}
+
+        {!isInitialLoading &&
+          keyResults.length === 0 &&
+          (tasksByKra.get("none") ?? []).length === 0 && (
+            <Card>
+              <CardContent className="p-6 text-center text-sm text-muted-foreground">
+                No Key Results yet. Click <strong>Add Key Result</strong> to
+                define what this seat owns.
+              </CardContent>
+            </Card>
+          )}
+
+        {keyResults.map((kr) => {
+          const krTasks = tasksByKra.get(kr.id) ?? [];
+          return (
+            <RoleKeyResultCard
+              key={kr.id}
+              kr={kr}
+              tasks={krTasks}
+              seatByName={seatByName}
+              onRename={(title) =>
+                updateKraMut.mutate({ id: kr.id, data: { title } })
+              }
+              onDelete={() => {
+                const hasTasks = krTasks.length > 0;
+                const msg = hasTasks
+                  ? `Delete this Key Result? Its ${krTasks.length} action item(s) will be kept and moved to "Unfiled action items".`
+                  : "Delete this Key Result?";
+                if (confirm(msg)) deleteKraMut.mutate(kr.id);
+              }}
+              onAddTask={() => openAdd(kr.id)}
+              onOpenTask={openEdit}
+              onDeleteTask={(id) => deleteTaskMut.mutate(id)}
+              onToggleCompleted={(t, c) =>
+                updateTaskMut.mutate({
+                  id: t.id,
+                  data: { completed: c, status: c ? "done" : "todo" },
+                })
+              }
+            />
+          );
+        })}
+
+        {(() => {
+          if (isInitialLoading) return null;
+          const unfiled = tasksByKra.get("none") ?? [];
+          // Always render the Unfiled card (with at least an "Add action item"
+          // button) when there is at least one Key Result, so users can add
+          // unfiled items even when none exist yet. Hide it only when there
+          // are zero KRs and zero unfiled — in that case the empty-state card
+          // above already prompts the user to add a Key Result first.
+          if (unfiled.length === 0 && keyResults.length === 0) return null;
+          return (
+            <Card>
+              <CardContent className="p-4 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-sm font-semibold text-muted-foreground">
+                    Unfiled action items
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openAdd(null)}
+                  >
+                    <Plus className="h-4 w-4 mr-1" /> Add action item
+                  </Button>
+                </div>
+                <div className="bg-muted/40 rounded-lg p-2 space-y-2">
+                  {unfiled.length === 0 && (
+                    <div className="text-xs text-muted-foreground italic text-center py-4">
+                      No unfiled action items.
+                    </div>
+                  )}
+                  {unfiled.map((t) => (
+                    <RoleTaskCard
+                      key={t.id}
+                      task={t}
+                      assigneeSeat={
+                        t.assignee
+                          ? seatByName.get(t.assignee.trim()) ?? null
+                          : null
+                      }
+                      onClick={() => openEdit(t)}
+                      onDelete={() => deleteTaskMut.mutate(t.id)}
+                      onToggleCompleted={(c) =>
+                        updateTaskMut.mutate({
+                          id: t.id,
+                          data: {
+                            completed: c,
+                            status: c ? "done" : "todo",
+                          },
+                        })
+                      }
+                    />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })()}
+      </div>
+
+      <Dialog
+        open={dialogOpen}
+        onOpenChange={(o) => {
+          if (!o) closeDialog();
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {editingTask ? "Edit action item" : "Add action item"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-2">
+            <div className="grid gap-2">
+              <Label>Action item name *</Label>
+              <Input
+                autoFocus
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="What needs to be done?"
               />
-              <span>{kra}</span>
-            </li>
-          ))}
-        </ul>
-      )}
+            </div>
+            <div className="grid gap-2">
+              <Label>Assignee</Label>
+              <Select
+                value={form.assignee.trim() ? form.assignee : KRA_UNASSIGNED}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    assignee: v === KRA_UNASSIGNED ? "" : v,
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose someone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={KRA_UNASSIGNED}>
+                    — Unassigned —
+                  </SelectItem>
+                  {directReports.length === 0 && (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground italic">
+                      No team members yet
+                    </div>
+                  )}
+                  {directReports.map((s) => (
+                    <SelectItem key={s.id} value={s.name as string}>
+                      <span className="inline-flex items-center gap-2">
+                        <SmallRoleAvatar url={resolvePhotoUrl(s)} />
+                        {s.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select
+                  value={form.status}
+                  onValueChange={(v) => setForm({ ...form, status: v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todo">To Do</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="done">Done</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Due date</Label>
+                <Input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={(e) =>
+                    setForm({ ...form, dueDate: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Key Result</Label>
+              <Select
+                value={form.keyResultId == null ? "none" : String(form.keyResultId)}
+                onValueChange={(v) =>
+                  setForm({
+                    ...form,
+                    keyResultId: v === "none" ? null : Number(v),
+                  })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">— Unfiled —</SelectItem>
+                  {keyResults.map((kr) => (
+                    <SelectItem key={kr.id} value={String(kr.id)}>
+                      {kr.title}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={closeDialog}>
+              Cancel
+            </Button>
+            <Button onClick={saveTask} disabled={!form.title.trim()}>
+              {editingTask ? "Save" : "Add"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </SectionShell>
+  );
+}
+
+function SmallRoleAvatar({ url }: { url: string | null }) {
+  if (url) {
+    return (
+      <img
+        src={url}
+        alt=""
+        className="h-5 w-5 rounded-full object-cover bg-muted"
+      />
+    );
+  }
+  return (
+    <span className="h-5 w-5 rounded-full bg-muted border flex items-center justify-center text-muted-foreground">
+      <User className="h-3 w-3" />
+    </span>
+  );
+}
+
+function RoleTaskCard({
+  task,
+  assigneeSeat,
+  onClick,
+  onDelete,
+  onToggleCompleted,
+}: {
+  task: RoleTask;
+  assigneeSeat: SeatLite | null;
+  onClick: () => void;
+  onDelete: () => void;
+  onToggleCompleted: (completed: boolean) => void;
+}) {
+  const dueDateFmt = task.dueDate ? formatKraDueDate(task.dueDate) : null;
+  const completed = task.completed || task.status === "done";
+  const overdue = isKraOverdue(task.dueDate, completed);
+  const ownerName = task.assignee?.trim() || "Unassigned";
+  const photo = assigneeSeat ? resolvePhotoUrl(assigneeSeat) : null;
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") onClick();
+      }}
+      className="group bg-background rounded-md border px-3 py-2 cursor-pointer hover:shadow-sm transition-shadow"
+    >
+      <div className="flex items-center gap-3">
+        <div onClick={(e) => e.stopPropagation()} className="flex items-center">
+          <Checkbox
+            checked={completed}
+            onCheckedChange={(v) => onToggleCompleted(Boolean(v))}
+            aria-label="Mark action item complete"
+          />
+        </div>
+        {photo && (
+          <img
+            src={photo}
+            alt=""
+            className="h-7 w-7 rounded-full object-cover bg-muted shrink-0"
+          />
+        )}
+        <span
+          className={`text-xs text-muted-foreground truncate max-w-[140px] ${task.assignee ? "" : "italic"}`}
+          title={ownerName}
+        >
+          {ownerName}
+        </span>
+        <div
+          className={`flex-1 min-w-0 text-sm font-medium leading-snug truncate ${completed ? "line-through text-muted-foreground" : ""}`}
+        >
+          {task.title}
+        </div>
+        {dueDateFmt && (
+          <span
+            className={`text-[11px] inline-flex items-center gap-1 shrink-0 ${overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}
+          >
+            {overdue ? (
+              <AlertCircle className="h-3 w-3" />
+            ) : (
+              <Calendar className="h-3 w-3" />
+            )}
+            {dueDateFmt}
+          </span>
+        )}
+        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+          <button
+            onClick={onDelete}
+            aria-label="Delete action item"
+            className="text-muted-foreground hover:text-destructive opacity-0 group-hover:opacity-100"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function InlineEditableText({
+  value,
+  onSave,
+  placeholder,
+  ariaLabel,
+  className = "",
+  required = false,
+}: {
+  value: string;
+  onSave: (next: string) => void;
+  placeholder?: string;
+  ariaLabel?: string;
+  className?: string;
+  required?: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (!editing) setDraft(value);
+  }, [value, editing]);
+
+  useEffect(() => {
+    if (editing) {
+      requestAnimationFrame(() => {
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      });
+    }
+  }, [editing]);
+
+  const commit = () => {
+    const trimmed = draft;
+    if (required && !trimmed.trim()) {
+      setDraft(value);
+      setEditing(false);
+      return;
+    }
+    if (trimmed !== value) onSave(trimmed);
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === "Escape") {
+            e.preventDefault();
+            setDraft(value);
+            setEditing(false);
+          }
+        }}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        className={`bg-background border border-input rounded px-1.5 py-0.5 outline-none focus:ring-2 focus:ring-primary/40 ${className}`}
+      />
+    );
+  }
+
+  const isEmpty = !value || !value.trim();
+  return (
+    <button
+      type="button"
+      onClick={() => setEditing(true)}
+      aria-label={ariaLabel}
+      className={`text-left rounded px-1 -mx-1 hover:bg-muted/60 cursor-text ${className}`}
+    >
+      {isEmpty ? (
+        <span className="italic text-muted-foreground">{placeholder}</span>
+      ) : (
+        value
+      )}
+    </button>
+  );
+}
+
+function RoleKeyResultCard({
+  kr,
+  tasks,
+  seatByName,
+  onRename,
+  onDelete,
+  onAddTask,
+  onOpenTask,
+  onDeleteTask,
+  onToggleCompleted,
+}: {
+  kr: RoleKeyResult;
+  tasks: RoleTask[];
+  seatByName: Map<string, SeatLite>;
+  onRename: (title: string) => void;
+  onDelete: () => void;
+  onAddTask: () => void;
+  onOpenTask: (t: RoleTask) => void;
+  onDeleteTask: (id: number) => void;
+  onToggleCompleted: (t: RoleTask, completed: boolean) => void;
+}) {
+  const done = tasks.filter((t) => t.completed || t.status === "done").length;
+  const total = tasks.length;
+  const pct = total === 0 ? 0 : Math.round((done / total) * 100);
+
+  const today = new Date(
+    new Date().toISOString().slice(0, 10) + "T00:00:00",
+  ).getTime();
+  const THREE_DAYS = 3 * 24 * 60 * 60 * 1000;
+  let anyOverdue = false;
+  let anyDueSoon = false;
+  for (const t of tasks) {
+    if (t.completed || t.status === "done") continue;
+    if (!t.dueDate) continue;
+    const dueMs = new Date(t.dueDate + "T00:00:00").getTime();
+    if (dueMs < today) anyOverdue = true;
+    else if (dueMs - today <= THREE_DAYS) anyDueSoon = true;
+  }
+  const allDone = total > 0 && done === total;
+
+  const [open, setOpen] = useState(false);
+  return (
+    <Card>
+      <CardContent className="p-4 space-y-3">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="text-base font-semibold leading-snug">
+              <InlineEditableText
+                value={kr.title}
+                onSave={(next) => {
+                  const t = next.trim();
+                  if (t && t !== kr.title) onRename(t);
+                }}
+                placeholder="Name this Key Result…"
+                ariaLabel="Edit Key Result title"
+                required
+              />
+            </div>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <div
+              className="hidden sm:flex items-center gap-2"
+              title={
+                total === 0
+                  ? "No action items yet"
+                  : anyOverdue
+                  ? "At least one action item is overdue"
+                  : anyDueSoon
+                  ? "An action item is due within 3 days"
+                  : allDone
+                  ? "All action items complete"
+                  : "On track"
+              }
+              aria-label={`${done} of ${total} action items complete`}
+            >
+              <div className="h-2 w-28 bg-white border border-slate-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-slate-700 transition-all"
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+                {done} of {total}
+              </span>
+            </div>
+            <button
+              onClick={onDelete}
+              aria-label="Delete Key Result"
+              className="text-muted-foreground hover:text-destructive"
+              title="Delete Key Result"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          className="sm:hidden flex items-center gap-2"
+          aria-label={`${done} of ${total} action items complete`}
+        >
+          <div className="h-2 flex-1 bg-white border border-slate-200 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-slate-700 transition-all"
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <span className="text-sm text-muted-foreground tabular-nums whitespace-nowrap">
+            {done} of {total}
+          </span>
+        </div>
+
+        <Collapsible open={open} onOpenChange={setOpen}>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="w-full flex items-center justify-between gap-3 rounded-md border bg-muted/40 hover:bg-muted px-3 py-2 text-sm transition-colors"
+              aria-label={`${open ? "Hide" : "Show"} action items`}
+            >
+              <span className="inline-flex items-center gap-2">
+                <ChevronDown
+                  className={`h-4 w-4 transition-transform ${open ? "rotate-0" : "-rotate-90"}`}
+                />
+                <span className="font-medium">
+                  {tasks.length} action item{tasks.length === 1 ? "" : "s"}
+                </span>
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {open ? "Hide" : "Show"}
+              </span>
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent className="pt-2 space-y-2">
+            <div className="bg-muted/40 rounded-lg p-2 space-y-2">
+              {tasks.length === 0 && (
+                <div className="text-xs text-muted-foreground italic text-center py-4">
+                  No action items yet for this Key Result.
+                </div>
+              )}
+              {tasks.map((t) => (
+                <RoleTaskCard
+                  key={t.id}
+                  task={t}
+                  assigneeSeat={
+                    t.assignee
+                      ? seatByName.get(t.assignee.trim()) ?? null
+                      : null
+                  }
+                  onClick={() => onOpenTask(t)}
+                  onDelete={() => onDeleteTask(t.id)}
+                  onToggleCompleted={(c) => onToggleCompleted(t, c)}
+                />
+              ))}
+            </div>
+            <div>
+              <Button size="sm" variant="outline" onClick={onAddTask}>
+                <Plus className="h-4 w-4 mr-1" /> Add action item
+              </Button>
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
+      </CardContent>
+    </Card>
   );
 }
 

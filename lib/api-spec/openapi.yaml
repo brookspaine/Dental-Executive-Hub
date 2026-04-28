@@ -1492,6 +1492,170 @@ paths:
         "204":
           description: Deleted
 
+  /roles/{roleId}/key-results:
+    get:
+      operationId: listRoleKeyResults
+      tags: [roleKeyResults]
+      summary: List key results for a role
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Key results
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleKeyResult"
+    post:
+      operationId: createRoleKeyResult
+      tags: [roleKeyResults]
+      summary: Create a key result for a role
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleKeyResultBody"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleKeyResult"
+
+  /role-key-results/{id}:
+    patch:
+      operationId: updateRoleKeyResult
+      tags: [roleKeyResults]
+      summary: Update a role key result
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleKeyResultBody"
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleKeyResult"
+    delete:
+      operationId: deleteRoleKeyResult
+      tags: [roleKeyResults]
+      summary: Delete a role key result
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /roles/{roleId}/tasks:
+    get:
+      operationId: listRoleTasks
+      tags: [roleTasks]
+      summary: List tasks for a role
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RoleTask"
+    post:
+      operationId: createRoleTask
+      tags: [roleTasks]
+      summary: Create a task for a role
+      parameters:
+        - name: roleId
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleTaskBody"
+      responses:
+        "201":
+          description: Created task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleTask"
+
+  /role-tasks/{id}:
+    patch:
+      operationId: updateRoleTask
+      tags: [roleTasks]
+      summary: Update a role task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleTaskBody"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleTask"
+    delete:
+      operationId: deleteRoleTask
+      tags: [roleTasks]
+      summary: Delete a role task
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /playbooks:
     get:
       operationId: listPlaybooks
@@ -2402,6 +2566,158 @@ components:
           nullable: true
         sortOrder:
           type: integer
+
+    RoleKeyResult:
+      type: object
+      properties:
+        id:
+          type: integer
+        roleId:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - roleId
+        - title
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateRoleKeyResultBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+      required:
+        - title
+
+    UpdateRoleKeyResultBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        description:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+
+    RoleTask:
+      type: object
+      properties:
+        id:
+          type: integer
+        roleId:
+          type: integer
+        keyResultId:
+          type: integer
+          nullable: true
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: string
+        assignee:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - roleId
+        - title
+        - status
+        - priority
+        - completed
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateRoleTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: string
+        assignee:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          nullable: true
+        sortOrder:
+          type: integer
+        keyResultId:
+          type: integer
+          nullable: true
+      required:
+        - title
+
+    UpdateRoleTaskBody:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+          nullable: true
+        status:
+          type: string
+        priority:
+          type: string
+        assignee:
+          type: string
+          nullable: true
+        dueDate:
+          type: string
+          nullable: true
+        completed:
+          type: boolean
+        sortOrder:
+          type: integer
+        keyResultId:
+          type: integer
+          nullable: true
 
     VendorPassword:
       type: object
