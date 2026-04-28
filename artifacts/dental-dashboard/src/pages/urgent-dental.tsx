@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TodoList } from "@/components/todo-list";
+import { CategoryActionCard } from "@/components/category-action-card";
 import {
   MapPin,
   Users as UsersIcon,
@@ -28,7 +28,7 @@ import {
   X,
   Save,
   Zap,
-  Activity,
+  Settings,
 } from "lucide-react";
 
 export function UrgentDental() {
@@ -263,65 +263,19 @@ export function UrgentDental() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="min-h-[320px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <DollarSign className="h-5 w-5 text-primary" />
-                  Financials
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <TodoList
-                  storageKey={`urgent-todos-${location.id}-financials`}
-                  placeholder="Add a financial to-do…"
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="min-h-[320px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <MapPin className="h-5 w-5 text-primary" />
-                  Location
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <TodoList
-                  storageKey={`urgent-todos-${location.id}-location`}
-                  placeholder="Add a location to-do…"
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="min-h-[320px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <UsersIcon className="h-5 w-5 text-primary" />
-                  People
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <TodoList
-                  storageKey={`urgent-todos-${location.id}-people`}
-                  placeholder="Add a people to-do…"
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="min-h-[320px] flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Activity className="h-5 w-5 text-primary" />
-                  Operations
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col">
-                <TodoList
-                  storageKey={`urgent-todos-${location.id}-operations`}
-                  placeholder="Add an operations to-do…"
-                />
-              </CardContent>
-            </Card>
+            {[
+              { title: "Financials", icon: DollarSign },
+              { title: "Location", icon: MapPin },
+              { title: "People", icon: UsersIcon },
+              { title: "Operations", icon: Settings },
+            ].map(({ title, icon: Icon }) => (
+              <CategoryActionCard
+                key={title}
+                title={title}
+                icon={Icon}
+                scopeId={`ud-location-${location.id}`}
+              />
+            ))}
           </div>
         </div>
       )}
