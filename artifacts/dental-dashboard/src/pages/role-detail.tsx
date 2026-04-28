@@ -110,7 +110,7 @@ const CHECKLIST_PHASES: { key: ChecklistPhase; label: string }[] = [
 ];
 
 const SECTIONS = [
-  { id: "purpose", label: "Purpose & Cultural Alignment", icon: Sparkles },
+  { id: "purpose", label: "Purpose", icon: Sparkles },
   { id: "kpis", label: "What Success Looks Like", icon: Target },
   { id: "daily-ops", label: "Daily Operations", icon: ListChecks },
   { id: "decisions", label: "Decisions to Own", icon: CheckSquare },
@@ -308,60 +308,6 @@ export function RoleDetail() {
                     : "—"
                 }
               />
-              <MetaField
-                label="Business area"
-                editing={mode === "edit"}
-                editor={
-                  <Select
-                    value={view.businessArea}
-                    onValueChange={(v) => patchDraft({ businessArea: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BUSINESS_AREAS.map((a) => (
-                        <SelectItem key={a} value={a}>
-                          {a}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                }
-                value={
-                  <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", style.pill)}>
-                    {view.businessArea}
-                  </span>
-                }
-              />
-              <MetaField
-                label="Tier"
-                editing={mode === "edit"}
-                editor={
-                  <Select
-                    value={view.tier}
-                    onValueChange={(v) => patchDraft({ tier: v })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIERS.map((t) => (
-                        <SelectItem key={t} value={t}>
-                          {t}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                }
-                value={view.tier}
-              />
-            </div>
-            <div className="mt-3 text-xs text-slate-500">
-              Last reviewed{" "}
-              {view.lastReviewedAt
-                ? new Date(view.lastReviewedAt).toLocaleString()
-                : "never"}
             </div>
           </div>
           <div className="flex flex-col items-end gap-2">
@@ -577,11 +523,8 @@ function Section1Purpose({
       >
         <Sparkles className="h-4 w-4 text-[#D62828]" />
         <h2 className="text-sm font-semibold text-[#0F2A47]">
-          Purpose & Cultural Alignment
+          Purpose
         </h2>
-        <span className="ml-2 text-xs text-slate-500">
-          Why this seat exists at EDGE.
-        </span>
       </header>
       <div className="space-y-5 px-5 py-5 text-[15px] leading-relaxed">
         <RichField
@@ -590,27 +533,6 @@ function Section1Purpose({
           mode={mode}
           rows={3}
           onChange={(v) => patch({ purposeStatement: v })}
-        />
-        <RichField
-          label="How this role advances the EDGE mission"
-          value={view.missionAlignment}
-          mode={mode}
-          rows={3}
-          onChange={(v) => patch({ missionAlignment: v })}
-        />
-        <RichField
-          label="Cultural Code alignment"
-          value={view.culturalAlignment}
-          mode={mode}
-          rows={3}
-          onChange={(v) => patch({ culturalAlignment: v })}
-        />
-        <RichField
-          label="VEG-style patient / colleague impact"
-          value={view.vegStyleImpact}
-          mode={mode}
-          rows={3}
-          onChange={(v) => patch({ vegStyleImpact: v })}
         />
       </div>
     </section>
@@ -662,7 +584,6 @@ function Section2Kpis({
       id="kpis"
       title="What Success Looks Like"
       icon={Target}
-      description="The KPIs that prove this seat is winning."
     >
       <div className="space-y-5">
         <RichField
@@ -735,9 +656,6 @@ function KpiTable({
                 <TableHead className="min-w-[180px]">KPI</TableHead>
                 <TableHead className="min-w-[200px]">Description</TableHead>
                 <TableHead className="min-w-[100px]">Target</TableHead>
-                <TableHead className="min-w-[110px]">Frequency</TableHead>
-                <TableHead className="min-w-[150px]">Data source</TableHead>
-                <TableHead className="min-w-[120px]">Owner</TableHead>
                 {editing && <TableHead className="w-10" />}
               </TableRow>
             </TableHeader>
@@ -811,9 +729,6 @@ function KpiRow({
         <TableCell className="font-medium text-slate-800">{kpi.name || "—"}</TableCell>
         <TableCell className="text-sm text-slate-700">{kpi.description || "—"}</TableCell>
         <TableCell className="font-mono text-sm">{kpi.target || "—"}</TableCell>
-        <TableCell className="text-sm">{kpi.frequency}</TableCell>
-        <TableCell className="text-sm text-slate-700">{kpi.dataSource || "—"}</TableCell>
-        <TableCell className="text-sm text-slate-700">{kpi.owner || "—"}</TableCell>
       </TableRow>
     );
   }
@@ -843,32 +758,6 @@ function KpiRow({
       </TableCell>
       <TableCell>
         <Input value={kpi.target} onChange={(e) => onChange({ ...kpi, target: e.target.value })} />
-      </TableCell>
-      <TableCell>
-        <Select
-          value={kpi.frequency}
-          onValueChange={(v) => onChange({ ...kpi, frequency: v as Kpi["frequency"] })}
-        >
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {KPI_FREQUENCIES.map((f) => (
-              <SelectItem key={f} value={f}>
-                {f}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </TableCell>
-      <TableCell>
-        <Input
-          value={kpi.dataSource}
-          onChange={(e) => onChange({ ...kpi, dataSource: e.target.value })}
-        />
-      </TableCell>
-      <TableCell>
-        <Input value={kpi.owner} onChange={(e) => onChange({ ...kpi, owner: e.target.value })} />
       </TableCell>
       <TableCell>
         <Button
