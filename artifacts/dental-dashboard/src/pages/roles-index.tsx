@@ -193,16 +193,6 @@ function RoleNodeCard({ role, compact }: { role: Role; compact: boolean }) {
               )}
             </div>
           </div>
-          {!compact && (
-            <div className="mt-1 flex flex-wrap justify-center gap-1">
-              <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-medium ${style.pill}`}>
-                {role.businessArea}
-              </span>
-              <span className="rounded-full bg-slate-100 px-1.5 py-0.5 text-[9px] font-medium text-slate-700">
-                {role.tier}
-              </span>
-            </div>
-          )}
         </div>
       </div>
     </Link>
