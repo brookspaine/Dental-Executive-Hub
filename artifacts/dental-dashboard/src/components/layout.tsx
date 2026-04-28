@@ -22,6 +22,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import edgLogo from "@assets/White_background-png_1777375136787.png";
 
 const CURRENT_USER_NAME = "Brooks Paine";
 const CURRENT_USER_TITLE = "Chief Executive Officer";
@@ -233,24 +234,13 @@ function UserBadge() {
 }
 
 function BrandHeader() {
-  const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
-  const logoSrc = `${baseUrl}edg-logo.jpg`;
   return (
-    <div className="h-16 flex items-center px-6 border-b border-slate-200 shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
-        <div className="shrink-0">
-          <img
-            src={logoSrc}
-            alt="Emergency Dental Group"
-            className="h-7 w-auto object-contain"
-          />
-        </div>
-        <span className="font-semibold text-[#0F2A47] tracking-tight text-sm leading-tight truncate">
-          Emergency
-          <br />
-          Dental Group
-        </span>
-      </div>
+    <div className="h-16 flex items-center px-4 border-b border-slate-200 shrink-0 bg-white">
+      <img
+        src={edgLogo}
+        alt="Emergency Dental Group"
+        className="h-12 w-auto object-contain"
+      />
     </div>
   );
 }
@@ -268,25 +258,18 @@ export function Layout({ children }: { children: React.ReactNode }) {
   // Page title in the navy bar is intentionally only shown for Ideal Week.
   const showTitle = location === "/ideal-week" || location === "/";
 
-  const baseUrl = (import.meta as any).env?.BASE_URL ?? "/";
-  const logoSrc = `${baseUrl}edg-logo.jpg`;
-
   return (
     <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
       {/* Full-width navy top bar */}
       <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
-        {/* Brand block — aligned with sidebar width on desktop */}
-        <div className="hidden md:flex w-64 items-center gap-3 px-6 border-r border-white/10 shrink-0">
+        {/* Brand block — aligned with sidebar width on desktop. White panel
+            so the on-white EDG logo reads cleanly against the navy bar. */}
+        <div className="hidden md:flex w-64 items-center justify-center px-3 bg-white border-r border-slate-200 shrink-0">
           <img
-            src={logoSrc}
+            src={edgLogo}
             alt="Emergency Dental Group"
-            className="h-7 w-auto object-contain shrink-0"
+            className="h-16 w-auto object-contain"
           />
-          <span className="font-semibold text-white tracking-tight text-sm leading-tight truncate">
-            Emergency
-            <br />
-            Dental Group
-          </span>
         </div>
 
         {/* Mobile: hamburger + condensed brand */}
@@ -316,11 +299,13 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <UserBadge />
             </SheetContent>
           </Sheet>
-          <img
-            src={logoSrc}
-            alt="Emergency Dental Group"
-            className="h-6 w-auto object-contain shrink-0"
-          />
+          <span className="inline-flex items-center justify-center bg-white rounded-md px-1.5 py-1 shrink-0">
+            <img
+              src={edgLogo}
+              alt="Emergency Dental Group"
+              className="h-7 w-auto object-contain"
+            />
+          </span>
           {showTitle && (
             <span className="font-semibold text-white text-sm tracking-tight truncate">
               {currentLabel}
