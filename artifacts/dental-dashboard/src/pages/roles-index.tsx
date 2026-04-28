@@ -64,7 +64,7 @@ function NewRoleButton({
   return (
     <>
       <Button onClick={() => setOpen(true)} className="gap-1.5">
-        <Plus className="h-4 w-4" /> New Role
+        <Plus className="h-4 w-4" /> New Seat
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
