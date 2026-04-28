@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Users, Network } from "lucide-react";
+import { Check, Pencil, Plus, Users, Network } from "lucide-react";
 import {
   useListRoles,
   useCreateRole,
+  useUpdateRole,
   useListOrganizations,
+  getGetRoleQueryKey,
   type Role,
   type Organization,
 } from "@workspace/api-client-react";
@@ -150,40 +152,158 @@ function initialsOf(name: string): string {
   return (parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "");
 }
 
-function RoleNodeCard({ role, compact }: { role: Role; compact: boolean }) {
+function RoleNodeCard({
+  role,
+  compact,
+  editMode,
+  onEdit,
+}: {
+  role: Role;
+  compact: boolean;
+  editMode: boolean;
+  onEdit: (role: Role) => void;
+}) {
   const style = areaStyle(role.businessArea);
   const isOpen = !role.seatHolderName || role.seatHolderName === "Open";
-  return (
-    <Link href={`/my-roles/${role.id}`}>
+  const cardInner = (
+    <div
+      className={`group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-xl border-2 bg-white transition-all hover:-translate-y-0.5 hover:shadow-md ${style.ring}`}
+    >
+      {editMode && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            onEdit(role);
+          }}
+          className="absolute right-1.5 top-1.5 z-10 rounded-md border border-slate-200 bg-white/90 p-1 text-slate-500 shadow-sm hover:bg-[#0F2A47] hover:text-white"
+          aria-label={`Edit ${role.title}`}
+        >
+          <Pencil className="h-3.5 w-3.5" />
+        </button>
+      )}
+      <div className={`h-1 w-full ${style.bar}`} />
       <div
-        className={`group relative flex h-full w-full cursor-pointer flex-col overflow-hidden rounded-xl border-2 bg-white transition-all hover:-translate-y-0.5 hover:shadow-md ${style.ring}`}
+        className={`flex flex-1 flex-col items-center gap-2 px-3 ${compact ? "py-4" : "pt-4 pb-3"}`}
       >
-        <div className={`h-1 w-full ${style.bar}`} />
-        <div className={`flex flex-1 flex-col items-center gap-2 px-3 ${compact ? "py-4" : "pt-4 pb-3"}`}>
+        <div
+          className={`flex items-center justify-center rounded-full text-sm font-semibold ${
+            isOpen
+              ? "border-2 border-dashed border-amber-300 bg-amber-50 text-amber-700"
+              : "bg-[#0F2A47] text-white"
+          } ${compact ? "h-12 w-12" : "h-10 w-10"}`}
+        >
+          {isOpen ? "?" : initialsOf(role.seatHolderName)}
+        </div>
+        <div className="text-center">
           <div
-            className={`flex items-center justify-center rounded-full text-sm font-semibold ${
-              isOpen
-                ? "border-2 border-dashed border-amber-300 bg-amber-50 text-amber-700"
-                : "bg-[#0F2A47] text-white"
-            } ${compact ? "h-12 w-12" : "h-10 w-10"}`}
+            className={`font-semibold leading-tight text-slate-900 group-hover:text-[#0F2A47] ${compact ? "text-sm" : "text-[13px]"}`}
           >
-            {isOpen ? "?" : initialsOf(role.seatHolderName)}
+            {role.title}
           </div>
-          <div className="text-center">
-            <div className={`font-semibold leading-tight text-slate-900 group-hover:text-[#0F2A47] ${compact ? "text-sm" : "text-[13px]"}`}>
-              {role.title}
-            </div>
-            <div className="mt-0.5 text-[11px] text-slate-500">
-              {isOpen ? (
-                <span className="text-amber-700">Open seat</span>
-              ) : (
-                role.seatHolderName
-              )}
-            </div>
+          <div className="mt-0.5 text-[11px] text-slate-500">
+            {isOpen ? (
+              <span className="text-amber-700">Open seat</span>
+            ) : (
+              role.seatHolderName
+            )}
           </div>
         </div>
       </div>
-    </Link>
+    </div>
+  );
+
+  return <Link href={`/my-roles/${role.id}`}>{cardInner}</Link>;
+}
+
+function EditRoleDialog({
+  role,
+  open,
+  onClose,
+}: {
+  role: Role | null;
+  open: boolean;
+  onClose: () => void;
+}) {
+  const [title, setTitle] = useState("");
+  const [seatHolderName, setSeatHolderName] = useState("");
+  const qc = useQueryClient();
+  const updateRole = useUpdateRole({
+    mutation: {
+      onSuccess: (_data, vars) => {
+        qc.invalidateQueries({ queryKey: getListRolesQueryKey() });
+        qc.invalidateQueries({ queryKey: getGetRoleQueryKey(vars.id) });
+        onClose();
+      },
+    },
+  });
+
+  useEffect(() => {
+    if (role) {
+      setTitle(role.title);
+      setSeatHolderName(role.seatHolderName === "Open" ? "" : role.seatHolderName);
+    }
+  }, [role]);
+
+  if (!role) return null;
+  const trimmedName = seatHolderName.trim();
+  const initials = trimmedName
+    ? trimmedName
+        .split(/\s+/)
+        .slice(0, 2)
+        .map((p) => p[0]?.toUpperCase() ?? "")
+        .join("")
+    : "";
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit role</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div>
+            <Label htmlFor="edit-role-title">Role title</Label>
+            <Input
+              id="edit-role-title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              autoFocus
+            />
+          </div>
+          <div>
+            <Label htmlFor="edit-seat-holder">Seat holder name</Label>
+            <Input
+              id="edit-seat-holder"
+              value={seatHolderName}
+              onChange={(e) => setSeatHolderName(e.target.value)}
+              placeholder="Leave blank for Open seat"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!title.trim() || updateRole.isPending}
+            onClick={() =>
+              updateRole.mutate({
+                id: role.id,
+                data: {
+                  title: title.trim(),
+                  seatHolderName: trimmedName || "Open",
+                  seatHolderInitials: initials,
+                },
+              })
+            }
+          >
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -211,6 +331,8 @@ export function RolesIndex() {
   const { data: roles = [], isLoading } = useListRoles();
   const { data: organizations = [] } = useListOrganizations();
   const [orgFilter, setOrgFilter] = useState<string>("");
+  const [editMode, setEditMode] = useState(false);
+  const [editingRole, setEditingRole] = useState<Role | null>(null);
 
   // Group organizations by category for the dropdown.
   const groupedOrgs = useMemo(() => {
@@ -310,11 +432,26 @@ export function RolesIndex() {
             it run.
           </p>
         </div>
-        <NewRoleButton
-          roles={roles}
-          organizations={organizations}
-          defaultOrgId={defaultOrgId}
-        />
+        <div className="flex items-center gap-2">
+          <NewRoleButton
+            roles={roles}
+            organizations={organizations}
+            defaultOrgId={defaultOrgId}
+          />
+          <Button
+            variant={editMode ? "default" : "outline"}
+            size="icon"
+            onClick={() => setEditMode((v) => !v)}
+            aria-label={editMode ? "Done editing" : "Edit roles"}
+            title={editMode ? "Done editing" : "Edit roles"}
+          >
+            {editMode ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <Pencil className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -369,7 +506,12 @@ export function RolesIndex() {
                           className="absolute -top-4 left-1/2 h-4 w-px -translate-x-1/2 bg-slate-200"
                         />
                       )}
-                      <RoleNodeCard role={r} compact={isOwnerTier} />
+                      <RoleNodeCard
+                        role={r}
+                        compact={isOwnerTier}
+                        editMode={editMode}
+                        onEdit={setEditingRole}
+                      />
                     </div>
                   );
                 })}
@@ -378,6 +520,12 @@ export function RolesIndex() {
           ))}
         </div>
       )}
+
+      <EditRoleDialog
+        role={editingRole}
+        open={editingRole !== null}
+        onClose={() => setEditingRole(null)}
+      />
     </div>
   );
 }
