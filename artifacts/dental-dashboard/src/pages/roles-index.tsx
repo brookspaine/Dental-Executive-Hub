@@ -21,9 +21,7 @@ import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -207,11 +205,6 @@ function buildTree(roles: Role[]): {
   return { roots, childrenOf };
 }
 
-const ORG_GROUP_LABEL: Record<string, string> = {
-  edge_dso: "EDGE DSO",
-  edge: "EDGE Locations",
-  urgent_dental: "UD Locations",
-};
 const ORG_GROUP_ORDER = ["edge_dso", "edge", "urgent_dental"];
 
 export function RolesIndex() {
@@ -330,18 +323,13 @@ export function RolesIndex() {
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {groupedOrgs.map(({ cat, orgs }) => (
-              <SelectGroup key={cat}>
-                <SelectLabel className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                  {ORG_GROUP_LABEL[cat] ?? cat}
-                </SelectLabel>
-                {orgs.map((o) => (
-                  <SelectItem key={o.id} value={String(o.id)}>
-                    {(o.name ?? "").trim()}
-                  </SelectItem>
-                ))}
-              </SelectGroup>
-            ))}
+            {groupedOrgs.flatMap(({ orgs }) =>
+              orgs.map((o) => (
+                <SelectItem key={o.id} value={String(o.id)}>
+                  {(o.name ?? "").trim()}
+                </SelectItem>
+              )),
+            )}
           </SelectContent>
         </Select>
       </div>
