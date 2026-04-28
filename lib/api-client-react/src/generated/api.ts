@@ -28,6 +28,7 @@ import type {
   CreateBuildoutCardBody,
   CreateDailyTop3Body,
   CreateDirectReportBody,
+  CreateFutureTodoBody,
   CreateOrgChartSeatBody,
   CreateOrganizationBody,
   CreatePlaybookBody,
@@ -45,6 +46,7 @@ import type {
   DashboardSummary,
   DirectReport,
   ErrorEnvelope,
+  FutureTodo,
   GetRecentActivityParams,
   HealthStatus,
   IdealWeekCompletion,
@@ -66,6 +68,7 @@ import type {
   UpdateBuildoutCardBody,
   UpdateDailyTop3Body,
   UpdateDirectReportBody,
+  UpdateFutureTodoBody,
   UpdateIdealWeekRitualBody,
   UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
@@ -760,6 +763,338 @@ export const useDeleteDailyTop3 = <
   TContext
 > => {
   return useMutation(getDeleteDailyTop3MutationOptions(options));
+};
+
+/**
+ * @summary List future to-do items
+ */
+export const getListFutureTodosUrl = () => {
+  return `/api/future-todos`;
+};
+
+export const listFutureTodos = async (
+  options?: RequestInit,
+): Promise<FutureTodo[]> => {
+  return customFetch<FutureTodo[]>(getListFutureTodosUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListFutureTodosQueryKey = () => {
+  return [`/api/future-todos`] as const;
+};
+
+export const getListFutureTodosQueryOptions = <
+  TData = Awaited<ReturnType<typeof listFutureTodos>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFutureTodos>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListFutureTodosQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listFutureTodos>>> = ({
+    signal,
+  }) => listFutureTodos({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listFutureTodos>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListFutureTodosQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listFutureTodos>>
+>;
+export type ListFutureTodosQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List future to-do items
+ */
+
+export function useListFutureTodos<
+  TData = Awaited<ReturnType<typeof listFutureTodos>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listFutureTodos>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListFutureTodosQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a future to-do item
+ */
+export const getCreateFutureTodoUrl = () => {
+  return `/api/future-todos`;
+};
+
+export const createFutureTodo = async (
+  createFutureTodoBody: CreateFutureTodoBody,
+  options?: RequestInit,
+): Promise<FutureTodo> => {
+  return customFetch<FutureTodo>(getCreateFutureTodoUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createFutureTodoBody),
+  });
+};
+
+export const getCreateFutureTodoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFutureTodo>>,
+    TError,
+    { data: BodyType<CreateFutureTodoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createFutureTodo>>,
+  TError,
+  { data: BodyType<CreateFutureTodoBody> },
+  TContext
+> => {
+  const mutationKey = ["createFutureTodo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createFutureTodo>>,
+    { data: BodyType<CreateFutureTodoBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createFutureTodo(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateFutureTodoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createFutureTodo>>
+>;
+export type CreateFutureTodoMutationBody = BodyType<CreateFutureTodoBody>;
+export type CreateFutureTodoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a future to-do item
+ */
+export const useCreateFutureTodo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createFutureTodo>>,
+    TError,
+    { data: BodyType<CreateFutureTodoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createFutureTodo>>,
+  TError,
+  { data: BodyType<CreateFutureTodoBody> },
+  TContext
+> => {
+  return useMutation(getCreateFutureTodoMutationOptions(options));
+};
+
+/**
+ * @summary Update a future to-do item
+ */
+export const getUpdateFutureTodoUrl = (id: number) => {
+  return `/api/future-todos/${id}`;
+};
+
+export const updateFutureTodo = async (
+  id: number,
+  updateFutureTodoBody: UpdateFutureTodoBody,
+  options?: RequestInit,
+): Promise<FutureTodo> => {
+  return customFetch<FutureTodo>(getUpdateFutureTodoUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateFutureTodoBody),
+  });
+};
+
+export const getUpdateFutureTodoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFutureTodo>>,
+    TError,
+    { id: number; data: BodyType<UpdateFutureTodoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateFutureTodo>>,
+  TError,
+  { id: number; data: BodyType<UpdateFutureTodoBody> },
+  TContext
+> => {
+  const mutationKey = ["updateFutureTodo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateFutureTodo>>,
+    { id: number; data: BodyType<UpdateFutureTodoBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateFutureTodo(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateFutureTodoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateFutureTodo>>
+>;
+export type UpdateFutureTodoMutationBody = BodyType<UpdateFutureTodoBody>;
+export type UpdateFutureTodoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a future to-do item
+ */
+export const useUpdateFutureTodo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateFutureTodo>>,
+    TError,
+    { id: number; data: BodyType<UpdateFutureTodoBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateFutureTodo>>,
+  TError,
+  { id: number; data: BodyType<UpdateFutureTodoBody> },
+  TContext
+> => {
+  return useMutation(getUpdateFutureTodoMutationOptions(options));
+};
+
+/**
+ * @summary Delete a future to-do item
+ */
+export const getDeleteFutureTodoUrl = (id: number) => {
+  return `/api/future-todos/${id}`;
+};
+
+export const deleteFutureTodo = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteFutureTodoUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteFutureTodoMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFutureTodo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteFutureTodo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteFutureTodo"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteFutureTodo>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteFutureTodo(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteFutureTodoMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteFutureTodo>>
+>;
+
+export type DeleteFutureTodoMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a future to-do item
+ */
+export const useDeleteFutureTodo = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteFutureTodo>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteFutureTodo>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteFutureTodoMutationOptions(options));
 };
 
 /**

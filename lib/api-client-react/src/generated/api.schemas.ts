@@ -51,6 +51,28 @@ export interface UpdateDailyTop3Body {
   priority?: number;
 }
 
+export interface FutureTodo {
+  id: number;
+  title: string;
+  completed: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFutureTodoBody {
+  /** @minLength 1 */
+  title: string;
+  sortOrder?: number;
+}
+
+export interface UpdateFutureTodoBody {
+  /** @minLength 1 */
+  title?: string;
+  completed?: boolean;
+  sortOrder?: number;
+}
+
 export interface WisdomQuote {
   id: number;
   text: string;

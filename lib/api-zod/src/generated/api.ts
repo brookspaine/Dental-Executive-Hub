@@ -105,6 +105,57 @@ export const DeleteDailyTop3Params = zod.object({
 });
 
 /**
+ * @summary List future to-do items
+ */
+export const ListFutureTodosResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  completed: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListFutureTodosResponse = zod.array(ListFutureTodosResponseItem);
+
+/**
+ * @summary Create a future to-do item
+ */
+
+export const CreateFutureTodoBody = zod.object({
+  title: zod.string().min(1),
+  sortOrder: zod.number().optional(),
+});
+
+/**
+ * @summary Update a future to-do item
+ */
+export const UpdateFutureTodoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateFutureTodoBody = zod.object({
+  title: zod.string().min(1).optional(),
+  completed: zod.boolean().optional(),
+  sortOrder: zod.number().optional(),
+});
+
+export const UpdateFutureTodoResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  completed: zod.boolean(),
+  sortOrder: zod.number(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a future to-do item
+ */
+export const DeleteFutureTodoParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
  * @summary List all wisdom quotes
  */
 export const ListWisdomQuotesResponseItem = zod.object({

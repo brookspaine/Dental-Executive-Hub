@@ -22,6 +22,7 @@ import rolesRouter from "./roles";
 import roleKeyResultsRouter from "./roleKeyResults";
 import roleTasksRouter from "./roleTasks";
 import playbooksRouter from "./playbooks";
+import futureTodosRouter from "./futureTodos";
 import meRouter from "./me";
 
 const router: IRouter = Router();
@@ -49,6 +50,7 @@ router.use(rolesRouter);
 router.use(roleKeyResultsRouter);
 router.use(roleTasksRouter);
 router.use(playbooksRouter);
+router.use(futureTodosRouter);
 router.use(meRouter);
 
 export default router;

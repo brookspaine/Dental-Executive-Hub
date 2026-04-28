@@ -198,6 +198,76 @@ paths:
         "204":
           description: Deleted
 
+  /future-todos:
+    get:
+      operationId: listFutureTodos
+      tags: [futureTodos]
+      summary: List future to-do items
+      responses:
+        "200":
+          description: List of future to-do items
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FutureTodo"
+    post:
+      operationId: createFutureTodo
+      tags: [futureTodos]
+      summary: Create a future to-do item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFutureTodoBody"
+      responses:
+        "201":
+          description: Created item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FutureTodo"
+
+  /future-todos/{id}:
+    patch:
+      operationId: updateFutureTodo
+      tags: [futureTodos]
+      summary: Update a future to-do item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateFutureTodoBody"
+      responses:
+        "200":
+          description: Updated item
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FutureTodo"
+    delete:
+      operationId: deleteFutureTodo
+      tags: [futureTodos]
+      summary: Delete a future to-do item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
   /wisdom-quotes:
     get:
       operationId: listWisdomQuotes
@@ -1835,6 +1905,53 @@ components:
         completed:
           type: boolean
         priority:
+          type: integer
+
+    FutureTodo:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        completed:
+          type: boolean
+        sortOrder:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - completed
+        - sortOrder
+        - createdAt
+        - updatedAt
+
+    CreateFutureTodoBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        sortOrder:
+          type: integer
+      required:
+        - title
+
+    UpdateFutureTodoBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        completed:
+          type: boolean
+        sortOrder:
           type: integer
 
     WisdomQuote:

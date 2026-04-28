@@ -9,6 +9,11 @@ import {
   useCreateDailyTop3,
   useUpdateDailyTop3,
   useDeleteDailyTop3,
+  useListFutureTodos,
+  useCreateFutureTodo,
+  useUpdateFutureTodo,
+  useDeleteFutureTodo,
+  getListFutureTodosQueryKey,
   getListDailyTop3QueryKey,
   useListScheduleBlocks,
   useCreateScheduleBlock,
@@ -75,6 +80,7 @@ import {
   Pause,
   Square,
   Loader2,
+  ListTodo,
 } from "lucide-react";
 import {
   categoryColors,
@@ -792,6 +798,112 @@ function Big3Section({
         {items.length === 0 && !canAdd && (
           <p className="text-sm text-muted-foreground text-center py-2">
             No items yet
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function FutureTodoSection({
+  items,
+  onAdd,
+  onToggle,
+  onDelete,
+  onRename,
+}: {
+  items: { id: number; title: string; completed: boolean }[];
+  onAdd: (title: string) => void;
+  onToggle: (id: number, completed: boolean) => void;
+  onDelete: (id: number) => void;
+  onRename: (id: number, title: string) => void;
+}) {
+  const [newTitle, setNewTitle] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleAdd = () => {
+    if (!newTitle.trim()) return;
+    onAdd(newTitle.trim());
+    setNewTitle("");
+    inputRef.current?.focus();
+  };
+
+  const openItems = items.filter((i) => !i.completed);
+  const doneItems = items.filter((i) => i.completed);
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <ListTodo className="h-4 w-4" />
+            Future To-Do
+          </CardTitle>
+          <Badge variant="secondary" className="text-xs">
+            {openItems.length} open
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {openItems.map((item) => (
+          <EditableItem
+            key={item.id}
+            item={item}
+            onToggle={onToggle}
+            onDelete={onDelete}
+            onRename={onRename}
+          />
+        ))}
+
+        <div className="flex items-center gap-2 pt-1">
+          <Input
+            ref={inputRef}
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+            placeholder="Add something for later..."
+            className="h-8 text-sm"
+          />
+          <Button
+            variant="outline"
+            size="icon"
+            className="h-8 w-8 shrink-0"
+            onClick={handleAdd}
+            disabled={!newTitle.trim()}
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+
+        {doneItems.length > 0 && (
+          <div className="pt-1">
+            <button
+              type="button"
+              onClick={() => setShowCompleted((v) => !v)}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              {showCompleted ? "Hide" : "Show"} {doneItems.length} completed
+            </button>
+            {showCompleted && (
+              <div className="mt-1 space-y-1">
+                {doneItems.map((item) => (
+                  <EditableItem
+                    key={item.id}
+                    item={item}
+                    onToggle={onToggle}
+                    onDelete={onDelete}
+                    onRename={onRename}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {items.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center py-1 italic">
+            Capture future tasks you don't want to forget — but aren't ready to act on this week.
           </p>
         )}
       </CardContent>
@@ -2309,6 +2421,19 @@ export function IdealWeek() {
 
   const { data: weeklyTop3 = [] } = useWeeklyTop3(startStr);
 
+  const { data: futureTodos = [] } = useListFutureTodos();
+  const invalidateFuture = () =>
+    queryClient.invalidateQueries({ queryKey: getListFutureTodosQueryKey() });
+  const createFuture = useCreateFutureTodo({
+    mutation: { onSuccess: invalidateFuture },
+  });
+  const updateFuture = useUpdateFutureTodo({
+    mutation: { onSuccess: invalidateFuture },
+  });
+  const deleteFuture = useDeleteFutureTodo({
+    mutation: { onSuccess: invalidateFuture },
+  });
+
   const base = import.meta.env.BASE_URL || "/";
 
   const createWeekly = useMutation({
@@ -2477,6 +2602,22 @@ export function IdealWeek() {
               onRename={(id, title) => updateWeekly.mutate({ id, title })}
             />
           </div>
+
+          <FutureTodoSection
+            items={futureTodos}
+            onAdd={(title) =>
+              createFuture.mutate({
+                data: { title, sortOrder: futureTodos.length },
+              })
+            }
+            onToggle={(id, completed) =>
+              updateFuture.mutate({ id, data: { completed } })
+            }
+            onDelete={(id) => deleteFuture.mutate({ id })}
+            onRename={(id, title) =>
+              updateFuture.mutate({ id, data: { title } })
+            }
+          />
 
           <Card className="bg-white border-primary/20">
             <CardContent className="p-4 flex items-center justify-center">
