@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "wouter";
-import { Plus, Search, Users, Network } from "lucide-react";
+import { Plus, Users, Network } from "lucide-react";
 import {
   useListRoles,
   useCreateRole,
@@ -260,7 +260,6 @@ const ORG_GROUP_ORDER = ["edge_dso", "edge", "urgent_dental"];
 export function RolesIndex() {
   const { data: roles = [], isLoading } = useListRoles();
   const { data: organizations = [] } = useListOrganizations();
-  const [search, setSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState<string>("__all__");
 
   // Group organizations by category for the dropdown.
@@ -291,49 +290,24 @@ export function RolesIndex() {
   const filtered = useMemo(() => {
     const allById = new Map<number, Role>(roles.map((r) => [r.id, r]));
 
-    // Step 1: location filter — keep matching roles plus their ancestors so the
-    // tree stays connected (a clinical lead under EDGE DSO still needs to show
-    // when filtering Urgent Dental, otherwise its child cards become orphans).
-    let byLoc: Role[];
-    if (orgFilter === "__all__") {
-      byLoc = roles;
-    } else {
-      const keep = new Set<number>();
-      for (const r of roles) {
-        if (String(r.organizationId ?? "") === orgFilter) {
-          let cur: Role | undefined = r;
-          while (cur && !keep.has(cur.id)) {
-            keep.add(cur.id);
-            cur = cur.reportsToRoleId
-              ? allById.get(cur.reportsToRoleId)
-              : undefined;
-          }
-        }
-      }
-      byLoc = roles.filter((r) => keep.has(r.id));
-    }
-
-    // Step 2: search filter (also keeps ancestors).
-    const q = search.trim().toLowerCase();
-    if (!q) return byLoc;
-    const byId = new Map<number, Role>(byLoc.map((r) => [r.id, r]));
+    // Location filter — keep matching roles plus their ancestors so the tree
+    // stays connected (a clinical lead under EDGE DSO still needs to show when
+    // filtering Urgent Dental, otherwise its child cards become orphans).
+    if (orgFilter === "__all__") return roles;
     const keep = new Set<number>();
-    for (const r of byLoc) {
-      if (
-        r.title.toLowerCase().includes(q) ||
-        r.seatHolderName.toLowerCase().includes(q) ||
-        r.businessArea.toLowerCase().includes(q) ||
-        r.tier.toLowerCase().includes(q)
-      ) {
+    for (const r of roles) {
+      if (String(r.organizationId ?? "") === orgFilter) {
         let cur: Role | undefined = r;
         while (cur && !keep.has(cur.id)) {
           keep.add(cur.id);
-          cur = cur.reportsToRoleId ? byId.get(cur.reportsToRoleId) : undefined;
+          cur = cur.reportsToRoleId
+            ? allById.get(cur.reportsToRoleId)
+            : undefined;
         }
       }
     }
-    return byLoc.filter((r) => keep.has(r.id));
-  }, [roles, search, orgFilter]);
+    return roles.filter((r) => keep.has(r.id));
+  }, [roles, orgFilter]);
 
   const tiers = useMemo(() => {
     const { roots, childrenOf } = buildTree(filtered);
@@ -389,15 +363,6 @@ export function RolesIndex() {
       </header>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative w-full max-w-md flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search roles or seat holders…"
-            className="pl-9"
-          />
-        </div>
         <Select value={orgFilter} onValueChange={setOrgFilter}>
           <SelectTrigger className="w-[260px]">
             <SelectValue />
@@ -428,9 +393,7 @@ export function RolesIndex() {
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
           <Network className="mx-auto h-10 w-10 text-slate-300" />
           <p className="mt-3 text-sm text-slate-500">
-            {search.trim()
-              ? "No roles match your search."
-              : "No roles defined yet. Add your first role to get started."}
+            No roles defined yet. Add your first role to get started.
           </p>
         </div>
       ) : (
