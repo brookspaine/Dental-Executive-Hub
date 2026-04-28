@@ -10,7 +10,12 @@ import {
   ListActionItemsResponse,
   UpdateActionItemResponse,
 } from "@workspace/api-zod";
-import { requireAuth } from "../lib/auth";
+
+/**
+ * `requireAuth` is mounted on the whole `/api` router in `app.ts`, so
+ * every handler here can rely on `req.authedUser` being set without
+ * adding the middleware per-route.
+ */
 
 const router: IRouter = Router();
 
@@ -93,7 +98,7 @@ function serializeRow(row: typeof actionItemsTable.$inferSelect) {
   };
 }
 
-router.get("/action-items", requireAuth, async (_req, res): Promise<void> => {
+router.get("/action-items", async (_req, res): Promise<void> => {
   await ensureSeeded();
   const items = await db
     .select()
@@ -102,7 +107,7 @@ router.get("/action-items", requireAuth, async (_req, res): Promise<void> => {
   res.json(ListActionItemsResponse.parse(items.map(serializeRow)));
 });
 
-router.post("/action-items", requireAuth, async (req, res): Promise<void> => {
+router.post("/action-items", async (req, res): Promise<void> => {
   const parsed = CreateActionItemBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
@@ -169,7 +174,6 @@ router.post("/action-items", requireAuth, async (req, res): Promise<void> => {
 
 router.post(
   "/action-items/import",
-  requireAuth,
   async (req, res): Promise<void> => {
     const parsed = ImportActionItemsBody.safeParse(req.body);
     if (!parsed.success) {
@@ -220,7 +224,6 @@ router.post(
 
 router.patch(
   "/action-items/:id",
-  requireAuth,
   async (req, res): Promise<void> => {
     const params = UpdateActionItemParams.safeParse(req.params);
     if (!params.success) {
@@ -271,7 +274,7 @@ router.patch(
   },
 );
 
-router.delete("/action-items/:id", requireAuth, async (req, res): Promise<void> => {
+router.delete("/action-items/:id", async (req, res): Promise<void> => {
   const params = DeleteActionItemParams.safeParse(req.params);
   if (!params.success) {
     res.status(400).json({ error: params.error.message });

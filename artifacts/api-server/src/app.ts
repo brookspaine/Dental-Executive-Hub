@@ -1,9 +1,10 @@
-import express, { type Express } from "express";
+import express, { type Express, type Request } from "express";
 import cors, { type CorsOptions } from "cors";
 import pinoHttp from "pino-http";
 import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import { logger } from "./lib/logger";
+import { requireAuth } from "./lib/auth";
 import {
   CLERK_PROXY_PATH,
   clerkProxyMiddleware,
@@ -75,6 +76,39 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(clerkMiddleware());
 
-app.use("/api", router);
+/**
+ * Routes that are intentionally reachable without a signed-in user.
+ * Everything else under `/api` is gated by `requireAuth` below. Keep this
+ * list as small as possible — each entry is essentially a hole in the
+ * privacy boundary around practice data.
+ *
+ * Patterns are matched against `req.path` *relative to /api* (so the
+ * `/api` prefix is omitted here).
+ */
+const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
+  // Health probe used by deploy infra and uptime checks. We allow HEAD
+  // as well as GET because many uptime services (and load balancers)
+  // probe with HEAD to avoid pulling a body.
+  { method: "GET", pattern: /^\/healthz\/?$/ },
+  { method: "HEAD", pattern: /^\/healthz\/?$/ },
+  // Public assets served from PUBLIC_OBJECT_SEARCH_PATHS. These are
+  // unconditionally public by design (see routes/storage.ts).
+  { method: "GET", pattern: /^\/storage\/public-objects\// },
+  { method: "HEAD", pattern: /^\/storage\/public-objects\// },
+];
+
+function isPublicApiRoute(req: Request): boolean {
+  return PUBLIC_API_ROUTES.some(
+    (r) => r.method === req.method && r.pattern.test(req.path),
+  );
+}
+
+app.use("/api", (req, res, next) => {
+  if (isPublicApiRoute(req)) {
+    next();
+    return;
+  }
+  void requireAuth(req, res, next);
+}, router);
 
 export default app;
