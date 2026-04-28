@@ -1329,3 +1329,500 @@ export const AddBuildoutCardActivityResponse = zod.object({
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
+
+/**
+ * @summary List all roles
+ */
+export const ListRolesResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  seatHolderName: zod.string(),
+  seatHolderInitials: zod.string(),
+  reportsToRoleId: zod.number().nullish(),
+  businessArea: zod.string(),
+  tier: zod.string(),
+  purposeStatement: zod.string(),
+  missionAlignment: zod.string(),
+  culturalAlignment: zod.string(),
+  vegStyleImpact: zod.string(),
+  impactStatement: zod.string(),
+  kpisLeading: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.string(),
+      frequency: zod.string(),
+      dataSource: zod.string(),
+      owner: zod.string(),
+    }),
+  ),
+  kpisLagging: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.string(),
+      frequency: zod.string(),
+      dataSource: zod.string(),
+      owner: zod.string(),
+    }),
+  ),
+  checklists: zod.object({
+    startOfDay: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+    downtime: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+    endOfDay: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+  }),
+  decisions: zod.array(
+    zod.object({
+      id: zod.string(),
+      decisionType: zod.string(),
+      authorityLevel: zod.string(),
+      escalationToRoleId: zod.number().nullish(),
+      boundaryConditions: zod.string(),
+      linkedPlaybookId: zod.number().nullish(),
+      category: zod.string(),
+    }),
+  ),
+  lastReviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListRolesResponse = zod.array(ListRolesResponseItem);
+
+/**
+ * @summary Create a role
+ */
+
+export const CreateRoleBody = zod.object({
+  title: zod.string().min(1),
+  seatHolderName: zod.string().optional(),
+  seatHolderInitials: zod.string().optional(),
+  reportsToRoleId: zod.number().nullish(),
+  businessArea: zod.string().min(1),
+  tier: zod.string().min(1),
+});
+
+/**
+ * @summary Get a single role by id
+ */
+export const GetRoleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetRoleResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  seatHolderName: zod.string(),
+  seatHolderInitials: zod.string(),
+  reportsToRoleId: zod.number().nullish(),
+  businessArea: zod.string(),
+  tier: zod.string(),
+  purposeStatement: zod.string(),
+  missionAlignment: zod.string(),
+  culturalAlignment: zod.string(),
+  vegStyleImpact: zod.string(),
+  impactStatement: zod.string(),
+  kpisLeading: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.string(),
+      frequency: zod.string(),
+      dataSource: zod.string(),
+      owner: zod.string(),
+    }),
+  ),
+  kpisLagging: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.string(),
+      frequency: zod.string(),
+      dataSource: zod.string(),
+      owner: zod.string(),
+    }),
+  ),
+  checklists: zod.object({
+    startOfDay: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+    downtime: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+    endOfDay: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+  }),
+  decisions: zod.array(
+    zod.object({
+      id: zod.string(),
+      decisionType: zod.string(),
+      authorityLevel: zod.string(),
+      escalationToRoleId: zod.number().nullish(),
+      boundaryConditions: zod.string(),
+      linkedPlaybookId: zod.number().nullish(),
+      category: zod.string(),
+    }),
+  ),
+  lastReviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a role (full nested replace of arrays)
+ */
+export const UpdateRoleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateRoleBody = zod.object({
+  title: zod.string().min(1).optional(),
+  seatHolderName: zod.string().optional(),
+  seatHolderInitials: zod.string().optional(),
+  reportsToRoleId: zod.number().nullish(),
+  businessArea: zod.string().optional(),
+  tier: zod.string().optional(),
+  purposeStatement: zod.string().optional(),
+  missionAlignment: zod.string().optional(),
+  culturalAlignment: zod.string().optional(),
+  vegStyleImpact: zod.string().optional(),
+  impactStatement: zod.string().optional(),
+  kpisLeading: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        description: zod.string(),
+        target: zod.string(),
+        frequency: zod.string(),
+        dataSource: zod.string(),
+        owner: zod.string(),
+      }),
+    )
+    .optional(),
+  kpisLagging: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        name: zod.string(),
+        description: zod.string(),
+        target: zod.string(),
+        frequency: zod.string(),
+        dataSource: zod.string(),
+        owner: zod.string(),
+      }),
+    )
+    .optional(),
+  checklists: zod
+    .object({
+      startOfDay: zod.array(
+        zod.object({
+          id: zod.string(),
+          task: zod.string(),
+          estimatedMinutes: zod.number(),
+          linkedPlaybookId: zod.number().nullish(),
+          linkedDecisionId: zod.string().nullish(),
+        }),
+      ),
+      downtime: zod.array(
+        zod.object({
+          id: zod.string(),
+          task: zod.string(),
+          estimatedMinutes: zod.number(),
+          linkedPlaybookId: zod.number().nullish(),
+          linkedDecisionId: zod.string().nullish(),
+        }),
+      ),
+      endOfDay: zod.array(
+        zod.object({
+          id: zod.string(),
+          task: zod.string(),
+          estimatedMinutes: zod.number(),
+          linkedPlaybookId: zod.number().nullish(),
+          linkedDecisionId: zod.string().nullish(),
+        }),
+      ),
+    })
+    .optional(),
+  decisions: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        decisionType: zod.string(),
+        authorityLevel: zod.string(),
+        escalationToRoleId: zod.number().nullish(),
+        boundaryConditions: zod.string(),
+        linkedPlaybookId: zod.number().nullish(),
+        category: zod.string(),
+      }),
+    )
+    .optional(),
+});
+
+export const UpdateRoleResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  seatHolderName: zod.string(),
+  seatHolderInitials: zod.string(),
+  reportsToRoleId: zod.number().nullish(),
+  businessArea: zod.string(),
+  tier: zod.string(),
+  purposeStatement: zod.string(),
+  missionAlignment: zod.string(),
+  culturalAlignment: zod.string(),
+  vegStyleImpact: zod.string(),
+  impactStatement: zod.string(),
+  kpisLeading: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.string(),
+      frequency: zod.string(),
+      dataSource: zod.string(),
+      owner: zod.string(),
+    }),
+  ),
+  kpisLagging: zod.array(
+    zod.object({
+      id: zod.string(),
+      name: zod.string(),
+      description: zod.string(),
+      target: zod.string(),
+      frequency: zod.string(),
+      dataSource: zod.string(),
+      owner: zod.string(),
+    }),
+  ),
+  checklists: zod.object({
+    startOfDay: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+    downtime: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+    endOfDay: zod.array(
+      zod.object({
+        id: zod.string(),
+        task: zod.string(),
+        estimatedMinutes: zod.number(),
+        linkedPlaybookId: zod.number().nullish(),
+        linkedDecisionId: zod.string().nullish(),
+      }),
+    ),
+  }),
+  decisions: zod.array(
+    zod.object({
+      id: zod.string(),
+      decisionType: zod.string(),
+      authorityLevel: zod.string(),
+      escalationToRoleId: zod.number().nullish(),
+      boundaryConditions: zod.string(),
+      linkedPlaybookId: zod.number().nullish(),
+      category: zod.string(),
+    }),
+  ),
+  lastReviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a role
+ */
+export const DeleteRoleParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List all playbooks
+ */
+export const ListPlaybooksResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  category: zod.string(),
+  purpose: zod.string(),
+  whenToUse: zod.string(),
+  steps: zod.array(
+    zod.object({
+      id: zod.string(),
+      text: zod.string(),
+    }),
+  ),
+  decisionPoints: zod.string(),
+  commonPitfalls: zod.string(),
+  relatedPlaybookIds: zod.array(zod.number()),
+  roleIds: zod.array(zod.number()),
+  lastReviewedBy: zod.string(),
+  lastReviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListPlaybooksResponse = zod.array(ListPlaybooksResponseItem);
+
+/**
+ * @summary Create a playbook
+ */
+
+export const CreatePlaybookBody = zod.object({
+  title: zod.string().min(1),
+  category: zod.string().optional(),
+  purpose: zod.string().optional(),
+  whenToUse: zod.string().optional(),
+  steps: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+      }),
+    )
+    .optional(),
+  decisionPoints: zod.string().optional(),
+  commonPitfalls: zod.string().optional(),
+  relatedPlaybookIds: zod.array(zod.number()).optional(),
+  roleIds: zod.array(zod.number()).optional(),
+  lastReviewedBy: zod.string().optional(),
+});
+
+/**
+ * @summary Get a single playbook by id
+ */
+export const GetPlaybookParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetPlaybookResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  category: zod.string(),
+  purpose: zod.string(),
+  whenToUse: zod.string(),
+  steps: zod.array(
+    zod.object({
+      id: zod.string(),
+      text: zod.string(),
+    }),
+  ),
+  decisionPoints: zod.string(),
+  commonPitfalls: zod.string(),
+  relatedPlaybookIds: zod.array(zod.number()),
+  roleIds: zod.array(zod.number()),
+  lastReviewedBy: zod.string(),
+  lastReviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a playbook (full nested replace)
+ */
+export const UpdatePlaybookParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdatePlaybookBody = zod.object({
+  title: zod.string().min(1).optional(),
+  category: zod.string().optional(),
+  purpose: zod.string().optional(),
+  whenToUse: zod.string().optional(),
+  steps: zod
+    .array(
+      zod.object({
+        id: zod.string(),
+        text: zod.string(),
+      }),
+    )
+    .optional(),
+  decisionPoints: zod.string().optional(),
+  commonPitfalls: zod.string().optional(),
+  relatedPlaybookIds: zod.array(zod.number()).optional(),
+  roleIds: zod.array(zod.number()).optional(),
+  lastReviewedBy: zod.string().optional(),
+});
+
+export const UpdatePlaybookResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  category: zod.string(),
+  purpose: zod.string(),
+  whenToUse: zod.string(),
+  steps: zod.array(
+    zod.object({
+      id: zod.string(),
+      text: zod.string(),
+    }),
+  ),
+  decisionPoints: zod.string(),
+  commonPitfalls: zod.string(),
+  relatedPlaybookIds: zod.array(zod.number()),
+  roleIds: zod.array(zod.number()),
+  lastReviewedBy: zod.string(),
+  lastReviewedAt: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a playbook
+ */
+export const DeletePlaybookParams = zod.object({
+  id: zod.coerce.number(),
+});

@@ -30,6 +30,8 @@ import type {
   CreateDirectReportBody,
   CreateOrgChartSeatBody,
   CreateOrganizationBody,
+  CreatePlaybookBody,
+  CreateRoleBody,
   CreateScheduleBlockBody,
   CreateSeatKeyResultBody,
   CreateSeatTaskBody,
@@ -50,6 +52,8 @@ import type {
   OrgChartSeat,
   OrgPerformance,
   Organization,
+  Playbook,
+  Role,
   ScheduleBlock,
   SeatKeyResult,
   SeatTask,
@@ -61,6 +65,8 @@ import type {
   UpdateIdealWeekRitualBody,
   UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
+  UpdatePlaybookBody,
+  UpdateRoleBody,
   UpdateScheduleBlockBody,
   UpdateSeatKeyResultBody,
   UpdateSeatTaskBody,
@@ -6161,4 +6167,822 @@ export const useAddBuildoutCardActivity = <
   TContext
 > => {
   return useMutation(getAddBuildoutCardActivityMutationOptions(options));
+};
+
+/**
+ * @summary List all roles
+ */
+export const getListRolesUrl = () => {
+  return `/api/roles`;
+};
+
+export const listRoles = async (options?: RequestInit): Promise<Role[]> => {
+  return customFetch<Role[]>(getListRolesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListRolesQueryKey = () => {
+  return [`/api/roles`] as const;
+};
+
+export const getListRolesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRoles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listRoles>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRolesQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listRoles>>> = ({
+    signal,
+  }) => listRoles({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRoles>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRolesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRoles>>
+>;
+export type ListRolesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all roles
+ */
+
+export function useListRoles<
+  TData = Awaited<ReturnType<typeof listRoles>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<Awaited<ReturnType<typeof listRoles>>, TError, TData>;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRolesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a role
+ */
+export const getCreateRoleUrl = () => {
+  return `/api/roles`;
+};
+
+export const createRole = async (
+  createRoleBody: CreateRoleBody,
+  options?: RequestInit,
+): Promise<Role> => {
+  return customFetch<Role>(getCreateRoleUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createRoleBody),
+  });
+};
+
+export const getCreateRoleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRole>>,
+    TError,
+    { data: BodyType<CreateRoleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createRole>>,
+  TError,
+  { data: BodyType<CreateRoleBody> },
+  TContext
+> => {
+  const mutationKey = ["createRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createRole>>,
+    { data: BodyType<CreateRoleBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createRole(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createRole>>
+>;
+export type CreateRoleMutationBody = BodyType<CreateRoleBody>;
+export type CreateRoleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a role
+ */
+export const useCreateRole = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createRole>>,
+    TError,
+    { data: BodyType<CreateRoleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createRole>>,
+  TError,
+  { data: BodyType<CreateRoleBody> },
+  TContext
+> => {
+  return useMutation(getCreateRoleMutationOptions(options));
+};
+
+/**
+ * @summary Get a single role by id
+ */
+export const getGetRoleUrl = (id: number) => {
+  return `/api/roles/${id}`;
+};
+
+export const getRole = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Role> => {
+  return customFetch<Role>(getGetRoleUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRoleQueryKey = (id: number) => {
+  return [`/api/roles/${id}`] as const;
+};
+
+export const getGetRoleQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRole>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getRole>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRoleQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRole>>> = ({
+    signal,
+  }) => getRole(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<Awaited<ReturnType<typeof getRole>>, TError, TData> & {
+    queryKey: QueryKey;
+  };
+};
+
+export type GetRoleQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRole>>
+>;
+export type GetRoleQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a single role by id
+ */
+
+export function useGetRole<
+  TData = Awaited<ReturnType<typeof getRole>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<Awaited<ReturnType<typeof getRole>>, TError, TData>;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRoleQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a role (full nested replace of arrays)
+ */
+export const getUpdateRoleUrl = (id: number) => {
+  return `/api/roles/${id}`;
+};
+
+export const updateRole = async (
+  id: number,
+  updateRoleBody: UpdateRoleBody,
+  options?: RequestInit,
+): Promise<Role> => {
+  return customFetch<Role>(getUpdateRoleUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateRoleBody),
+  });
+};
+
+export const getUpdateRoleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRole>>,
+    TError,
+    { id: number; data: BodyType<UpdateRoleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateRole>>,
+  TError,
+  { id: number; data: BodyType<UpdateRoleBody> },
+  TContext
+> => {
+  const mutationKey = ["updateRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateRole>>,
+    { id: number; data: BodyType<UpdateRoleBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateRole(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateRole>>
+>;
+export type UpdateRoleMutationBody = BodyType<UpdateRoleBody>;
+export type UpdateRoleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a role (full nested replace of arrays)
+ */
+export const useUpdateRole = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRole>>,
+    TError,
+    { id: number; data: BodyType<UpdateRoleBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateRole>>,
+  TError,
+  { id: number; data: BodyType<UpdateRoleBody> },
+  TContext
+> => {
+  return useMutation(getUpdateRoleMutationOptions(options));
+};
+
+/**
+ * @summary Delete a role
+ */
+export const getDeleteRoleUrl = (id: number) => {
+  return `/api/roles/${id}`;
+};
+
+export const deleteRole = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteRoleUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteRoleMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRole>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteRole>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deleteRole"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteRole>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteRole(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteRoleMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteRole>>
+>;
+
+export type DeleteRoleMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a role
+ */
+export const useDeleteRole = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteRole>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteRole>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeleteRoleMutationOptions(options));
+};
+
+/**
+ * @summary List all playbooks
+ */
+export const getListPlaybooksUrl = () => {
+  return `/api/playbooks`;
+};
+
+export const listPlaybooks = async (
+  options?: RequestInit,
+): Promise<Playbook[]> => {
+  return customFetch<Playbook[]>(getListPlaybooksUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListPlaybooksQueryKey = () => {
+  return [`/api/playbooks`] as const;
+};
+
+export const getListPlaybooksQueryOptions = <
+  TData = Awaited<ReturnType<typeof listPlaybooks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPlaybooks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListPlaybooksQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listPlaybooks>>> = ({
+    signal,
+  }) => listPlaybooks({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listPlaybooks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListPlaybooksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listPlaybooks>>
+>;
+export type ListPlaybooksQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all playbooks
+ */
+
+export function useListPlaybooks<
+  TData = Awaited<ReturnType<typeof listPlaybooks>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listPlaybooks>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListPlaybooksQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Create a playbook
+ */
+export const getCreatePlaybookUrl = () => {
+  return `/api/playbooks`;
+};
+
+export const createPlaybook = async (
+  createPlaybookBody: CreatePlaybookBody,
+  options?: RequestInit,
+): Promise<Playbook> => {
+  return customFetch<Playbook>(getCreatePlaybookUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createPlaybookBody),
+  });
+};
+
+export const getCreatePlaybookMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlaybook>>,
+    TError,
+    { data: BodyType<CreatePlaybookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createPlaybook>>,
+  TError,
+  { data: BodyType<CreatePlaybookBody> },
+  TContext
+> => {
+  const mutationKey = ["createPlaybook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createPlaybook>>,
+    { data: BodyType<CreatePlaybookBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return createPlaybook(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreatePlaybookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createPlaybook>>
+>;
+export type CreatePlaybookMutationBody = BodyType<CreatePlaybookBody>;
+export type CreatePlaybookMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Create a playbook
+ */
+export const useCreatePlaybook = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createPlaybook>>,
+    TError,
+    { data: BodyType<CreatePlaybookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createPlaybook>>,
+  TError,
+  { data: BodyType<CreatePlaybookBody> },
+  TContext
+> => {
+  return useMutation(getCreatePlaybookMutationOptions(options));
+};
+
+/**
+ * @summary Get a single playbook by id
+ */
+export const getGetPlaybookUrl = (id: number) => {
+  return `/api/playbooks/${id}`;
+};
+
+export const getPlaybook = async (
+  id: number,
+  options?: RequestInit,
+): Promise<Playbook> => {
+  return customFetch<Playbook>(getGetPlaybookUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetPlaybookQueryKey = (id: number) => {
+  return [`/api/playbooks/${id}`] as const;
+};
+
+export const getGetPlaybookQueryOptions = <
+  TData = Awaited<ReturnType<typeof getPlaybook>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlaybook>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetPlaybookQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getPlaybook>>> = ({
+    signal,
+  }) => getPlaybook(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getPlaybook>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetPlaybookQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getPlaybook>>
+>;
+export type GetPlaybookQueryError = ErrorType<void>;
+
+/**
+ * @summary Get a single playbook by id
+ */
+
+export function useGetPlaybook<
+  TData = Awaited<ReturnType<typeof getPlaybook>>,
+  TError = ErrorType<void>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getPlaybook>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetPlaybookQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update a playbook (full nested replace)
+ */
+export const getUpdatePlaybookUrl = (id: number) => {
+  return `/api/playbooks/${id}`;
+};
+
+export const updatePlaybook = async (
+  id: number,
+  updatePlaybookBody: UpdatePlaybookBody,
+  options?: RequestInit,
+): Promise<Playbook> => {
+  return customFetch<Playbook>(getUpdatePlaybookUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updatePlaybookBody),
+  });
+};
+
+export const getUpdatePlaybookMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlaybook>>,
+    TError,
+    { id: number; data: BodyType<UpdatePlaybookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updatePlaybook>>,
+  TError,
+  { id: number; data: BodyType<UpdatePlaybookBody> },
+  TContext
+> => {
+  const mutationKey = ["updatePlaybook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updatePlaybook>>,
+    { id: number; data: BodyType<UpdatePlaybookBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updatePlaybook(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdatePlaybookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updatePlaybook>>
+>;
+export type UpdatePlaybookMutationBody = BodyType<UpdatePlaybookBody>;
+export type UpdatePlaybookMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update a playbook (full nested replace)
+ */
+export const useUpdatePlaybook = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updatePlaybook>>,
+    TError,
+    { id: number; data: BodyType<UpdatePlaybookBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updatePlaybook>>,
+  TError,
+  { id: number; data: BodyType<UpdatePlaybookBody> },
+  TContext
+> => {
+  return useMutation(getUpdatePlaybookMutationOptions(options));
+};
+
+/**
+ * @summary Delete a playbook
+ */
+export const getDeletePlaybookUrl = (id: number) => {
+  return `/api/playbooks/${id}`;
+};
+
+export const deletePlaybook = async (
+  id: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeletePlaybookUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeletePlaybookMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlaybook>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deletePlaybook>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  const mutationKey = ["deletePlaybook"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deletePlaybook>>,
+    { id: number }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deletePlaybook(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeletePlaybookMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deletePlaybook>>
+>;
+
+export type DeletePlaybookMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Delete a playbook
+ */
+export const useDeletePlaybook = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deletePlaybook>>,
+    TError,
+    { id: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deletePlaybook>>,
+  TError,
+  { id: number },
+  TContext
+> => {
+  return useMutation(getDeletePlaybookMutationOptions(options));
 };

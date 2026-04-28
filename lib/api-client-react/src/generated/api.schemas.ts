@@ -683,6 +683,143 @@ export interface AddBuildoutCardActivityBody {
   text: string;
 }
 
+export interface RoleKpi {
+  id: string;
+  name: string;
+  description: string;
+  target: string;
+  frequency: string;
+  dataSource: string;
+  owner: string;
+}
+
+export interface RoleChecklistItem {
+  id: string;
+  task: string;
+  estimatedMinutes: number;
+  linkedPlaybookId?: number | null;
+  linkedDecisionId?: string | null;
+}
+
+export interface RoleChecklists {
+  startOfDay: RoleChecklistItem[];
+  downtime: RoleChecklistItem[];
+  endOfDay: RoleChecklistItem[];
+}
+
+export interface RoleDecision {
+  id: string;
+  decisionType: string;
+  authorityLevel: string;
+  escalationToRoleId?: number | null;
+  boundaryConditions: string;
+  linkedPlaybookId?: number | null;
+  category: string;
+}
+
+export interface Role {
+  id: number;
+  title: string;
+  seatHolderName: string;
+  seatHolderInitials: string;
+  reportsToRoleId?: number | null;
+  businessArea: string;
+  tier: string;
+  purposeStatement: string;
+  missionAlignment: string;
+  culturalAlignment: string;
+  vegStyleImpact: string;
+  impactStatement: string;
+  kpisLeading: RoleKpi[];
+  kpisLagging: RoleKpi[];
+  checklists: RoleChecklists;
+  decisions: RoleDecision[];
+  lastReviewedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateRoleBody {
+  /** @minLength 1 */
+  title: string;
+  seatHolderName?: string;
+  seatHolderInitials?: string;
+  reportsToRoleId?: number | null;
+  /** @minLength 1 */
+  businessArea: string;
+  /** @minLength 1 */
+  tier: string;
+}
+
+export interface UpdateRoleBody {
+  /** @minLength 1 */
+  title?: string;
+  seatHolderName?: string;
+  seatHolderInitials?: string;
+  reportsToRoleId?: number | null;
+  businessArea?: string;
+  tier?: string;
+  purposeStatement?: string;
+  missionAlignment?: string;
+  culturalAlignment?: string;
+  vegStyleImpact?: string;
+  impactStatement?: string;
+  kpisLeading?: RoleKpi[];
+  kpisLagging?: RoleKpi[];
+  checklists?: RoleChecklists;
+  decisions?: RoleDecision[];
+}
+
+export interface PlaybookStep {
+  id: string;
+  text: string;
+}
+
+export interface Playbook {
+  id: number;
+  title: string;
+  category: string;
+  purpose: string;
+  whenToUse: string;
+  steps: PlaybookStep[];
+  decisionPoints: string;
+  commonPitfalls: string;
+  relatedPlaybookIds: number[];
+  roleIds: number[];
+  lastReviewedBy: string;
+  lastReviewedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePlaybookBody {
+  /** @minLength 1 */
+  title: string;
+  category?: string;
+  purpose?: string;
+  whenToUse?: string;
+  steps?: PlaybookStep[];
+  decisionPoints?: string;
+  commonPitfalls?: string;
+  relatedPlaybookIds?: number[];
+  roleIds?: number[];
+  lastReviewedBy?: string;
+}
+
+export interface UpdatePlaybookBody {
+  /** @minLength 1 */
+  title?: string;
+  category?: string;
+  purpose?: string;
+  whenToUse?: string;
+  steps?: PlaybookStep[];
+  decisionPoints?: string;
+  commonPitfalls?: string;
+  relatedPlaybookIds?: number[];
+  roleIds?: number[];
+  lastReviewedBy?: string;
+}
+
 export type CreateViewAsMeGrantBody = {
   granteeReportId: number;
 };

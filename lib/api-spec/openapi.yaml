@@ -1403,6 +1403,184 @@ paths:
               schema:
                 $ref: "#/components/schemas/BuildoutCard"
 
+  /roles:
+    get:
+      operationId: listRoles
+      tags: [roles]
+      summary: List all roles
+      responses:
+        "200":
+          description: List of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+    post:
+      operationId: createRole
+      tags: [roles]
+      summary: Create a role
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleBody"
+      responses:
+        "201":
+          description: Created role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+
+  /roles/{id}:
+    get:
+      operationId: getRole
+      tags: [roles]
+      summary: Get a single role by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateRole
+      tags: [roles]
+      summary: Update a role (full nested replace of arrays)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleBody"
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+    delete:
+      operationId: deleteRole
+      tags: [roles]
+      summary: Delete a role
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /playbooks:
+    get:
+      operationId: listPlaybooks
+      tags: [playbooks]
+      summary: List all playbooks
+      responses:
+        "200":
+          description: List of playbooks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Playbook"
+    post:
+      operationId: createPlaybook
+      tags: [playbooks]
+      summary: Create a playbook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreatePlaybookBody"
+      responses:
+        "201":
+          description: Created playbook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playbook"
+
+  /playbooks/{id}:
+    get:
+      operationId: getPlaybook
+      tags: [playbooks]
+      summary: Get a single playbook by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Playbook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playbook"
+        "404":
+          description: Not found
+    patch:
+      operationId: updatePlaybook
+      tags: [playbooks]
+      summary: Update a playbook (full nested replace)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdatePlaybookBody"
+      responses:
+        "200":
+          description: Updated playbook
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Playbook"
+    delete:
+      operationId: deletePlaybook
+      tags: [playbooks]
+      summary: Delete a playbook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     UploadUrlRequest:
@@ -2623,3 +2801,339 @@ components:
           minLength: 1
       required:
         - text
+
+    RoleKpi:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        target:
+          type: string
+        frequency:
+          type: string
+        dataSource:
+          type: string
+        owner:
+          type: string
+      required: [id, name, description, target, frequency, dataSource, owner]
+
+    RoleChecklistItem:
+      type: object
+      properties:
+        id:
+          type: string
+        task:
+          type: string
+        estimatedMinutes:
+          type: integer
+        linkedPlaybookId:
+          type: integer
+          nullable: true
+        linkedDecisionId:
+          type: string
+          nullable: true
+      required: [id, task, estimatedMinutes]
+
+    RoleChecklists:
+      type: object
+      properties:
+        startOfDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleChecklistItem"
+        downtime:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleChecklistItem"
+        endOfDay:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleChecklistItem"
+      required: [startOfDay, downtime, endOfDay]
+
+    RoleDecision:
+      type: object
+      properties:
+        id:
+          type: string
+        decisionType:
+          type: string
+        authorityLevel:
+          type: string
+        escalationToRoleId:
+          type: integer
+          nullable: true
+        boundaryConditions:
+          type: string
+        linkedPlaybookId:
+          type: integer
+          nullable: true
+        category:
+          type: string
+      required: [id, decisionType, authorityLevel, boundaryConditions, category]
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        seatHolderName:
+          type: string
+        seatHolderInitials:
+          type: string
+        reportsToRoleId:
+          type: integer
+          nullable: true
+        businessArea:
+          type: string
+        tier:
+          type: string
+        purposeStatement:
+          type: string
+        missionAlignment:
+          type: string
+        culturalAlignment:
+          type: string
+        vegStyleImpact:
+          type: string
+        impactStatement:
+          type: string
+        kpisLeading:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleKpi"
+        kpisLagging:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleKpi"
+        checklists:
+          $ref: "#/components/schemas/RoleChecklists"
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleDecision"
+        lastReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - seatHolderName
+        - seatHolderInitials
+        - businessArea
+        - tier
+        - purposeStatement
+        - missionAlignment
+        - culturalAlignment
+        - vegStyleImpact
+        - impactStatement
+        - kpisLeading
+        - kpisLagging
+        - checklists
+        - decisions
+        - createdAt
+        - updatedAt
+
+    CreateRoleBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        seatHolderName:
+          type: string
+        seatHolderInitials:
+          type: string
+        reportsToRoleId:
+          type: integer
+          nullable: true
+        businessArea:
+          type: string
+          minLength: 1
+        tier:
+          type: string
+          minLength: 1
+      required: [title, businessArea, tier]
+
+    UpdateRoleBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        seatHolderName:
+          type: string
+        seatHolderInitials:
+          type: string
+        reportsToRoleId:
+          type: integer
+          nullable: true
+        businessArea:
+          type: string
+        tier:
+          type: string
+        purposeStatement:
+          type: string
+        missionAlignment:
+          type: string
+        culturalAlignment:
+          type: string
+        vegStyleImpact:
+          type: string
+        impactStatement:
+          type: string
+        kpisLeading:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleKpi"
+        kpisLagging:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleKpi"
+        checklists:
+          $ref: "#/components/schemas/RoleChecklists"
+        decisions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleDecision"
+
+    PlaybookStep:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+      required: [id, text]
+
+    Playbook:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        category:
+          type: string
+        purpose:
+          type: string
+        whenToUse:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybookStep"
+        decisionPoints:
+          type: string
+        commonPitfalls:
+          type: string
+        relatedPlaybookIds:
+          type: array
+          items:
+            type: integer
+        roleIds:
+          type: array
+          items:
+            type: integer
+        lastReviewedBy:
+          type: string
+        lastReviewedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - category
+        - purpose
+        - whenToUse
+        - steps
+        - decisionPoints
+        - commonPitfalls
+        - relatedPlaybookIds
+        - roleIds
+        - lastReviewedBy
+        - createdAt
+        - updatedAt
+
+    CreatePlaybookBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        category:
+          type: string
+        purpose:
+          type: string
+        whenToUse:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybookStep"
+        decisionPoints:
+          type: string
+        commonPitfalls:
+          type: string
+        relatedPlaybookIds:
+          type: array
+          items:
+            type: integer
+        roleIds:
+          type: array
+          items:
+            type: integer
+        lastReviewedBy:
+          type: string
+      required: [title]
+
+    UpdatePlaybookBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        category:
+          type: string
+        purpose:
+          type: string
+        whenToUse:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: "#/components/schemas/PlaybookStep"
+        decisionPoints:
+          type: string
+        commonPitfalls:
+          type: string
+        relatedPlaybookIds:
+          type: array
+          items:
+            type: integer
+        roleIds:
+          type: array
+          items:
+            type: integer
+        lastReviewedBy:
+          type: string
