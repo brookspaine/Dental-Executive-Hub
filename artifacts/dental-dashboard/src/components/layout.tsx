@@ -12,6 +12,7 @@ import {
   ListChecks,
   Compass,
   Check,
+  KanbanSquare,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useListDirectReports } from "@workspace/api-client-react";
@@ -48,6 +49,7 @@ const navItems: NavItem[] = [
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/org-chart", label: "Practice Organization Chart", icon: Network },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
+  { href: "/edge-buildout-board", label: "EDGE Buildout Board", icon: KanbanSquare },
   {
     label: "Team",
     icon: Users,

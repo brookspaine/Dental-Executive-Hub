@@ -21,6 +21,7 @@ import { MeetingsAgenda } from "@/pages/meetings-agenda";
 import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
 import { TeamPlaceholder } from "@/pages/team-placeholder";
 import { ActionItems } from "@/pages/action-items";
+import { BuildoutBoard } from "@/pages/buildout-board";
 import { ActionItemsProvider } from "@/contexts/action-items-context";
 import { ActiveUserProvider } from "@/contexts/active-user-context";
 
@@ -42,6 +43,7 @@ function Router() {
         <Route path="/org-chart/seats/:id" component={SeatDetail} />
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/action-items" component={ActionItems} />
+        <Route path="/edge-buildout-board" component={BuildoutBoard} />
         <Route path="/team/reports">
           <TeamPlaceholder
             title="Team Reports"

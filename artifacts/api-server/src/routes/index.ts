@@ -17,6 +17,7 @@ import yearlyPlanningRouter from "./yearlyPlanning";
 import weeklyReviewRouter from "./weeklyReview";
 import leadershipMeetingsRouter from "./leadershipMeetings";
 import actionItemsRouter from "./actionItems";
+import buildoutCardsRouter from "./buildoutCards";
 
 const router: IRouter = Router();
 
@@ -38,5 +39,6 @@ router.use(yearlyPlanningRouter);
 router.use(weeklyReviewRouter);
 router.use(leadershipMeetingsRouter);
 router.use(actionItemsRouter);
+router.use(buildoutCardsRouter);
 
 export default router;

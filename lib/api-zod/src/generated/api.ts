@@ -1140,3 +1140,169 @@ export const UpdateVendorPasswordResponse = zod.object({
 export const DeleteVendorPasswordParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary List all buildout board cards
+ */
+export const ListBuildoutCardsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  ownerName: zod.string(),
+  category: zod.string(),
+  status: zod.string(),
+  position: zod.number(),
+  kraLink: zod.string().nullish(),
+  targetDoneDate: zod.string().nullish(),
+  definitionOfDone: zod.string(),
+  blocker: zod.string().nullish(),
+  escalationTrigger: zod.string().nullish(),
+  categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
+  activityLog: zod.array(
+    zod.object({
+      timestamp: zod.coerce.date(),
+      text: zod.string(),
+    }),
+  ),
+  waitingSince: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListBuildoutCardsResponse = zod.array(
+  ListBuildoutCardsResponseItem,
+);
+
+/**
+ * @summary Create a buildout card
+ */
+
+export const CreateBuildoutCardBody = zod.object({
+  title: zod.string().min(1),
+  ownerName: zod.string().min(1),
+  category: zod.string().min(1),
+  status: zod.string().optional(),
+  position: zod.number().optional(),
+  kraLink: zod.string().nullish(),
+  targetDoneDate: zod.string().nullish(),
+  definitionOfDone: zod.string(),
+  blocker: zod.string().nullish(),
+  escalationTrigger: zod.string().nullish(),
+  categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
+});
+
+/**
+ * @summary Get a single buildout card by id
+ */
+export const GetBuildoutCardParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetBuildoutCardResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  ownerName: zod.string(),
+  category: zod.string(),
+  status: zod.string(),
+  position: zod.number(),
+  kraLink: zod.string().nullish(),
+  targetDoneDate: zod.string().nullish(),
+  definitionOfDone: zod.string(),
+  blocker: zod.string().nullish(),
+  escalationTrigger: zod.string().nullish(),
+  categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
+  activityLog: zod.array(
+    zod.object({
+      timestamp: zod.coerce.date(),
+      text: zod.string(),
+    }),
+  ),
+  waitingSince: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Update a buildout card
+ */
+export const UpdateBuildoutCardParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateBuildoutCardBody = zod.object({
+  title: zod.string().min(1).optional(),
+  ownerName: zod.string().optional(),
+  category: zod.string().optional(),
+  status: zod.string().optional(),
+  position: zod.number().optional(),
+  kraLink: zod.string().nullish(),
+  targetDoneDate: zod.string().nullish(),
+  definitionOfDone: zod.string().optional(),
+  blocker: zod.string().nullish(),
+  escalationTrigger: zod.string().nullish(),
+  categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
+});
+
+export const UpdateBuildoutCardResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  ownerName: zod.string(),
+  category: zod.string(),
+  status: zod.string(),
+  position: zod.number(),
+  kraLink: zod.string().nullish(),
+  targetDoneDate: zod.string().nullish(),
+  definitionOfDone: zod.string(),
+  blocker: zod.string().nullish(),
+  escalationTrigger: zod.string().nullish(),
+  categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
+  activityLog: zod.array(
+    zod.object({
+      timestamp: zod.coerce.date(),
+      text: zod.string(),
+    }),
+  ),
+  waitingSince: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Delete a buildout card
+ */
+export const DeleteBuildoutCardParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary Append a timestamped entry to a buildout card's activity log
+ */
+export const AddBuildoutCardActivityParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const AddBuildoutCardActivityBody = zod.object({
+  text: zod.string().min(1),
+});
+
+export const AddBuildoutCardActivityResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  ownerName: zod.string(),
+  category: zod.string(),
+  status: zod.string(),
+  position: zod.number(),
+  kraLink: zod.string().nullish(),
+  targetDoneDate: zod.string().nullish(),
+  definitionOfDone: zod.string(),
+  blocker: zod.string().nullish(),
+  escalationTrigger: zod.string().nullish(),
+  categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
+  activityLog: zod.array(
+    zod.object({
+      timestamp: zod.coerce.date(),
+      text: zod.string(),
+    }),
+  ),
+  waitingSince: zod.coerce.date().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});

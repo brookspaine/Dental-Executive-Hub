@@ -1272,6 +1272,120 @@ paths:
         "204":
           description: Deleted
 
+  /buildout-cards:
+    get:
+      operationId: listBuildoutCards
+      tags: [buildoutCards]
+      summary: List all buildout board cards
+      responses:
+        "200":
+          description: List of buildout cards
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/BuildoutCard"
+    post:
+      operationId: createBuildoutCard
+      tags: [buildoutCards]
+      summary: Create a buildout card
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBuildoutCardBody"
+      responses:
+        "201":
+          description: Created buildout card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildoutCard"
+
+  /buildout-cards/{id}:
+    get:
+      operationId: getBuildoutCard
+      tags: [buildoutCards]
+      summary: Get a single buildout card by id
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Buildout card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildoutCard"
+        "404":
+          description: Not found
+    patch:
+      operationId: updateBuildoutCard
+      tags: [buildoutCards]
+      summary: Update a buildout card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateBuildoutCardBody"
+      responses:
+        "200":
+          description: Updated buildout card
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildoutCard"
+    delete:
+      operationId: deleteBuildoutCard
+      tags: [buildoutCards]
+      summary: Delete a buildout card
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
+  /buildout-cards/{id}/activity:
+    post:
+      operationId: addBuildoutCardActivity
+      tags: [buildoutCards]
+      summary: Append a timestamped entry to a buildout card's activity log
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddBuildoutCardActivityBody"
+      responses:
+        "200":
+          description: Updated buildout card with appended activity entry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BuildoutCard"
+
 components:
   schemas:
     UploadUrlRequest:
@@ -2305,3 +2419,156 @@ components:
             $ref: "#/components/schemas/CreateActionItemBody"
       required:
         - items
+
+    BuildoutActivityEntry:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        text:
+          type: string
+      required:
+        - timestamp
+        - text
+
+    BuildoutCard:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        ownerName:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        position:
+          type: integer
+        kraLink:
+          type: string
+          nullable: true
+        targetDoneDate:
+          type: string
+          nullable: true
+        definitionOfDone:
+          type: string
+        blocker:
+          type: string
+          nullable: true
+        escalationTrigger:
+          type: string
+          nullable: true
+        categoryFields:
+          type: object
+          nullable: true
+          additionalProperties: true
+        activityLog:
+          type: array
+          items:
+            $ref: "#/components/schemas/BuildoutActivityEntry"
+        waitingSince:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - ownerName
+        - category
+        - status
+        - position
+        - definitionOfDone
+        - activityLog
+        - createdAt
+        - updatedAt
+
+    CreateBuildoutCardBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        ownerName:
+          type: string
+          minLength: 1
+        category:
+          type: string
+          minLength: 1
+        status:
+          type: string
+        position:
+          type: integer
+        kraLink:
+          type: string
+          nullable: true
+        targetDoneDate:
+          type: string
+          nullable: true
+        definitionOfDone:
+          type: string
+        blocker:
+          type: string
+          nullable: true
+        escalationTrigger:
+          type: string
+          nullable: true
+        categoryFields:
+          type: object
+          nullable: true
+          additionalProperties: true
+      required:
+        - title
+        - ownerName
+        - category
+        - definitionOfDone
+
+    UpdateBuildoutCardBody:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+        ownerName:
+          type: string
+        category:
+          type: string
+        status:
+          type: string
+        position:
+          type: integer
+        kraLink:
+          type: string
+          nullable: true
+        targetDoneDate:
+          type: string
+          nullable: true
+        definitionOfDone:
+          type: string
+        blocker:
+          type: string
+          nullable: true
+        escalationTrigger:
+          type: string
+          nullable: true
+        categoryFields:
+          type: object
+          nullable: true
+          additionalProperties: true
+
+    AddBuildoutCardActivityBody:
+      type: object
+      properties:
+        text:
+          type: string
+          minLength: 1
+      required:
+        - text

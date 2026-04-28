@@ -599,6 +599,77 @@ export interface ImportActionItemsBody {
   items: CreateActionItemBody[];
 }
 
+export interface BuildoutActivityEntry {
+  timestamp: string;
+  text: string;
+}
+
+export type BuildoutCardCategoryFields = { [key: string]: unknown } | null;
+
+export interface BuildoutCard {
+  id: number;
+  title: string;
+  ownerName: string;
+  category: string;
+  status: string;
+  position: number;
+  kraLink?: string | null;
+  targetDoneDate?: string | null;
+  definitionOfDone: string;
+  blocker?: string | null;
+  escalationTrigger?: string | null;
+  categoryFields?: BuildoutCardCategoryFields;
+  activityLog: BuildoutActivityEntry[];
+  waitingSince?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CreateBuildoutCardBodyCategoryFields = {
+  [key: string]: unknown;
+} | null;
+
+export interface CreateBuildoutCardBody {
+  /** @minLength 1 */
+  title: string;
+  /** @minLength 1 */
+  ownerName: string;
+  /** @minLength 1 */
+  category: string;
+  status?: string;
+  position?: number;
+  kraLink?: string | null;
+  targetDoneDate?: string | null;
+  definitionOfDone: string;
+  blocker?: string | null;
+  escalationTrigger?: string | null;
+  categoryFields?: CreateBuildoutCardBodyCategoryFields;
+}
+
+export type UpdateBuildoutCardBodyCategoryFields = {
+  [key: string]: unknown;
+} | null;
+
+export interface UpdateBuildoutCardBody {
+  /** @minLength 1 */
+  title?: string;
+  ownerName?: string;
+  category?: string;
+  status?: string;
+  position?: number;
+  kraLink?: string | null;
+  targetDoneDate?: string | null;
+  definitionOfDone?: string;
+  blocker?: string | null;
+  escalationTrigger?: string | null;
+  categoryFields?: UpdateBuildoutCardBodyCategoryFields;
+}
+
+export interface AddBuildoutCardActivityBody {
+  /** @minLength 1 */
+  text: string;
+}
+
 export type CreateViewAsMeGrantBody = {
   granteeReportId: number;
 };
