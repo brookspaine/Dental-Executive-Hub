@@ -29,6 +29,7 @@ import type {
   CreateDailyTop3Body,
   CreateDirectReportBody,
   CreateFutureTodoBody,
+  CreateLeaseDocumentBody,
   CreateOrgChartSeatBody,
   CreateOrganizationBody,
   CreatePlaybookBody,
@@ -52,6 +53,8 @@ import type {
   IdealWeekCompletion,
   IdealWeekRitual,
   ImportActionItemsBody,
+  LeaseDocument,
+  LeaseRecord,
   ListIdealWeekCompletionsParams,
   OrgChartSeat,
   OrgPerformance,
@@ -70,6 +73,7 @@ import type {
   UpdateDirectReportBody,
   UpdateFutureTodoBody,
   UpdateIdealWeekRitualBody,
+  UpdateLeaseRecordBody,
   UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
   UpdatePlaybookBody,
@@ -8017,4 +8021,425 @@ export const useDeletePlaybook = <
   TContext
 > => {
   return useMutation(getDeletePlaybookMutationOptions(options));
+};
+
+/**
+ * @summary List lease records (auto-seeds one row per EDGE/UD location)
+ */
+export const getListLeaseRecordsUrl = () => {
+  return `/api/lease-records`;
+};
+
+export const listLeaseRecords = async (
+  options?: RequestInit,
+): Promise<LeaseRecord[]> => {
+  return customFetch<LeaseRecord[]>(getListLeaseRecordsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListLeaseRecordsQueryKey = () => {
+  return [`/api/lease-records`] as const;
+};
+
+export const getListLeaseRecordsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLeaseRecords>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listLeaseRecords>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListLeaseRecordsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listLeaseRecords>>
+  > = ({ signal }) => listLeaseRecords({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLeaseRecords>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLeaseRecordsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLeaseRecords>>
+>;
+export type ListLeaseRecordsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List lease records (auto-seeds one row per EDGE/UD location)
+ */
+
+export function useListLeaseRecords<
+  TData = Awaited<ReturnType<typeof listLeaseRecords>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listLeaseRecords>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLeaseRecordsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Partially update a lease record (only sent fields are updated)
+ */
+export const getUpdateLeaseRecordUrl = (id: number) => {
+  return `/api/lease-records/${id}`;
+};
+
+export const updateLeaseRecord = async (
+  id: number,
+  updateLeaseRecordBody: UpdateLeaseRecordBody,
+  options?: RequestInit,
+): Promise<LeaseRecord> => {
+  return customFetch<LeaseRecord>(getUpdateLeaseRecordUrl(id), {
+    ...options,
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateLeaseRecordBody),
+  });
+};
+
+export const getUpdateLeaseRecordMutationOptions = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLeaseRecord>>,
+    TError,
+    { id: number; data: BodyType<UpdateLeaseRecordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateLeaseRecord>>,
+  TError,
+  { id: number; data: BodyType<UpdateLeaseRecordBody> },
+  TContext
+> => {
+  const mutationKey = ["updateLeaseRecord"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateLeaseRecord>>,
+    { id: number; data: BodyType<UpdateLeaseRecordBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return updateLeaseRecord(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateLeaseRecordMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateLeaseRecord>>
+>;
+export type UpdateLeaseRecordMutationBody = BodyType<UpdateLeaseRecordBody>;
+export type UpdateLeaseRecordMutationError = ErrorType<void>;
+
+/**
+ * @summary Partially update a lease record (only sent fields are updated)
+ */
+export const useUpdateLeaseRecord = <
+  TError = ErrorType<void>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLeaseRecord>>,
+    TError,
+    { id: number; data: BodyType<UpdateLeaseRecordBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateLeaseRecord>>,
+  TError,
+  { id: number; data: BodyType<UpdateLeaseRecordBody> },
+  TContext
+> => {
+  return useMutation(getUpdateLeaseRecordMutationOptions(options));
+};
+
+/**
+ * @summary List documents attached to a lease record
+ */
+export const getListLeaseDocumentsUrl = (id: number) => {
+  return `/api/lease-records/${id}/documents`;
+};
+
+export const listLeaseDocuments = async (
+  id: number,
+  options?: RequestInit,
+): Promise<LeaseDocument[]> => {
+  return customFetch<LeaseDocument[]>(getListLeaseDocumentsUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListLeaseDocumentsQueryKey = (id: number) => {
+  return [`/api/lease-records/${id}/documents`] as const;
+};
+
+export const getListLeaseDocumentsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listLeaseDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLeaseDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListLeaseDocumentsQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listLeaseDocuments>>
+  > = ({ signal }) => listLeaseDocuments(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof listLeaseDocuments>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListLeaseDocumentsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listLeaseDocuments>>
+>;
+export type ListLeaseDocumentsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List documents attached to a lease record
+ */
+
+export function useListLeaseDocuments<
+  TData = Awaited<ReturnType<typeof listLeaseDocuments>>,
+  TError = ErrorType<unknown>,
+>(
+  id: number,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof listLeaseDocuments>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListLeaseDocumentsQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Attach a document (already uploaded to object storage) to a lease record
+ */
+export const getCreateLeaseDocumentUrl = (id: number) => {
+  return `/api/lease-records/${id}/documents`;
+};
+
+export const createLeaseDocument = async (
+  id: number,
+  createLeaseDocumentBody: CreateLeaseDocumentBody,
+  options?: RequestInit,
+): Promise<LeaseDocument> => {
+  return customFetch<LeaseDocument>(getCreateLeaseDocumentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(createLeaseDocumentBody),
+  });
+};
+
+export const getCreateLeaseDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLeaseDocument>>,
+    TError,
+    { id: number; data: BodyType<CreateLeaseDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof createLeaseDocument>>,
+  TError,
+  { id: number; data: BodyType<CreateLeaseDocumentBody> },
+  TContext
+> => {
+  const mutationKey = ["createLeaseDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof createLeaseDocument>>,
+    { id: number; data: BodyType<CreateLeaseDocumentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return createLeaseDocument(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CreateLeaseDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof createLeaseDocument>>
+>;
+export type CreateLeaseDocumentMutationBody = BodyType<CreateLeaseDocumentBody>;
+export type CreateLeaseDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Attach a document (already uploaded to object storage) to a lease record
+ */
+export const useCreateLeaseDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof createLeaseDocument>>,
+    TError,
+    { id: number; data: BodyType<CreateLeaseDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof createLeaseDocument>>,
+  TError,
+  { id: number; data: BodyType<CreateLeaseDocumentBody> },
+  TContext
+> => {
+  return useMutation(getCreateLeaseDocumentMutationOptions(options));
+};
+
+/**
+ * @summary Remove a document attachment from a lease record
+ */
+export const getDeleteLeaseDocumentUrl = (id: number, docId: number) => {
+  return `/api/lease-records/${id}/documents/${docId}`;
+};
+
+export const deleteLeaseDocument = async (
+  id: number,
+  docId: number,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteLeaseDocumentUrl(id, docId), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteLeaseDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLeaseDocument>>,
+    TError,
+    { id: number; docId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteLeaseDocument>>,
+  TError,
+  { id: number; docId: number },
+  TContext
+> => {
+  const mutationKey = ["deleteLeaseDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteLeaseDocument>>,
+    { id: number; docId: number }
+  > = (props) => {
+    const { id, docId } = props ?? {};
+
+    return deleteLeaseDocument(id, docId, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteLeaseDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteLeaseDocument>>
+>;
+
+export type DeleteLeaseDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Remove a document attachment from a lease record
+ */
+export const useDeleteLeaseDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteLeaseDocument>>,
+    TError,
+    { id: number; docId: number },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteLeaseDocument>>,
+  TError,
+  { id: number; docId: number },
+  TContext
+> => {
+  return useMutation(getDeleteLeaseDocumentMutationOptions(options));
 };

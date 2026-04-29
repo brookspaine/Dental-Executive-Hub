@@ -39,6 +39,7 @@ import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
 import { TeamPlaceholder } from "@/pages/team-placeholder";
 import { ActionItems } from "@/pages/action-items";
 import { BuildoutBoard } from "@/pages/buildout-board";
+import { LeaseMatrix } from "@/pages/lease-matrix";
 import { RolesIndex } from "@/pages/roles-index";
 import { RoleDetail } from "@/pages/role-detail";
 import { PlaybookLibrary } from "@/pages/playbook-library";
@@ -189,6 +190,7 @@ function AppRouter() {
         <Route path="/direct-reports" component={DirectReports} />
         <Route path="/action-items" component={ActionItems} />
         <Route path="/edge-buildout-board" component={BuildoutBoard} />
+        <Route path="/edge-lease-matrix" component={LeaseMatrix} />
         <Route path="/my-roles" component={RolesIndex} />
         <Route path="/my-roles/:id" component={RoleDetail} />
         <Route path="/playbook-library" component={PlaybookLibrary} />

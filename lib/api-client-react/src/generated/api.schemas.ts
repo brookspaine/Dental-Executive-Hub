@@ -885,6 +885,111 @@ export interface UpdatePlaybookBody {
   lastReviewedBy?: string;
 }
 
+export interface LeaseRecord {
+  id: number;
+  organizationId: number;
+  locationNameOverride?: string | null;
+  addressOverride?: string | null;
+  clinicalEntityName?: string | null;
+  initialLeaseTermYears?: number | null;
+  extensionOptionsCount?: number | null;
+  extensionOptionLengthYears?: number | null;
+  squareFootage?: number | null;
+  baseRentPerSf?: number | null;
+  annualEscalatorPct?: number | null;
+  freeRentMonths?: number | null;
+  camPerSf?: number | null;
+  camCapControllablePct?: number | null;
+  camCapUncontrollablePct?: number | null;
+  tiAllowancePerSf?: number | null;
+  tiAllowanceTotalOverride?: number | null;
+  deliveryCondition?: string | null;
+  rcdTimelineText?: string | null;
+  personalGuarantors?: string[] | null;
+  guarantorOtherText?: string | null;
+  guarantorExposureAmount?: number | null;
+  liabilityCapText?: string | null;
+  permittedUse?: string | null;
+  exclusivityScope?: string | null;
+  signageBuildingMounted?: string | null;
+  signageMonument?: string | null;
+  signagePylon?: string | null;
+  signageNotes?: string | null;
+  leaseExecutionDate?: string | null;
+  anticipatedDeliveryDate?: string | null;
+  rentCommencementDate?: string | null;
+  leaseExpirationDateOverride?: string | null;
+  optionRenewalDeadline?: string | null;
+  dnrPermitContingencyDeadline?: string | null;
+  generalNotes?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UpdateLeaseRecordBody {
+  locationNameOverride?: string | null;
+  addressOverride?: string | null;
+  clinicalEntityName?: string | null;
+  initialLeaseTermYears?: number | null;
+  extensionOptionsCount?: number | null;
+  extensionOptionLengthYears?: number | null;
+  squareFootage?: number | null;
+  baseRentPerSf?: number | null;
+  annualEscalatorPct?: number | null;
+  freeRentMonths?: number | null;
+  camPerSf?: number | null;
+  camCapControllablePct?: number | null;
+  camCapUncontrollablePct?: number | null;
+  tiAllowancePerSf?: number | null;
+  tiAllowanceTotalOverride?: number | null;
+  deliveryCondition?: string | null;
+  rcdTimelineText?: string | null;
+  personalGuarantors?: string[] | null;
+  guarantorOtherText?: string | null;
+  guarantorExposureAmount?: number | null;
+  liabilityCapText?: string | null;
+  permittedUse?: string | null;
+  exclusivityScope?: string | null;
+  signageBuildingMounted?: string | null;
+  signageMonument?: string | null;
+  signagePylon?: string | null;
+  signageNotes?: string | null;
+  leaseExecutionDate?: string | null;
+  anticipatedDeliveryDate?: string | null;
+  rentCommencementDate?: string | null;
+  leaseExpirationDateOverride?: string | null;
+  optionRenewalDeadline?: string | null;
+  dnrPermitContingencyDeadline?: string | null;
+  generalNotes?: string | null;
+}
+
+export interface LeaseDocument {
+  id: number;
+  leaseRecordId: number;
+  type: string;
+  label: string;
+  objectPath: string;
+  fileName: string;
+  fileSize?: number | null;
+  contentType?: string | null;
+  uploadedAt: string;
+  uploadedByName?: string | null;
+}
+
+export interface CreateLeaseDocumentBody {
+  /** @minLength 1 */
+  type: string;
+  /** @minLength 1 */
+  label: string;
+  /** @minLength 1 */
+  objectPath: string;
+  /** @minLength 1 */
+  fileName: string;
+  fileSize?: number | null;
+  contentType?: string | null;
+  uploadedByName?: string | null;
+}
+
 export type CreateViewAsMeGrantBody = {
   granteeReportId: number;
 };

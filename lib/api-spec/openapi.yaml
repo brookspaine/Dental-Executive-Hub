@@ -1815,6 +1815,112 @@ paths:
         "204":
           description: Deleted
 
+  /lease-records:
+    get:
+      operationId: listLeaseRecords
+      tags: [leaseRecords]
+      summary: List lease records (auto-seeds one row per EDGE/UD location)
+      responses:
+        "200":
+          description: List of lease records
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaseRecord"
+
+  /lease-records/{id}:
+    patch:
+      operationId: updateLeaseRecord
+      tags: [leaseRecords]
+      summary: Partially update a lease record (only sent fields are updated)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeaseRecordBody"
+      responses:
+        "200":
+          description: Updated lease record
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaseRecord"
+        "404":
+          description: Not found
+
+  /lease-records/{id}/documents:
+    get:
+      operationId: listLeaseDocuments
+      tags: [leaseRecords]
+      summary: List documents attached to a lease record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of lease documents
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/LeaseDocument"
+    post:
+      operationId: createLeaseDocument
+      tags: [leaseRecords]
+      summary: Attach a document (already uploaded to object storage) to a lease record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateLeaseDocumentBody"
+      responses:
+        "201":
+          description: Created lease document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaseDocument"
+
+  /lease-records/{id}/documents/{docId}:
+    delete:
+      operationId: deleteLeaseDocument
+      tags: [leaseRecords]
+      summary: Remove a document attachment from a lease record
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+        - name: docId
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+
 components:
   schemas:
     UploadUrlRequest:
@@ -3520,3 +3626,300 @@ components:
             type: integer
         lastReviewedBy:
           type: string
+
+    LeaseRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+        organizationId:
+          type: integer
+        locationNameOverride:
+          type: string
+          nullable: true
+        addressOverride:
+          type: string
+          nullable: true
+        clinicalEntityName:
+          type: string
+          nullable: true
+        initialLeaseTermYears:
+          type: integer
+          nullable: true
+        extensionOptionsCount:
+          type: integer
+          nullable: true
+        extensionOptionLengthYears:
+          type: integer
+          nullable: true
+        squareFootage:
+          type: integer
+          nullable: true
+        baseRentPerSf:
+          type: number
+          nullable: true
+        annualEscalatorPct:
+          type: number
+          nullable: true
+        freeRentMonths:
+          type: integer
+          nullable: true
+        camPerSf:
+          type: number
+          nullable: true
+        camCapControllablePct:
+          type: number
+          nullable: true
+        camCapUncontrollablePct:
+          type: number
+          nullable: true
+        tiAllowancePerSf:
+          type: number
+          nullable: true
+        tiAllowanceTotalOverride:
+          type: number
+          nullable: true
+        deliveryCondition:
+          type: string
+          nullable: true
+        rcdTimelineText:
+          type: string
+          nullable: true
+        personalGuarantors:
+          type: array
+          nullable: true
+          items:
+            type: string
+        guarantorOtherText:
+          type: string
+          nullable: true
+        guarantorExposureAmount:
+          type: number
+          nullable: true
+        liabilityCapText:
+          type: string
+          nullable: true
+        permittedUse:
+          type: string
+          nullable: true
+        exclusivityScope:
+          type: string
+          nullable: true
+        signageBuildingMounted:
+          type: string
+          nullable: true
+        signageMonument:
+          type: string
+          nullable: true
+        signagePylon:
+          type: string
+          nullable: true
+        signageNotes:
+          type: string
+          nullable: true
+        leaseExecutionDate:
+          type: string
+          nullable: true
+        anticipatedDeliveryDate:
+          type: string
+          nullable: true
+        rentCommencementDate:
+          type: string
+          nullable: true
+        leaseExpirationDateOverride:
+          type: string
+          nullable: true
+        optionRenewalDeadline:
+          type: string
+          nullable: true
+        dnrPermitContingencyDeadline:
+          type: string
+          nullable: true
+        generalNotes:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - organizationId
+        - createdAt
+        - updatedAt
+
+    UpdateLeaseRecordBody:
+      type: object
+      properties:
+        locationNameOverride:
+          type: string
+          nullable: true
+        addressOverride:
+          type: string
+          nullable: true
+        clinicalEntityName:
+          type: string
+          nullable: true
+        initialLeaseTermYears:
+          type: integer
+          nullable: true
+        extensionOptionsCount:
+          type: integer
+          nullable: true
+        extensionOptionLengthYears:
+          type: integer
+          nullable: true
+        squareFootage:
+          type: integer
+          nullable: true
+        baseRentPerSf:
+          type: number
+          nullable: true
+        annualEscalatorPct:
+          type: number
+          nullable: true
+        freeRentMonths:
+          type: integer
+          nullable: true
+        camPerSf:
+          type: number
+          nullable: true
+        camCapControllablePct:
+          type: number
+          nullable: true
+        camCapUncontrollablePct:
+          type: number
+          nullable: true
+        tiAllowancePerSf:
+          type: number
+          nullable: true
+        tiAllowanceTotalOverride:
+          type: number
+          nullable: true
+        deliveryCondition:
+          type: string
+          nullable: true
+        rcdTimelineText:
+          type: string
+          nullable: true
+        personalGuarantors:
+          type: array
+          nullable: true
+          items:
+            type: string
+        guarantorOtherText:
+          type: string
+          nullable: true
+        guarantorExposureAmount:
+          type: number
+          nullable: true
+        liabilityCapText:
+          type: string
+          nullable: true
+        permittedUse:
+          type: string
+          nullable: true
+        exclusivityScope:
+          type: string
+          nullable: true
+        signageBuildingMounted:
+          type: string
+          nullable: true
+        signageMonument:
+          type: string
+          nullable: true
+        signagePylon:
+          type: string
+          nullable: true
+        signageNotes:
+          type: string
+          nullable: true
+        leaseExecutionDate:
+          type: string
+          nullable: true
+        anticipatedDeliveryDate:
+          type: string
+          nullable: true
+        rentCommencementDate:
+          type: string
+          nullable: true
+        leaseExpirationDateOverride:
+          type: string
+          nullable: true
+        optionRenewalDeadline:
+          type: string
+          nullable: true
+        dnrPermitContingencyDeadline:
+          type: string
+          nullable: true
+        generalNotes:
+          type: string
+          nullable: true
+
+    LeaseDocument:
+      type: object
+      properties:
+        id:
+          type: integer
+        leaseRecordId:
+          type: integer
+        type:
+          type: string
+        label:
+          type: string
+        objectPath:
+          type: string
+        fileName:
+          type: string
+        fileSize:
+          type: integer
+          nullable: true
+        contentType:
+          type: string
+          nullable: true
+        uploadedAt:
+          type: string
+          format: date-time
+        uploadedByName:
+          type: string
+          nullable: true
+      required:
+        - id
+        - leaseRecordId
+        - type
+        - label
+        - objectPath
+        - fileName
+        - uploadedAt
+
+    CreateLeaseDocumentBody:
+      type: object
+      properties:
+        type:
+          type: string
+          minLength: 1
+        label:
+          type: string
+          minLength: 1
+        objectPath:
+          type: string
+          minLength: 1
+        fileName:
+          type: string
+          minLength: 1
+        fileSize:
+          type: integer
+          nullable: true
+        contentType:
+          type: string
+          nullable: true
+        uploadedByName:
+          type: string
+          nullable: true
+      required:
+        - type
+        - label
+        - objectPath
+        - fileName

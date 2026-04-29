@@ -21,6 +21,8 @@ export * from "./viewAsMeGrants";
 export * from "./additionalViewers";
 export * from "./actionItems";
 export * from "./buildoutCards";
+export * from "./leaseRecords";
+export * from "./leaseDocuments";
 export * from "./roles";
 export * from "./roleKeyResults";
 export * from "./roleTasks";

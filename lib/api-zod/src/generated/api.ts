@@ -1919,3 +1919,181 @@ export const UpdatePlaybookResponse = zod.object({
 export const DeletePlaybookParams = zod.object({
   id: zod.coerce.number(),
 });
+
+/**
+ * @summary List lease records (auto-seeds one row per EDGE/UD location)
+ */
+export const ListLeaseRecordsResponseItem = zod.object({
+  id: zod.number(),
+  organizationId: zod.number(),
+  locationNameOverride: zod.string().nullish(),
+  addressOverride: zod.string().nullish(),
+  clinicalEntityName: zod.string().nullish(),
+  initialLeaseTermYears: zod.number().nullish(),
+  extensionOptionsCount: zod.number().nullish(),
+  extensionOptionLengthYears: zod.number().nullish(),
+  squareFootage: zod.number().nullish(),
+  baseRentPerSf: zod.number().nullish(),
+  annualEscalatorPct: zod.number().nullish(),
+  freeRentMonths: zod.number().nullish(),
+  camPerSf: zod.number().nullish(),
+  camCapControllablePct: zod.number().nullish(),
+  camCapUncontrollablePct: zod.number().nullish(),
+  tiAllowancePerSf: zod.number().nullish(),
+  tiAllowanceTotalOverride: zod.number().nullish(),
+  deliveryCondition: zod.string().nullish(),
+  rcdTimelineText: zod.string().nullish(),
+  personalGuarantors: zod.array(zod.string()).nullish(),
+  guarantorOtherText: zod.string().nullish(),
+  guarantorExposureAmount: zod.number().nullish(),
+  liabilityCapText: zod.string().nullish(),
+  permittedUse: zod.string().nullish(),
+  exclusivityScope: zod.string().nullish(),
+  signageBuildingMounted: zod.string().nullish(),
+  signageMonument: zod.string().nullish(),
+  signagePylon: zod.string().nullish(),
+  signageNotes: zod.string().nullish(),
+  leaseExecutionDate: zod.string().nullish(),
+  anticipatedDeliveryDate: zod.string().nullish(),
+  rentCommencementDate: zod.string().nullish(),
+  leaseExpirationDateOverride: zod.string().nullish(),
+  optionRenewalDeadline: zod.string().nullish(),
+  dnrPermitContingencyDeadline: zod.string().nullish(),
+  generalNotes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+export const ListLeaseRecordsResponse = zod.array(ListLeaseRecordsResponseItem);
+
+/**
+ * @summary Partially update a lease record (only sent fields are updated)
+ */
+export const UpdateLeaseRecordParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const UpdateLeaseRecordBody = zod.object({
+  locationNameOverride: zod.string().nullish(),
+  addressOverride: zod.string().nullish(),
+  clinicalEntityName: zod.string().nullish(),
+  initialLeaseTermYears: zod.number().nullish(),
+  extensionOptionsCount: zod.number().nullish(),
+  extensionOptionLengthYears: zod.number().nullish(),
+  squareFootage: zod.number().nullish(),
+  baseRentPerSf: zod.number().nullish(),
+  annualEscalatorPct: zod.number().nullish(),
+  freeRentMonths: zod.number().nullish(),
+  camPerSf: zod.number().nullish(),
+  camCapControllablePct: zod.number().nullish(),
+  camCapUncontrollablePct: zod.number().nullish(),
+  tiAllowancePerSf: zod.number().nullish(),
+  tiAllowanceTotalOverride: zod.number().nullish(),
+  deliveryCondition: zod.string().nullish(),
+  rcdTimelineText: zod.string().nullish(),
+  personalGuarantors: zod.array(zod.string()).nullish(),
+  guarantorOtherText: zod.string().nullish(),
+  guarantorExposureAmount: zod.number().nullish(),
+  liabilityCapText: zod.string().nullish(),
+  permittedUse: zod.string().nullish(),
+  exclusivityScope: zod.string().nullish(),
+  signageBuildingMounted: zod.string().nullish(),
+  signageMonument: zod.string().nullish(),
+  signagePylon: zod.string().nullish(),
+  signageNotes: zod.string().nullish(),
+  leaseExecutionDate: zod.string().nullish(),
+  anticipatedDeliveryDate: zod.string().nullish(),
+  rentCommencementDate: zod.string().nullish(),
+  leaseExpirationDateOverride: zod.string().nullish(),
+  optionRenewalDeadline: zod.string().nullish(),
+  dnrPermitContingencyDeadline: zod.string().nullish(),
+  generalNotes: zod.string().nullish(),
+});
+
+export const UpdateLeaseRecordResponse = zod.object({
+  id: zod.number(),
+  organizationId: zod.number(),
+  locationNameOverride: zod.string().nullish(),
+  addressOverride: zod.string().nullish(),
+  clinicalEntityName: zod.string().nullish(),
+  initialLeaseTermYears: zod.number().nullish(),
+  extensionOptionsCount: zod.number().nullish(),
+  extensionOptionLengthYears: zod.number().nullish(),
+  squareFootage: zod.number().nullish(),
+  baseRentPerSf: zod.number().nullish(),
+  annualEscalatorPct: zod.number().nullish(),
+  freeRentMonths: zod.number().nullish(),
+  camPerSf: zod.number().nullish(),
+  camCapControllablePct: zod.number().nullish(),
+  camCapUncontrollablePct: zod.number().nullish(),
+  tiAllowancePerSf: zod.number().nullish(),
+  tiAllowanceTotalOverride: zod.number().nullish(),
+  deliveryCondition: zod.string().nullish(),
+  rcdTimelineText: zod.string().nullish(),
+  personalGuarantors: zod.array(zod.string()).nullish(),
+  guarantorOtherText: zod.string().nullish(),
+  guarantorExposureAmount: zod.number().nullish(),
+  liabilityCapText: zod.string().nullish(),
+  permittedUse: zod.string().nullish(),
+  exclusivityScope: zod.string().nullish(),
+  signageBuildingMounted: zod.string().nullish(),
+  signageMonument: zod.string().nullish(),
+  signagePylon: zod.string().nullish(),
+  signageNotes: zod.string().nullish(),
+  leaseExecutionDate: zod.string().nullish(),
+  anticipatedDeliveryDate: zod.string().nullish(),
+  rentCommencementDate: zod.string().nullish(),
+  leaseExpirationDateOverride: zod.string().nullish(),
+  optionRenewalDeadline: zod.string().nullish(),
+  dnrPermitContingencyDeadline: zod.string().nullish(),
+  generalNotes: zod.string().nullish(),
+  createdAt: zod.coerce.date(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary List documents attached to a lease record
+ */
+export const ListLeaseDocumentsParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListLeaseDocumentsResponseItem = zod.object({
+  id: zod.number(),
+  leaseRecordId: zod.number(),
+  type: zod.string(),
+  label: zod.string(),
+  objectPath: zod.string(),
+  fileName: zod.string(),
+  fileSize: zod.number().nullish(),
+  contentType: zod.string().nullish(),
+  uploadedAt: zod.coerce.date(),
+  uploadedByName: zod.string().nullish(),
+});
+export const ListLeaseDocumentsResponse = zod.array(
+  ListLeaseDocumentsResponseItem,
+);
+
+/**
+ * @summary Attach a document (already uploaded to object storage) to a lease record
+ */
+export const CreateLeaseDocumentParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const CreateLeaseDocumentBody = zod.object({
+  type: zod.string().min(1),
+  label: zod.string().min(1),
+  objectPath: zod.string().min(1),
+  fileName: zod.string().min(1),
+  fileSize: zod.number().nullish(),
+  contentType: zod.string().nullish(),
+  uploadedByName: zod.string().nullish(),
+});
+
+/**
+ * @summary Remove a document attachment from a lease record
+ */
+export const DeleteLeaseDocumentParams = zod.object({
+  id: zod.coerce.number(),
+  docId: zod.coerce.number(),
+});
