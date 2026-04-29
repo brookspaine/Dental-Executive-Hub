@@ -433,7 +433,7 @@ function BrainwashingItemRow({
   const base = import.meta.env.BASE_URL || "/";
   const [value, setValue] = useState(item.label);
   const [dirty, setDirty] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!dirty) setValue(item.label);
@@ -924,7 +924,7 @@ function JournalPromptField({
   const [value, setValue] = useState(savedResponse);
   const [dirty, setDirty] = useState(false);
   const base = import.meta.env.BASE_URL || "/";
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const saveResponse = useMutation({
     mutationFn: async (response: string) => {
@@ -1246,7 +1246,7 @@ function EditableRitualItem({
   const base = import.meta.env.BASE_URL || "/";
   const [value, setValue] = useState(item.label);
   const [dirty, setDirty] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   // Sync local value from the underlying record only when the user is not
   // actively editing. Otherwise their in-progress text would be overwritten
@@ -1480,7 +1480,7 @@ function ReadingListItem({ item }: { item: ReadingItem }) {
   const base = import.meta.env.BASE_URL || "/";
   const [value, setValue] = useState(item.title);
   const [dirty, setDirty] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   useEffect(() => {
     if (!dirty) setValue(item.title);

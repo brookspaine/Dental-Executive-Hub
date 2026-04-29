@@ -99,7 +99,7 @@ function useSection<T>(
   const base = import.meta.env.BASE_URL || "/";
   const [local, setLocal] = useState<T | null>(null);
   const [dirty, setDirty] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const remote = useMemo<T>(() => {
     const row = rows?.find((r) => r.sectionKey === storageKey);

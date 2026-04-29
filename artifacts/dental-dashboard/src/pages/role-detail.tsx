@@ -155,7 +155,7 @@ export function RoleDetail() {
   const qc = useQueryClient();
 
   const { data: role, isLoading } = useGetRole(id, {
-    query: { enabled: Number.isFinite(id) },
+    query: { enabled: Number.isFinite(id) } as any,
   });
   const { data: roles = [] } = useListRoles();
   const { data: playbooks = [] } = useListPlaybooks();
