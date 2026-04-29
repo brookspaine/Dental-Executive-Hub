@@ -37,7 +37,8 @@ export const actionItemsTable = pgTable("action_items", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type ActionItemRow = typeof actionItemsTable.$inferSelect;

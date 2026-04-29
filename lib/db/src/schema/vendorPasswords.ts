@@ -13,7 +13,10 @@ export const vendorPasswordsTable = pgTable("vendor_passwords", {
   notes: text("notes"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type VendorPassword = typeof vendorPasswordsTable.$inferSelect;

@@ -45,7 +45,8 @@ export const meetingAgendasTable = pgTable("meeting_agendas", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type MeetingAgenda = typeof meetingAgendasTable.$inferSelect;

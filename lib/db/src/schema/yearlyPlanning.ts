@@ -6,7 +6,8 @@ export const yearlyPlanningSectionsTable = pgTable("yearly_planning_sections", {
   content: text("content").notNull().default(""),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type YearlyPlanningSection =

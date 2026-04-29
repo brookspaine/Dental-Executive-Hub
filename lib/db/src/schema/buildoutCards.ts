@@ -36,7 +36,8 @@ export const buildoutCardsTable = pgTable("buildout_cards", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type BuildoutCardRow = typeof buildoutCardsTable.$inferSelect;

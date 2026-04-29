@@ -10,7 +10,10 @@ export const roleKeyResultsTable = pgTable("role_key_results", {
   description: text("description"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type RoleKeyResult = typeof roleKeyResultsTable.$inferSelect;
