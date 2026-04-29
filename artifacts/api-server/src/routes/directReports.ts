@@ -70,7 +70,10 @@ router.post("/direct-reports", async (req, res): Promise<void> => {
 
   const [report] = await db
     .insert(directReportsTable)
-    .values(parsed.data)
+    .values({
+      ...parsed.data,
+      hireDate: parsed.data.hireDate?.toISOString().slice(0, 10),
+    })
     .returning();
 
   await db.insert(activityTable).values({
@@ -124,7 +127,10 @@ router.patch("/direct-reports/:id", async (req, res): Promise<void> => {
 
   const [updated] = await db
     .update(directReportsTable)
-    .set(parsed.data)
+    .set({
+      ...parsed.data,
+      hireDate: parsed.data.hireDate?.toISOString().slice(0, 10),
+    })
     .where(eq(directReportsTable.id, params.data.id))
     .returning();
 
