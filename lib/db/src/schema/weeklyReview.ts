@@ -10,7 +10,8 @@ export const weeklyReviewEntriesTable = pgTable(
     content: text("content").notNull().default(""),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
-      .defaultNow(),
+      .defaultNow()
+      .$onUpdate(() => new Date()),
   },
   (t) => ({
     yearWeekFieldUnique: uniqueIndex("weekly_review_year_week_field_uniq").on(

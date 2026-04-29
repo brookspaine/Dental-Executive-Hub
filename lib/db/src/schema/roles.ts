@@ -76,7 +76,8 @@ export const rolesTable = pgTable("roles", {
     .defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true })
     .notNull()
-    .defaultNow(),
+    .defaultNow()
+    .$onUpdate(() => new Date()),
 });
 
 export type RoleRow = typeof rolesTable.$inferSelect;
