@@ -40,6 +40,11 @@ export default defineConfig({
       },
     },
   },
+  // The zod target uses `mode: "single"` and `indexFiles: false` so
+  // orval does not auto-rewrite the workspace barrel
+  // (lib/api-zod/src/index.ts) to re-export an empty `api.schemas`
+  // file — that re-export was the source of 38 TS2308 collisions.
+  // See commit f885a4d for the full rationale.
   zod: {
     input: {
       target: "./openapi.yaml",
@@ -51,8 +56,12 @@ export default defineConfig({
       workspace: apiZodSrc,
       client: "zod",
       target: "generated",
-      schemas: { path: "generated/types", type: "typescript" },
-      mode: "split",
+      // No `schemas` block: api-zod consumers (api-server routes) use
+      // the Zod schemas as values via `.safeParse(...)`; inferred types
+      // are available via `z.infer<typeof Schema>` or from
+      // @workspace/api-client-react.
+      mode: "single",
+      indexFiles: false,
       clean: true,
       prettier: true,
       override: {
