@@ -673,7 +673,7 @@ function SectionCard({
   const [dirty, setDirty] = useState(false);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [editing, setEditing] = useState(false);
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>();
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const saveMut = useMutation({
     mutationFn: async (next: SectionData) => {

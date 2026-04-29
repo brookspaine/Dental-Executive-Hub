@@ -17,7 +17,7 @@ export function OrganizationDetail() {
   const [, params] = useRoute("/organizations/:id");
   const id = params?.id ? parseInt(params.id, 10) : NaN;
   const { data: org, isLoading } = useGetOrganization(id, {
-    query: { enabled: !isNaN(id) },
+    query: { enabled: !isNaN(id) } as any,
   });
 
   if (isLoading || !org) {

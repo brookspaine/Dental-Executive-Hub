@@ -51,7 +51,7 @@ export function PlaybookDetail() {
   const [, setLocation] = useLocation();
   const qc = useQueryClient();
   const { data: playbook, isLoading } = useGetPlaybook(id, {
-    query: { enabled: Number.isFinite(id) },
+    query: { enabled: Number.isFinite(id) } as any,
   });
   const { data: roles = [] } = useListRoles();
   const { data: allPlaybooks = [] } = useListPlaybooks();
