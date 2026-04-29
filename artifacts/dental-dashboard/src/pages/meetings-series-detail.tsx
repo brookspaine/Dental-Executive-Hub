@@ -230,16 +230,6 @@ export function MeetingsSeriesDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant="ghost"
-            onClick={handleDeleteSeries}
-            disabled={!series || deleteMutation.isPending}
-            className="text-destructive hover:text-destructive"
-            data-testid="delete-series-button"
-          >
-            <Trash2 className="w-4 h-4 mr-2" />
-            {deleteMutation.isPending ? "Deleting…" : "Delete Series"}
-          </Button>
           <Button variant="ghost" onClick={() => setEditOpen(true)} disabled={!series}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Series
@@ -341,16 +331,31 @@ export function MeetingsSeriesDetail() {
               <p className="text-sm text-destructive">{editError}</p>
             )}
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>
-              Cancel
-            </Button>
+          <DialogFooter className="sm:justify-between">
             <Button
-              onClick={() => updateMutation.mutate()}
-              disabled={!editName.trim() || updateMutation.isPending}
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={handleDeleteSeries}
+              disabled={!series || deleteMutation.isPending}
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              aria-label="Delete series"
+              title="Delete series"
+              data-testid="delete-series-button"
             >
-              {updateMutation.isPending ? "Saving…" : "Save Changes"}
+              <Trash2 className="w-4 h-4" />
             </Button>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" onClick={() => setEditOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => updateMutation.mutate()}
+                disabled={!editName.trim() || updateMutation.isPending}
+              >
+                {updateMutation.isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>
