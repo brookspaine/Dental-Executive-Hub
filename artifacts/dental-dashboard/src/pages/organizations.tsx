@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
+import { useLocation, useSearch } from "wouter";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListOrganizations,
@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { LeaseMatrix } from "@/pages/lease-matrix";
 import {
   Plus,
   Building2,
@@ -109,6 +111,14 @@ function BeltBadge({ belt }: { belt: string | null | undefined }) {
   return <Badge className={beltClasses[belt as Belt]}>{beltLabel(belt as Belt)}</Badge>;
 }
 
+type OrgTab = "locations" | "lease-matrix";
+
+function parseTab(search: string): OrgTab {
+  const params = new URLSearchParams(search);
+  const t = params.get("tab");
+  return t === "lease-matrix" ? "lease-matrix" : "locations";
+}
+
 export function Organizations() {
   const queryClient = useQueryClient();
   const { data: allOrgs, isLoading } = useListOrganizations();
@@ -120,6 +130,15 @@ export function Organizations() {
   const deleteOrg = useDeleteOrganization();
 
   const [, setLocation] = useLocation();
+  const search = useSearch();
+  const activeTab = parseTab(search);
+  const setActiveTab = (next: OrgTab) => {
+    const path = next === "lease-matrix"
+      ? "/organizations?tab=lease-matrix"
+      : "/organizations";
+    setLocation(path);
+  };
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<OrgFormData>(emptyForm);
@@ -200,16 +219,18 @@ export function Organizations() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant={editMode ? "default" : "outline"}
-            size="icon"
-            onClick={() => setEditMode((v) => !v)}
-            aria-label={editMode ? "Done editing" : "Edit"}
-            aria-pressed={editMode}
-            title={editMode ? "Done editing" : "Edit"}
-          >
-            <Pencil className="h-4 w-4" />
-          </Button>
+          {activeTab === "locations" && (
+            <Button
+              variant={editMode ? "default" : "outline"}
+              size="icon"
+              onClick={() => setEditMode((v) => !v)}
+              aria-label={editMode ? "Done editing" : "Edit"}
+              aria-pressed={editMode}
+              title={editMode ? "Done editing" : "Edit"}
+            >
+              <Pencil className="h-4 w-4" />
+            </Button>
+          )}
         </div>
         <Dialog
           open={dialogOpen}
@@ -340,46 +361,62 @@ export function Organizations() {
         </Dialog>
       </div>
 
-      <DsoSection
-        isLoading={isLoading}
-        dsoOrgs={dsoOrgs}
-        edgeOrgs={orgs}
-        editMode={editMode}
-        onRowClick={(id) => setLocation(`/organizations/${id}`)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAdd={() => openAddDialog("edge_dso")}
-        addLabel="Add EDGE DSO"
-      />
+      <Tabs
+        value={activeTab}
+        onValueChange={(v) => setActiveTab(v as OrgTab)}
+        className="space-y-4"
+      >
+        <TabsList>
+          <TabsTrigger value="locations">Locations</TabsTrigger>
+          <TabsTrigger value="lease-matrix">Lease Matrix</TabsTrigger>
+        </TabsList>
 
-      <OrgSection
-        title=""
-        nameLabel="EDGE Locations"
-        emptyText="No EDGE locations yet"
-        isLoading={isLoading}
-        orgs={orgs}
-        editMode={editMode}
-        onRowClick={(id) => setLocation(`/organizations/${id}`)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAdd={() => openAddDialog("edge")}
-        addLabel="Add EDGE Location"
-      />
+        <TabsContent value="locations" className="space-y-6 mt-4">
+          <DsoSection
+            isLoading={isLoading}
+            dsoOrgs={dsoOrgs}
+            edgeOrgs={orgs}
+            editMode={editMode}
+            onRowClick={(id) => setLocation(`/organizations/${id}`)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAdd={() => openAddDialog("edge_dso")}
+            addLabel="Add EDGE DSO"
+          />
 
-      <OrgSection
-        title=""
-        nameLabel="UD Locations"
-        emptyText="No UD locations yet"
-        isLoading={isLoading}
-        orgs={udOrgs}
-        editMode={editMode}
-        onRowClick={(id) => setLocation(`/organizations/${id}`)}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        onAdd={() => openAddDialog("urgent_dental")}
-        addLabel="Add UD Location"
-      />
+          <OrgSection
+            title=""
+            nameLabel="EDGE Locations"
+            emptyText="No EDGE locations yet"
+            isLoading={isLoading}
+            orgs={orgs}
+            editMode={editMode}
+            onRowClick={(id) => setLocation(`/organizations/${id}`)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAdd={() => openAddDialog("edge")}
+            addLabel="Add EDGE Location"
+          />
 
+          <OrgSection
+            title=""
+            nameLabel="UD Locations"
+            emptyText="No UD locations yet"
+            isLoading={isLoading}
+            orgs={udOrgs}
+            editMode={editMode}
+            onRowClick={(id) => setLocation(`/organizations/${id}`)}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            onAdd={() => openAddDialog("urgent_dental")}
+            addLabel="Add UD Location"
+          />
+        </TabsContent>
+
+        <TabsContent value="lease-matrix" className="mt-4">
+          <LeaseMatrix embedded />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

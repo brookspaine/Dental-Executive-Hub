@@ -1568,7 +1568,7 @@ function ColumnHeader({
 // Main page
 // ---------------------------------------------------------------------------
 
-export function LeaseMatrix() {
+export function LeaseMatrix({ embedded = false }: { embedded?: boolean } = {}) {
   const { activeUser } = useActiveUser();
   const [editMode, setEditMode] = useState<boolean>(() => {
     if (typeof window === "undefined") return false;
@@ -1625,12 +1625,14 @@ export function LeaseMatrix() {
   );
 
   return (
-    <div className="p-6 space-y-4">
+    <div className={embedded ? "space-y-4" : "p-6 space-y-4"}>
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-[#0F2A47]">
-            Lease Comparison Matrix
-          </h1>
+          {!embedded && (
+            <h1 className="text-2xl font-semibold text-[#0F2A47]">
+              Lease Comparison Matrix
+            </h1>
+          )}
           <p className="text-sm text-slate-500 mt-1 max-w-2xl">
             Side-by-side comparison of key lease terms across every EDGE and
             UD location. Locations are columns; lease fields are rows. Edit
@@ -1638,11 +1640,11 @@ export function LeaseMatrix() {
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Label htmlFor="edit-mode" className="text-sm text-slate-600">
+          <Label htmlFor="lease-matrix-edit-mode" className="text-sm text-slate-600">
             {editMode ? "Edit mode" : "Read-only"}
           </Label>
           <Switch
-            id="edit-mode"
+            id="lease-matrix-edit-mode"
             checked={editMode}
             onCheckedChange={setEditMode}
           />
