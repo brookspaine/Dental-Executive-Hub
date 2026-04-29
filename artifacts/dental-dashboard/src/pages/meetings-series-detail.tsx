@@ -15,8 +15,21 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Plus, Pencil, Building2, X } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { ChevronLeft, Plus, Pencil, Building2, X, Trash2 } from "lucide-react";
 import { useListDirectReports } from "@workspace/api-client-react";
+import { useMeetingOrgOptions } from "@/lib/meeting-orgs";
+
+// Sentinel value used by the Organization Select to mean "no organization
+// set". Radix Select can't bind to an empty string, so we round-trip this
+// constant through the picker and translate it to `null` on save.
+const NO_ORG = "__none__";
 
 type Series = {
   id: number;
@@ -62,8 +75,10 @@ export function MeetingsSeriesDetail() {
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [editName, setEditName] = useState("");
+  const [editOrg, setEditOrg] = useState<string>(NO_ORG);
   const [editMemberIds, setEditMemberIds] = useState<number[]>([]);
   const [editError, setEditError] = useState<string | null>(null);
+  const { options: orgOptions } = useMeetingOrgOptions();
 
   const { data: series } = useQuery<Series>({
     queryKey: [`/api/meeting-series/${seriesId}`],
@@ -85,6 +100,9 @@ export function MeetingsSeriesDetail() {
   useEffect(() => {
     if (!editOpen || !series) return;
     setEditName(series.name);
+    setEditOrg(series.organization && series.organization.length > 0
+      ? series.organization
+      : NO_ORG);
     setEditMemberIds(series.memberIds ?? []);
     setEditError(null);
   }, [editOpen, series]);
@@ -96,6 +114,9 @@ export function MeetingsSeriesDetail() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: editName.trim(),
+          // Send `null` to clear the organization (server treats null as
+          // "remove location"); send the trimmed string otherwise.
+          organization: editOrg === NO_ORG ? null : editOrg,
           memberIds: editMemberIds,
         }),
       });
@@ -114,6 +135,32 @@ export function MeetingsSeriesDetail() {
     },
     onError: (e: Error) => setEditError(e.message),
   });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/meeting-series/${seriesId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Failed to delete series");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/meeting-series"] });
+      setLocation("/meetings/leadership");
+    },
+    onError: (e: Error) => window.alert(e.message),
+  });
+
+  function handleDeleteSeries(): void {
+    if (!series) return;
+    const ok = window.confirm(
+      `Delete "${series.name}"? This removes the series and its agendas. This cannot be undone.`,
+    );
+    if (!ok) return;
+    deleteMutation.mutate();
+  }
 
   function addEditMember(id: number | null): void {
     if (id === null) return;
@@ -183,6 +230,16 @@ export function MeetingsSeriesDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={handleDeleteSeries}
+            disabled={!series || deleteMutation.isPending}
+            className="text-destructive hover:text-destructive"
+            data-testid="delete-series-button"
+          >
+            <Trash2 className="w-4 h-4 mr-2" />
+            {deleteMutation.isPending ? "Deleting…" : "Delete Series"}
+          </Button>
           <Button variant="ghost" onClick={() => setEditOpen(true)} disabled={!series}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Series
@@ -208,6 +265,35 @@ export function MeetingsSeriesDetail() {
                 onChange={(e) => setEditName(e.target.value)}
                 placeholder="e.g. Weekly Growth Meeting"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="series-org">Location</Label>
+              <Select
+                value={editOrg}
+                onValueChange={(v) => setEditOrg(v)}
+              >
+                <SelectTrigger
+                  id="series-org"
+                  data-testid="series-org-trigger"
+                >
+                  <SelectValue placeholder="Select a location" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_ORG}>Unassigned</SelectItem>
+                  {orgOptions.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                  {/* If the current org isn't one of the canonical options
+                      (e.g. legacy / renamed), still show it so the user
+                      can see and keep it. */}
+                  {editOrg !== NO_ORG &&
+                    !orgOptions.some((o) => o.value === editOrg) && (
+                      <SelectItem value={editOrg}>{editOrg}</SelectItem>
+                    )}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Roster</Label>
