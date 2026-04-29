@@ -1,0 +1,100 @@
+Got it. Four consolidations — combining related fields into single multi-part rows so the matrix is shorter and the user sees related info together. Each consolidated field becomes one row in the matrix that displays multiple sub-values together.
+Here’s the updated prompt with the consolidations.
+
+Updated prompt to send Replit Agent:
+
+Build a new feature called Lease Comparison Matrix in the Dental Executive Hub app.
+Where it lives
+In the existing left sidebar, under the EDGE DSO section, add a new entry positioned below all the existing content in that section (i.e., as the last item under EDGE DSO, after every existing location and every existing menu item already there). Render it as a button or icon-with-label that visually distinguishes it from the location entries above — it should read clearly as a tool rather than as another location. Suggested treatment: a subtly different background tint, an icon (e.g., a grid or table icon, or a building-comparison icon), and a label like “Lease Matrix” or “Compare Leases.”
+The route should be /edge/lease-matrix (or follow the existing routing convention used for other EDGE-section pages).
+Do not move, rename, or reorganize any existing sidebar content. The only change to the sidebar is adding this one new entry at the bottom of the EDGE DSO section.
+What it does
+A spreadsheet-style grid view that compares key lease terms across all EDGE and UD locations side by side. Locations are columns, lease fields are rows. The user can scan across to compare any field across all locations at a glance.
+Visual structure
+A horizontally scrolling table:
+	•	Leftmost column (frozen): the field name (e.g., “Square Footage”).
+	•	Each subsequent column: one location, with the location name as a sticky header at the top.
+	•	Each row: one lease field, with values populated per location.
+Display all fields as one continuous, uninterrupted list. No section headers, no group labels, no visual separators between groups of fields. Every row is a data row.
+Some rows are consolidated multi-part fields, meaning a single row in the matrix contains multiple related sub-values displayed together within the cell. See the field list below for which fields are consolidated and how their sub-values should display.
+Fields to include in the matrix (in this exact order)
+	•	Location Name (text)
+	•	Address (text, multi-line)
+	•	Clinical Entity Operating Under License (text — e.g., “Brooks Paine PLLC 2”)
+	•	Lease Term & Options (consolidated). Three sub-values displayed together in one cell:
+	•	Initial Lease Term (years, integer)
+	•	Number of Extension Options (integer)
+	•	Length of Each Extension Option (years, integer)
+Display format suggestion: “10 yrs + 2 × 5 yr options” or stacked label/value pairs within the cell. When in edit mode, all three sub-values are editable as separate inputs in a small panel that opens on the cell.
+	•	Square Footage (integer)
+	•	Base Rent & Escalator (consolidated). Two sub-values displayed together:
+	•	Base Rent per SF (currency, 2 decimals)
+	•	Annual Escalator Percentage (percentage, 2 decimals)
+Display format suggestion: ”$42.00/SF, 3.0% annual” or stacked. Both editable separately in edit mode.
+	•	Free Rent / Abatement Period in Months (integer, optional)
+	•	CAM per SF & Cap Structure (consolidated). Three sub-values displayed together:
+	•	CAM per SF (currency, 2 decimals)
+	•	CAM Cap — Controllable (percentage, optional)
+	•	CAM Cap — Uncontrollable (percentage, optional)
+Display format suggestion: ”$8.50/SF — Cap: 5% controllable / 10% uncontrollable” or stacked. All three editable separately in edit mode.
+	•	TI Allowance per SF (currency, 2 decimals)
+	•	TI Allowance Total (auto-calculated: SF × TIA/SF)
+	•	Delivery Condition (text, multi-line — e.g., “Cold dark shell”)
+	•	Rent Commencement Date / RCD Timeline (text — e.g., “180 days after delivery” or a specific date if known)
+	•	Personal Guarantors (multi-select: Brooks Paine, Frank Alderman, Other — plus a free-text field for other names)
+	•	Guarantor Exposure Amount (currency)
+	•	Liability Cap (currency or text — e.g., “12 months’ rent”)
+	•	Permitted Use (text, multi-line)
+	•	Exclusivity Scope (text, multi-line)
+	•	Signage Rights (consolidated). Four sub-values displayed together:
+	•	Building-Mounted (yes/no/conditional)
+	•	Monument Sign Inclusion (yes/no/conditional)
+	•	Pylon (yes/no/conditional)
+	•	Signage Notes (text, multi-line)
+Display format suggestion: stacked status indicators with labels (e.g., “Building: Yes · Monument: Conditional · Pylon: No”), with notes shown below or in a tooltip. All four editable separately in edit mode.
+	•	Lease Execution Date (date)
+	•	Anticipated Delivery Date (date)
+	•	Rent Commencement Date (date)
+	•	Lease Expiration Date (date — auto-calculated from execution + initial term, but overridable)
+	•	Option Renewal Deadline / Notice Date (date)
+	•	DNR Permit Contingency Deadline (date, optional)
+	•	Documents (file attachments per location: Signed Lease PDF, LOI, amendments, exhibits, side letters, guaranty documents, signage approvals, exclusive recordings — each with a label, upload date, and uploader)
+	•	General Notes (text, multi-line, supports rich text)
+Key interactions
+	•	Inline editing: click any cell to edit in place. For consolidated multi-part cells, clicking opens a small inline panel with separate inputs for each sub-value. Tab to move between sub-values within the panel; Esc to cancel.
+	•	Edit mode toggle: matches the existing pattern in the rest of the app — read-only by default, with an “Edit” toggle to switch into edit mode.
+	•	Add Location button: opens a dialog to create a new location row. Required field is Location Name only; everything else can be filled in later.
+	•	Auto-calculated cells: show as read-only with a small calculator icon. Examples: TI Allowance Total, Lease Expiration Date.
+	•	Dollar-amount fields: display with $ formatting and thousands separators ($45,750).
+	•	Date fields: use the same date picker pattern used elsewhere in the app.
+	•	Yes/no/conditional fields: dropdown with three options; “conditional” reveals a small inline notes field.
+	•	File attachments: click the Documents row for a given location to open a side panel with all docs for that location. Upload via drag-and-drop or click-to-upload. Show file name, size, upload date.
+Consolidated cell display rules
+For consolidated multi-part rows, the visual goal is that the user can scan across the row and quickly compare the relevant sub-values at each location, without the cell becoming visually noisy. Replit Agent should pick the cleanest visual treatment that satisfies this goal — whether that’s stacked label/value pairs, a single-line summary string with consistent formatting, or small grouped inline indicators. The display format suggestions in the field list above are starting points, not prescriptions.
+Critical-date alerts
+For each of the date fields (Lease Execution Date, Anticipated Delivery Date, Rent Commencement Date, Lease Expiration Date, Option Renewal Deadline / Notice Date, DNR Permit Contingency Deadline), surface alerts when:
+	•	The date is within 90 days (yellow)
+	•	The date is within 30 days (orange)
+	•	The date has passed without resolution (red)
+Display these alerts as small badges on the location’s column header so they’re visible at a glance without scrolling. This is especially important for Option Renewal Deadline — missing a notice deadline is one of the most expensive lease mistakes a DSO can make.
+Data model
+Create a new database table called lease_records (or follow existing schema naming conventions). Each row is one location’s lease record. Reference the existing locations table or whatever table currently powers the EDGE sidebar entries — every lease record should have a foreign key to that locations table so the matrix stays in sync if a location is renamed or removed.
+Important: even though the matrix UI shows consolidated multi-part rows, the underlying database columns should remain separate for each sub-value (e.g., initial_lease_term_years, extension_options_count, extension_option_length_years — three columns, not a single combined string). The consolidation is a presentation layer concern, not a storage concern. This keeps the data queryable and reportable later.
+If file attachments are stored, use the existing object storage integration that’s already in the codebase (lib/object-storage-web).
+Seeding
+Auto-detect the locations to seed by reading the existing EDGE and UD locations from the database. Specifically: include every location currently flagged as an EDGE Location or UD Location, and exclude the DSO/parent entity. For the seeded rows, populate Location Name and Address from the existing location records. Leave the lease-specific fields blank for the user to fill in. For Cary (5055 NC-55), if the lease negotiation data is already stored elsewhere in the codebase, pre-populate what’s available — otherwise leave blank.
+Visual style
+Match the existing app aesthetic — clean, professional, dense-information layout. Use the same color tokens, typography, and component library (shadcn/ui) as the rest of the app. The matrix should feel like a serious operations tool, not a hobby project.
+Before you build, please report
+Investigate first and report back:
+	1.	The exact location of the EDGE DSO sidebar section in the codebase, and the structure of how existing items in that section are rendered (so the new entry matches their pattern)
+	2.	The existing locations table schema and which locations are currently flagged as EDGE or UD
+	3.	The existing routing convention used by other EDGE pages
+	4.	Whether the existing object storage integration is wired up for file uploads in the frontend, or whether new wiring is needed
+Don’t write any code yet. Produce an investigation report covering those four items, plus any concerns about how this feature fits into the existing architecture. After I review the report, I’ll authorize you to build.
+
+End of prompt.
+
+One thing I added that’s worth knowing about — in the Data model section I called out that the database columns should stay separate even though the UI consolidates them. Reason: if you ever want to ask “show me all locations with a controllable CAM cap above 5%” or “filter to locations with monument signage rights,” that’s only possible if those values are stored as their own columns. Storing them as a single combined string in the database would lock you out of those queries. The consolidation is purely visual — what the user sees in the cell — not a structural decision.
+This is a good example of a small architectural call where the right answer isn’t obvious. If Replit Agent’s investigation report comes back proposing to store consolidated values as JSON or as combined strings, push back on that — separate columns is the correct approach.
+Send it and bring back the report.​​​​​​​​​​​​​​​​
