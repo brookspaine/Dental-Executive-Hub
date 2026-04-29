@@ -79,6 +79,12 @@ export function MeetingsSeriesDetail() {
   const [editMemberIds, setEditMemberIds] = useState<number[]>([]);
   const [editError, setEditError] = useState<string | null>(null);
   const { options: orgOptions } = useMeetingOrgOptions();
+  // Per-row Edit Agenda dialog state. We track the agenda being edited by
+  // id and seed `agendaEditName` from the row when the dialog opens so
+  // typing only mutates local state; saving issues a PATCH and invalidates.
+  const [agendaEditId, setAgendaEditId] = useState<number | null>(null);
+  const [agendaEditName, setAgendaEditName] = useState("");
+  const [agendaEditError, setAgendaEditError] = useState<string | null>(null);
 
   const { data: series } = useQuery<Series>({
     queryKey: [`/api/meeting-series/${seriesId}`],
@@ -179,6 +185,61 @@ export function MeetingsSeriesDetail() {
       return res.json();
     },
   });
+
+  const renameAgendaMutation = useMutation({
+    mutationFn: async (vars: { id: number; name: string }) => {
+      const res = await fetch(`/api/meeting-agendas/${vars.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: vars.name }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Failed to rename agenda");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/meeting-series/${seriesId}/agendas`],
+      });
+      setAgendaEditId(null);
+    },
+    onError: (e: Error) => setAgendaEditError(e.message),
+  });
+
+  const deleteAgendaMutation = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`/api/meeting-agendas/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Failed to delete agenda");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/meeting-series/${seriesId}/agendas`],
+      });
+      setAgendaEditId(null);
+    },
+    onError: (e: Error) => window.alert(e.message),
+  });
+
+  function handleEditAgenda(a: Agenda): void {
+    setAgendaEditId(a.id);
+    setAgendaEditName(a.name);
+    setAgendaEditError(null);
+  }
+
+  function handleDeleteAgenda(a: Agenda): void {
+    const ok = window.confirm(
+      `Delete agenda "${a.name}"? This cannot be undone.`,
+    );
+    if (!ok) return;
+    deleteAgendaMutation.mutate(a.id);
+  }
 
   const newAgendaMutation = useMutation({
     mutationFn: async () => {
@@ -361,10 +422,11 @@ export function MeetingsSeriesDetail() {
       </Dialog>
 
       <Card>
-        <div className="grid grid-cols-[1fr_180px_180px] gap-4 px-5 py-3 border-b font-semibold text-sm">
+        <div className="grid grid-cols-[1fr_180px_180px_80px] gap-4 px-5 py-3 border-b font-semibold text-sm">
           <div>Agenda Name</div>
           <div>Date Created</div>
           <div>Last Updated</div>
+          <div className="text-right">Actions</div>
         </div>
         {agendas.length === 0 ? (
           <div className="p-10 text-center text-sm text-muted-foreground">
@@ -373,19 +435,104 @@ export function MeetingsSeriesDetail() {
         ) : (
           <div className="divide-y">
             {agendas.map((a) => (
-              <Link
+              <div
                 key={a.id}
-                href={`/meetings/leadership/agendas/${a.id}`}
-                className="grid grid-cols-[1fr_180px_180px] gap-4 px-5 py-4 hover:bg-muted/40 transition-colors text-sm"
+                className="grid grid-cols-[1fr_180px_180px_80px] gap-4 px-5 py-4 hover:bg-muted/40 transition-colors text-sm items-center"
               >
-                <div className="font-medium text-primary">{a.name}</div>
+                <Link
+                  href={`/meetings/leadership/agendas/${a.id}`}
+                  className="font-medium text-primary hover:underline"
+                >
+                  {a.name}
+                </Link>
                 <div className="text-muted-foreground">{fmtDate(a.createdAt)}</div>
                 <div className="text-muted-foreground">{fmtDate(a.updatedAt)}</div>
-              </Link>
+                <div className="flex items-center justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleEditAgenda(a)}
+                    data-testid={`edit-agenda-${a.id}`}
+                  >
+                    <Pencil className="w-3.5 h-3.5 mr-1" />
+                    Edit
+                  </Button>
+                </div>
+              </div>
             ))}
           </div>
         )}
       </Card>
+
+      <Dialog
+        open={agendaEditId !== null}
+        onOpenChange={(open) => {
+          if (!open) setAgendaEditId(null);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Agenda</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="agenda-name">Name</Label>
+              <Input
+                id="agenda-name"
+                value={agendaEditName}
+                onChange={(e) => setAgendaEditName(e.target.value)}
+                placeholder="Agenda name"
+                data-testid="agenda-edit-name"
+              />
+            </div>
+            {agendaEditError && (
+              <p className="text-sm text-destructive">{agendaEditError}</p>
+            )}
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => {
+                const a = agendas.find((x) => x.id === agendaEditId);
+                if (a) handleDeleteAgenda(a);
+              }}
+              disabled={
+                agendaEditId === null || deleteAgendaMutation.isPending
+              }
+              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+              aria-label="Delete agenda"
+              title="Delete agenda"
+              data-testid="delete-agenda-button"
+            >
+              <Trash2 className="w-4 h-4" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setAgendaEditId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (agendaEditId === null) return;
+                  renameAgendaMutation.mutate({
+                    id: agendaEditId,
+                    name: agendaEditName.trim(),
+                  });
+                }}
+                disabled={
+                  !agendaEditName.trim() || renameAgendaMutation.isPending
+                }
+              >
+                {renameAgendaMutation.isPending ? "Saving…" : "Save Changes"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
