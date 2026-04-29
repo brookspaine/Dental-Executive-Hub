@@ -50,7 +50,7 @@ const navItems: NavItem[] = [
     label: "Team",
     icon: Users,
     children: [
-      { href: "/team/members", label: "Members" },
+      { href: "/team/members", label: "Team Members" },
       { href: "/team/org-chart", label: "Org Chart" },
       { href: "/team/reports", label: "Team Reports" },
       { href: "/team/my-reports", label: "My Reports" },
