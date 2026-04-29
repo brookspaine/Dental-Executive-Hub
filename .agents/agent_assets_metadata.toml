@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "reGNjbE2fCtUJbVjIOr_z"
+uri = "file://backups/dental-dashboard-db_20260429_003734Z.sql.gz"
+type = "unspecified"
+title = "Database backup (gzipped SQL, 37 KB)"
