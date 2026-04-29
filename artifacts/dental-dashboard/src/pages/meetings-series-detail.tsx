@@ -232,7 +232,7 @@ export function MeetingsSeriesDetail() {
         <div className="flex items-center gap-2">
           <Button variant="ghost" onClick={() => setEditOpen(true)} disabled={!series}>
             <Pencil className="w-4 h-4 mr-2" />
-            Edit Series
+            Edit
           </Button>
           <Button onClick={() => newAgendaMutation.mutate()} disabled={newAgendaMutation.isPending}>
             <Plus className="w-4 h-4 mr-2" />
