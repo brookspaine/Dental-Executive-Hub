@@ -51,8 +51,17 @@ export default defineConfig({
       workspace: apiZodSrc,
       client: "zod",
       target: "generated",
-      schemas: { path: "generated/types", type: "typescript" },
-      mode: "split",
+      // Intentionally no `schemas` output and `mode: "single"`:
+      // api-zod consumers (api-server routes) only use the Zod value
+      // schemas via `.safeParse(...)`, and anyone needing an inferred
+      // type can use `z.infer<typeof Schema>`. Generating a parallel
+      // TypeScript-interface output causes value/type name collisions
+      // across the workspace barrel (TS2308); `mode: "split"` would
+      // additionally have orval emit a barrel entry for an empty
+      // api.schemas file. See @workspace/api-client-react for
+      // standalone TypeScript types of the same models.
+      mode: "single",
+      indexFiles: false,
       clean: true,
       prettier: true,
       override: {
