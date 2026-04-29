@@ -24,8 +24,6 @@ import {
   Trash2,
   MessageSquare,
   ShieldAlert,
-  ChevronDown,
-  ChevronRight,
 } from "lucide-react";
 import {
   useListBuildoutCards,
@@ -379,6 +377,22 @@ function CardChip({
             {card.title}
           </div>
           <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+            {isBusinessArea(card.businessArea) && (
+              <span
+                className={cn(
+                  "inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+                  AREA_STYLES[card.businessArea].pill,
+                )}
+              >
+                <span
+                  className={cn(
+                    "h-1.5 w-1.5 rounded-full",
+                    AREA_STYLES[card.businessArea].bar,
+                  )}
+                />
+                {card.businessArea}
+              </span>
+            )}
             <span
               className={cn(
                 "inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded border",
@@ -444,41 +458,31 @@ function DraggableCard({
 }
 
 // ---------------------------------------------------------------------------
-// Column (drop target keyed per swimlane)
+// Column (drop target = status; the board is now a single unified Kanban)
 // ---------------------------------------------------------------------------
 
-function dropId(area: BusinessArea, status: ColumnId): string {
-  return `${area}::${status}`;
-}
-
-function parseDropId(id: string): { area: BusinessArea; status: ColumnId } | null {
-  const [area, status] = id.split("::");
-  if (!area || !status) return null;
-  if (!isBusinessArea(area)) return null;
-  if (!COLUMNS.some((c) => c.id === status)) return null;
-  return { area: area as BusinessArea, status: status as ColumnId };
+function isColumnId(s: string): s is ColumnId {
+  return COLUMNS.some((c) => c.id === s);
 }
 
 function ColumnCell({
-  area,
   column,
   cards,
   onCardClick,
   onAddCard,
 }: {
-  area: BusinessArea;
   column: (typeof COLUMNS)[number];
   cards: BuildoutCard[];
   onCardClick: (c: BuildoutCard) => void;
-  onAddCard: (area: BusinessArea, status: ColumnId) => void;
+  onAddCard: (status: ColumnId) => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: dropId(area, column.id) });
+  const { setNodeRef, isOver } = useDroppable({ id: column.id });
 
   return (
     <div
       ref={setNodeRef}
       className={cn(
-        "flex flex-col bg-slate-50/80 rounded-md border border-slate-200 min-h-[140px]",
+        "flex flex-col bg-slate-50/80 rounded-md border border-slate-200 min-h-[200px]",
         isOver && "ring-2 ring-[#0F2A47]/40 bg-slate-100",
       )}
     >
@@ -487,14 +491,14 @@ function ColumnCell({
           {cards.length} {cards.length === 1 ? "card" : "cards"}
         </span>
         <button
-          onClick={() => onAddCard(area, column.id)}
+          onClick={() => onAddCard(column.id)}
           className="text-slate-400 hover:text-slate-700 p-0.5 rounded hover:bg-slate-200"
           title="New card here"
         >
           <Plus className="h-3.5 w-3.5" />
         </button>
       </div>
-      <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto max-h-[420px]">
+      <div className="flex-1 p-1.5 space-y-1.5 overflow-y-auto max-h-[70vh]">
         {cards.map((c) => (
           <DraggableCard key={c.id} card={c} onClick={() => onCardClick(c)} />
         ))}
@@ -505,141 +509,6 @@ function ColumnCell({
         )}
       </div>
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Swimlane row (column headers + 6 column cells + collapsible)
-// ---------------------------------------------------------------------------
-
-function Swimlane({
-  area,
-  cards,
-  collapsed,
-  onToggleCollapse,
-  onCardClick,
-  onAddCard,
-}: {
-  area: BusinessArea;
-  cards: BuildoutCard[];
-  collapsed: boolean;
-  onToggleCollapse: () => void;
-  onCardClick: (c: BuildoutCard) => void;
-  onAddCard: (area: BusinessArea, status: ColumnId) => void;
-}) {
-  const style = AREA_STYLES[area];
-  const cardsByCol = useMemo(() => {
-    const m: Record<ColumnId, BuildoutCard[]> = {
-      backlog: [],
-      ready: [],
-      in_progress: [],
-      waiting_on: [],
-      review: [],
-      done: [],
-    };
-    for (const c of cards) {
-      const col = COLUMNS.find((x) => x.id === c.status);
-      if (col) m[col.id].push(c);
-    }
-    return m;
-  }, [cards]);
-
-  return (
-    <section className={cn("rounded-lg border", style.ring, style.tint)}>
-      {/* Sticky swimlane header */}
-      <div
-        className={cn(
-          "sticky top-0 z-10 flex items-center gap-3 px-3 py-2 border-b border-slate-200 backdrop-blur-sm bg-white/80 rounded-t-lg cursor-pointer select-none",
-        )}
-        onClick={onToggleCollapse}
-        role="button"
-      >
-        <span className={cn("h-6 w-1.5 rounded-full shrink-0", style.bar)} />
-        <button
-          className="text-slate-500 hover:text-slate-900"
-          aria-label={collapsed ? "Expand swimlane" : "Collapse swimlane"}
-        >
-          {collapsed ? (
-            <ChevronRight className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
-        </button>
-        <h2 className={cn("text-sm font-semibold", style.label)}>{area}</h2>
-        <span
-          className={cn(
-            "text-[10px] font-semibold px-2 py-0.5 rounded-full",
-            style.pill,
-          )}
-        >
-          {cards.length} {cards.length === 1 ? "card" : "cards"}
-        </span>
-
-        {/* Per-column counts (always visible — important when collapsed) */}
-        <div className="ml-auto flex items-center gap-1.5">
-          {COLUMNS.map((col) => {
-            const n = cardsByCol[col.id].length;
-            const overWip = col.wip !== null && n > col.wip;
-            const atWip = col.wip !== null && n === col.wip;
-            return (
-              <span
-                key={col.id}
-                title={`${col.label}: ${n}${col.wip !== null ? ` / ${col.wip} WIP` : ""}`}
-                className={cn(
-                  "text-[10px] px-1.5 py-0.5 rounded border whitespace-nowrap",
-                  overWip
-                    ? "bg-red-100 text-red-800 border-red-300"
-                    : atWip
-                    ? "bg-amber-100 text-amber-800 border-amber-300"
-                    : "bg-white text-slate-600 border-slate-200",
-                )}
-              >
-                {col.label}: {n}
-                {col.wip !== null ? `/${col.wip}` : ""}
-              </span>
-            );
-          })}
-        </div>
-      </div>
-
-      {!collapsed && (
-        <div className="p-2 overflow-x-auto">
-          <div className="grid grid-cols-6 gap-2 min-w-[1100px]">
-            {COLUMNS.map((col) => (
-              <div key={col.id} className="flex flex-col gap-1.5">
-                {/* Column header (per swimlane) */}
-                <div className="flex items-center justify-between px-2">
-                  <span className="text-[11px] uppercase tracking-wide font-semibold text-slate-700">
-                    {col.label}
-                  </span>
-                  {col.wip !== null && (
-                    <span
-                      className={cn(
-                        "text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
-                        cardsByCol[col.id].length > col.wip
-                          ? "bg-red-200 text-red-800"
-                          : cardsByCol[col.id].length === col.wip
-                          ? "bg-amber-200 text-amber-800"
-                          : "bg-slate-200 text-slate-700",
-                      )}
-                    >
-                      {cardsByCol[col.id].length}/{col.wip}
-                    </span>
-                  )}
-                </div>
-                <ColumnCell
-                  area={area}
-                  column={col}
-                  cards={cardsByCol[col.id]}
-                  onCardClick={onCardClick}
-                  onAddCard={onAddCard}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </section>
   );
 }
 
@@ -1133,64 +1002,7 @@ function CardModal({
 }
 
 // ---------------------------------------------------------------------------
-// Cross-swimlane move confirmation
-// ---------------------------------------------------------------------------
-
-type PendingMove = {
-  card: BuildoutCard;
-  fromArea: BusinessArea;
-  toArea: BusinessArea;
-  toStatus: ColumnId;
-};
-
-function MoveAreaDialog({
-  pending,
-  onConfirm,
-  onCancel,
-}: {
-  pending: PendingMove | null;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  return (
-    <Dialog
-      open={!!pending}
-      onOpenChange={(o) => {
-        if (!o) onCancel();
-      }}
-    >
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Move to a different business area?</DialogTitle>
-          <DialogDescription>
-            {pending && (
-              <>
-                Move <span className="font-medium">"{pending.card.title}"</span>{" "}
-                from <span className="font-medium">{pending.fromArea}</span> to{" "}
-                <span className="font-medium">{pending.toArea}</span>?
-              </>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" size="sm" onClick={onCancel}>
-            Cancel
-          </Button>
-          <Button
-            size="sm"
-            onClick={onConfirm}
-            className="bg-[#0F2A47] hover:bg-[#0F2A47]/90"
-          >
-            Confirm Move
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Weekly Review (now grouped by Business Area)
+// Weekly Review (still grouped by Business Area)
 // ---------------------------------------------------------------------------
 
 function classifyForReview(card: BuildoutCard): string[] {
@@ -1366,7 +1178,6 @@ export function BuildoutBoard() {
     [organizations],
   );
   const [view, setView] = useState<"board" | "review">("board");
-  const [collapsed, setCollapsed] = useState<Set<BusinessArea>>(new Set());
 
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
@@ -1377,7 +1188,6 @@ export function BuildoutBoard() {
 
   // Drag state
   const [activeCard, setActiveCard] = useState<BuildoutCard | null>(null);
-  const [pendingMove, setPendingMove] = useState<PendingMove | null>(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
@@ -1405,25 +1215,31 @@ export function BuildoutBoard() {
     });
   }, [cards, search, filterOwner, filterOrg, filterAreas]);
 
-  const cardsByArea = useMemo(() => {
-    const m: Record<BusinessArea, BuildoutCard[]> = {
-      Location: [],
-      Financials: [],
-      People: [],
-      Operations: [],
+  const cardsByCol = useMemo(() => {
+    const m: Record<ColumnId, BuildoutCard[]> = {
+      backlog: [],
+      ready: [],
+      in_progress: [],
+      waiting_on: [],
+      review: [],
+      done: [],
     };
     for (const c of filtered) {
-      const area = isBusinessArea(c.businessArea) ? c.businessArea : "Operations";
-      m[area].push(c);
+      const col = COLUMNS.find((x) => x.id === c.status);
+      if (col) m[col.id].push(c);
     }
     return m;
   }, [filtered]);
 
-  const openNew = (area: BusinessArea, status: ColumnId) => {
+  const openNew = (status: ColumnId, area: BusinessArea = "Location") => {
     setEditingCard(null);
+    // If a single area filter is active, default the new card to that area.
+    const onlyFilteredArea =
+      filterAreas.size === 1 ? Array.from(filterAreas)[0]! : null;
+    const initialArea = onlyFilteredArea ?? area;
     // Pre-select the currently filtered location, when one is active.
     const seedOrg = filterOrg === "all" ? null : Number(filterOrg);
-    setDraftSeed(blankDraft(area, status, seedOrg));
+    setDraftSeed(blankDraft(initialArea, status, seedOrg));
     setModalOpen(true);
   };
 
@@ -1471,15 +1287,6 @@ export function BuildoutBoard() {
     invalidate();
   };
 
-  const toggleCollapse = (area: BusinessArea) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(area)) next.delete(area);
-      else next.add(area);
-      return next;
-    });
-  };
-
   const toggleAreaFilter = (area: BusinessArea) => {
     setFilterAreas((prev) => {
       const next = new Set(prev);
@@ -1498,49 +1305,14 @@ export function BuildoutBoard() {
     setActiveCard(null);
     const overId = e.over?.id;
     if (!overId) return;
-    const target = parseDropId(String(overId));
-    if (!target) return;
+    const targetStatus = String(overId);
+    if (!isColumnId(targetStatus)) return;
     const card = cards.find((x) => String(x.id) === String(e.active.id));
     if (!card) return;
-    const fromArea = isBusinessArea(card.businessArea)
-      ? card.businessArea
-      : "Operations";
-
-    if (target.area === fromArea) {
-      // Same swimlane — just a status change (or no-op).
-      if (card.status === target.status) return;
-      await updateMutation.mutateAsync({
-        id: card.id,
-        data: { status: target.status },
-      });
-      invalidate();
-      return;
-    }
-
-    // Cross-swimlane move — confirm first.
-    setPendingMove({
-      card,
-      fromArea,
-      toArea: target.area,
-      toStatus: target.status,
-    });
-  };
-
-  const confirmPendingMove = async () => {
-    if (!pendingMove) return;
-    const { card, toArea, toStatus } = pendingMove;
-    setPendingMove(null);
-    // If the new area doesn't include the card's current category, fall back
-    // to that area's first category so the card stays valid.
-    const cats = CATEGORIES_BY_AREA[toArea];
-    const nextCategory = cats.includes(card.category) ? card.category : cats[0];
+    if (card.status === targetStatus) return;
     await updateMutation.mutateAsync({
       id: card.id,
-      data: {
-        businessArea: toArea,
-        status: toStatus,
-        category: nextCategory,
-      },
+      data: { status: targetStatus },
     });
     invalidate();
   };
@@ -1575,7 +1347,7 @@ export function BuildoutBoard() {
           </Button>
           <Button
             size="sm"
-            onClick={() => openNew("Location", "backlog")}
+            onClick={() => openNew("backlog")}
             className="bg-[#0F2A47] hover:bg-[#0F2A47]/90"
           >
             <Plus className="h-4 w-4 mr-1" />
@@ -1700,18 +1472,42 @@ export function BuildoutBoard() {
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
         >
-          <div className="space-y-4">
-            {BUSINESS_AREAS.map((area) => (
-              <Swimlane
-                key={area}
-                area={area}
-                cards={cardsByArea[area]}
-                collapsed={collapsed.has(area)}
-                onToggleCollapse={() => toggleCollapse(area)}
-                onCardClick={openEdit}
-                onAddCard={openNew}
-              />
-            ))}
+          <div className="overflow-x-auto">
+            <div className="grid grid-cols-6 gap-3 min-w-[1200px]">
+              {COLUMNS.map((col) => {
+                const n = cardsByCol[col.id].length;
+                const overWip = col.wip !== null && n > col.wip;
+                const atWip = col.wip !== null && n === col.wip;
+                return (
+                  <div key={col.id} className="flex flex-col gap-1.5">
+                    <div className="flex items-center justify-between px-1 sticky top-0 z-10 bg-slate-50/80 backdrop-blur-sm py-1 rounded">
+                      <span className="text-xs uppercase tracking-wide font-semibold text-slate-700">
+                        {col.label}
+                      </span>
+                      <span
+                        className={cn(
+                          "text-[10px] font-semibold px-1.5 py-0.5 rounded-full",
+                          overWip
+                            ? "bg-red-200 text-red-800"
+                            : atWip
+                            ? "bg-amber-200 text-amber-800"
+                            : "bg-slate-200 text-slate-700",
+                        )}
+                      >
+                        {n}
+                        {col.wip !== null ? `/${col.wip}` : ""}
+                      </span>
+                    </div>
+                    <ColumnCell
+                      column={col}
+                      cards={cardsByCol[col.id]}
+                      onCardClick={openEdit}
+                      onAddCard={openNew}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
           <DragOverlay>
             {activeCard ? <CardChip card={activeCard} isOverlay /> : null}
@@ -1729,12 +1525,6 @@ export function BuildoutBoard() {
         onSave={handleSave}
         onDelete={editingCard ? handleDelete : null}
         onAddActivity={editingCard ? handleActivity : null}
-      />
-
-      <MoveAreaDialog
-        pending={pendingMove}
-        onConfirm={confirmPendingMove}
-        onCancel={() => setPendingMove(null)}
       />
     </div>
   );
