@@ -26,6 +26,30 @@ async function agendaExists(id: number): Promise<boolean> {
   return Boolean(row);
 }
 
+type AgendaActionItem =
+  | {
+      source: "meeting";
+      id: number;
+      item: string;
+      owner: string | null;
+      dueDate: string | null;
+      isDailyTop3: boolean;
+      notes: string | null;
+      completed: boolean;
+      seatTitle: string | null;
+    }
+  | {
+      source: "seatTask";
+      id: number;
+      item: string;
+      owner: string | null;
+      dueDate: string | null;
+      isDailyTop3: false;
+      notes: string | null;
+      completed: boolean;
+      seatTitle: string;
+    };
+
 const router: IRouter = Router();
 
 // ----- Series -----
@@ -386,7 +410,7 @@ router.get(
       .from(meetingSeriesTable)
       .where(eq(meetingSeriesTable.id, agenda.seriesId));
     const members = (series?.members ?? []).filter(Boolean);
-    let seatItems: typeof meetingItems = [];
+    let seatItems: AgendaActionItem[] = [];
     if (members.length > 0) {
       const seatRows = await db
         .select({
