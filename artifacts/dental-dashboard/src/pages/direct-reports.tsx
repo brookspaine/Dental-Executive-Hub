@@ -350,7 +350,7 @@ export function DirectReports() {
   };
 
   const handleDelete = (id: number) => {
-    deleteReport.mutate({ id }, { onSuccess: invalidate });
+    deleteReport.mutate({ id }, { onSuccess: () => invalidate() });
   };
 
   const visible = useMemo(() => {
@@ -1105,7 +1105,7 @@ function AdditionalViewersSheet({
   const enabled = open && !!member;
 
   const { data: viewers } = useListAdditionalViewers(memberId, {
-    query: { enabled },
+    query: { enabled } as any,
   });
   const addMut = useCreateAdditionalViewer();
   const removeMut = useDeleteAdditionalViewer();
@@ -1324,7 +1324,7 @@ function ViewAsMeSheet({
   const enabled = open && !!member;
 
   const { data: grants } = useListViewAsMeGrants(memberId, {
-    query: { enabled },
+    query: { enabled } as any,
   });
   const grantMut = useCreateViewAsMeGrant();
   const revokeMut = useDeleteViewAsMeGrant();

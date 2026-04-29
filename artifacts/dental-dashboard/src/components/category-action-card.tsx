@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useActionItems } from "@/contexts/action-items-context";
+import { useActiveUser } from "@/contexts/active-user-context";
 
 type CategoryActionCardProps = {
   title: string;
@@ -22,6 +23,7 @@ export function CategoryActionCard({
   scopeId,
 }: CategoryActionCardProps) {
   const { items, addItem, toggleDone, removeItem } = useActionItems();
+  const { activeUser } = useActiveUser();
   const [expanded, setExpanded] = useState(false);
   const [newTitle, setNewTitle] = useState("");
 
@@ -30,7 +32,12 @@ export function CategoryActionCard({
 
   const handleAdd = () => {
     if (!newTitle.trim()) return;
-    addItem({ title: newTitle, source: sourceKey });
+    addItem({
+      title: newTitle,
+      source: sourceKey,
+      ownerName: activeUser.name,
+      ownerInitials: activeUser.initials,
+    });
     setNewTitle("");
   };
 

@@ -135,7 +135,7 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const { activeUser } = useActiveUser();
   const { data, isLoading } = useListActionItems({
-    query: { staleTime: 30_000 },
+    query: { staleTime: 30_000 } as any,
   });
 
   const createMutation = useCreateActionItem();
