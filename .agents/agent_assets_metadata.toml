@@ -6,3 +6,9 @@ id = "reGNjbE2fCtUJbVjIOr_z"
 uri = "file://backups/dental-dashboard-db_20260429_003734Z.sql.gz"
 type = "unspecified"
 title = "Database backup (gzipped SQL, 37 KB)"
+
+[[outputs]]
+id = "3gWdrNI2zKvaKraCFwqWV"
+uri = "file://backups/dental-dashboard-db_20260429_132711Z.sql.gz"
+type = "unspecified"
+title = "Database backup (gzipped SQL, 37 KB)"
