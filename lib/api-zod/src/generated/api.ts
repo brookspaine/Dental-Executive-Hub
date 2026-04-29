@@ -1221,11 +1221,7 @@ export const ListBuildoutCardsResponseItem = zod.object({
   status: zod.string(),
   position: zod.number(),
   organizationId: zod.number().nullish(),
-  kraLink: zod.string().nullish(),
   targetDoneDate: zod.string().nullish(),
-  definitionOfDone: zod.string(),
-  blocker: zod.string().nullish(),
-  escalationTrigger: zod.string().nullish(),
   categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
   activityLog: zod.array(
     zod.object({
@@ -1253,11 +1249,7 @@ export const CreateBuildoutCardBody = zod.object({
   status: zod.string().optional(),
   position: zod.number().optional(),
   organizationId: zod.number().nullish(),
-  kraLink: zod.string().nullish(),
   targetDoneDate: zod.string().nullish(),
-  definitionOfDone: zod.string(),
-  blocker: zod.string().nullish(),
-  escalationTrigger: zod.string().nullish(),
   categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
@@ -1277,11 +1269,7 @@ export const GetBuildoutCardResponse = zod.object({
   status: zod.string(),
   position: zod.number(),
   organizationId: zod.number().nullish(),
-  kraLink: zod.string().nullish(),
   targetDoneDate: zod.string().nullish(),
-  definitionOfDone: zod.string(),
-  blocker: zod.string().nullish(),
-  escalationTrigger: zod.string().nullish(),
   categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
   activityLog: zod.array(
     zod.object({
@@ -1309,11 +1297,7 @@ export const UpdateBuildoutCardBody = zod.object({
   status: zod.string().optional(),
   position: zod.number().optional(),
   organizationId: zod.number().nullish(),
-  kraLink: zod.string().nullish(),
   targetDoneDate: zod.string().nullish(),
-  definitionOfDone: zod.string().optional(),
-  blocker: zod.string().nullish(),
-  escalationTrigger: zod.string().nullish(),
   categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
 });
 
@@ -1326,11 +1310,7 @@ export const UpdateBuildoutCardResponse = zod.object({
   status: zod.string(),
   position: zod.number(),
   organizationId: zod.number().nullish(),
-  kraLink: zod.string().nullish(),
   targetDoneDate: zod.string().nullish(),
-  definitionOfDone: zod.string(),
-  blocker: zod.string().nullish(),
-  escalationTrigger: zod.string().nullish(),
   categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
   activityLog: zod.array(
     zod.object({
@@ -1370,11 +1350,7 @@ export const AddBuildoutCardActivityResponse = zod.object({
   status: zod.string(),
   position: zod.number(),
   organizationId: zod.number().nullish(),
-  kraLink: zod.string().nullish(),
   targetDoneDate: zod.string().nullish(),
-  definitionOfDone: zod.string(),
-  blocker: zod.string().nullish(),
-  escalationTrigger: zod.string().nullish(),
   categoryFields: zod.record(zod.string(), zod.unknown()).nullish(),
   activityLog: zod.array(
     zod.object({

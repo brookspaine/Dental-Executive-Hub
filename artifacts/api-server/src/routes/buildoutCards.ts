@@ -32,16 +32,8 @@ const SEED_CARDS = [
     businessArea: "Location",
     status: "in_progress",
     position: 0,
-    definitionOfDone:
-      "Exhibit E language deleted or amended to exclude emergency dental; confirmed in writing by Landlord counsel.",
     targetDoneDate: null as string | null,
-    categoryFields: {
-      counterpartyAndCounsel: "Landlord / Baker Donelson",
-      documentReference: "ECR Exhibit E",
-      positionAsk: "Strike or amend Exhibit E exclusivity language.",
-      fallbackPosition: "Carve-out for emergency dental services.",
-      adamWebbReviewStatus: "In Review",
-    },
+    categoryFields: {},
   },
   {
     title: "Transmit lease redline to Baker Donelson",
@@ -50,15 +42,8 @@ const SEED_CARDS = [
     businessArea: "Location",
     status: "waiting_on",
     position: 0,
-    definitionOfDone: "Redline sent and receipt confirmed by Baker Donelson.",
     targetDoneDate: null as string | null,
-    categoryFields: {
-      counterpartyAndCounsel: "Baker Donelson",
-      documentReference: "Lease Redline v3",
-      positionAsk: "Send redline and request return by EOW.",
-      fallbackPosition: "",
-      adamWebbReviewStatus: "Returned",
-    },
+    categoryFields: {},
   },
   {
     title: "Submit DNR permit application for emergency dental use",
@@ -67,7 +52,6 @@ const SEED_CARDS = [
     businessArea: "Location",
     status: "backlog",
     position: 0,
-    definitionOfDone: "DNR permit application submitted and confirmation # received.",
     targetDoneDate: null as string | null,
     categoryFields: {
       permitTypeAndAuthority: "DNR Use Permit / Tennessee DNR",
@@ -84,8 +68,6 @@ const SEED_CARDS = [
     businessArea: "Location",
     status: "in_progress",
     position: 0,
-    definitionOfDone:
-      "RSS confirms vinyl color spec matches EDG brand standard; sample approved.",
     targetDoneDate: null as string | null,
     categoryFields: {
       signType: "Window",
@@ -103,7 +85,6 @@ const SEED_CARDS = [
     businessArea: "Operations",
     status: "backlog",
     position: 1,
-    definitionOfDone: "PO issued, vendor acknowledgement received, deposit wired.",
     targetDoneDate: null as string | null,
     categoryFields: {
       equipmentCategory: "Imaging",
@@ -120,8 +101,6 @@ const SEED_CARDS = [
     businessArea: "Operations",
     status: "backlog",
     position: 2,
-    definitionOfDone:
-      "Binder signed and returned; certificate of insurance issued naming EDG.",
     targetDoneDate: null as string | null,
     categoryFields: {
       vendorType: "Insurance",
@@ -139,8 +118,6 @@ const SEED_CARDS = [
     businessArea: "Financials",
     status: "backlog",
     position: 0,
-    definitionOfDone:
-      "Operating account opened in Greyrock Dental Partners LLC name; signers configured; debit card and online banking active.",
     targetDoneDate: null as string | null,
     categoryFields: {},
   },
@@ -151,8 +128,6 @@ const SEED_CARDS = [
     businessArea: "Financials",
     status: "in_progress",
     position: 0,
-    definitionOfDone:
-      "Pre-opening budget reviewed line-by-line with Frank; signed off; loaded into the financial model.",
     targetDoneDate: null as string | null,
     categoryFields: {},
   },
@@ -164,8 +139,6 @@ const SEED_CARDS = [
     businessArea: "People",
     status: "backlog",
     position: 0,
-    definitionOfDone:
-      "One-page recruiting doc explaining the EDGE Partner Track economics, vesting, and culture; reviewed by Adam Webb.",
     targetDoneDate: null as string | null,
     categoryFields: {},
   },
@@ -176,8 +149,6 @@ const SEED_CARDS = [
     businessArea: "People",
     status: "backlog",
     position: 1,
-    definitionOfDone:
-      "Job description, scope, and salary band finalized for the first clinical hire; ready to post.",
     targetDoneDate: null as string | null,
     categoryFields: {},
   },

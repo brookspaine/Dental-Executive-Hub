@@ -13,7 +13,6 @@ import {
   useDraggable,
 } from "@dnd-kit/core";
 import {
-  AlertTriangle,
   Plus,
   Search,
   Filter as FilterIcon,
@@ -61,7 +60,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
@@ -262,18 +260,6 @@ type FieldDef = {
 };
 
 const CATEGORY_FIELD_DEFS: Record<string, FieldDef[]> = {
-  "Lease & Legal": [
-    { key: "counterpartyAndCounsel", label: "Counterparty & Counsel", type: "text" },
-    { key: "documentReference", label: "Document Reference", type: "text" },
-    { key: "positionAsk", label: "Position / Ask", type: "textarea" },
-    { key: "fallbackPosition", label: "Fallback Position", type: "textarea" },
-    {
-      key: "adamWebbReviewStatus",
-      label: "Adam Webb Review Status",
-      type: "select",
-      options: ["Not Sent", "In Review", "Returned", "Approved"],
-    },
-  ],
   "Permitting & DNR": [
     { key: "permitTypeAndAuthority", label: "Permit Type & Issuing Authority", type: "text" },
     {
@@ -432,15 +418,6 @@ function CardChip({
               >
                 <CalendarDays className="h-3 w-3" />
                 {target}
-              </span>
-            )}
-            {card.blocker && card.blocker.trim().length > 0 && (
-              <span
-                title="Has a blocker"
-                className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-red-100 text-red-700"
-              >
-                <AlertTriangle className="h-3 w-3" />
-                Blocked
               </span>
             )}
           </div>
@@ -694,11 +671,7 @@ type DraftCard = {
   businessArea: BusinessArea;
   status: ColumnId;
   organizationId: number | null;
-  kraLink: string;
   targetDoneDate: string;
-  definitionOfDone: string;
-  blocker: string;
-  escalationTrigger: string;
   categoryFields: Record<string, unknown>;
 };
 
@@ -715,11 +688,7 @@ function blankDraft(
     businessArea: area,
     status,
     organizationId,
-    kraLink: "",
     targetDoneDate: "",
-    definitionOfDone: "",
-    blocker: "",
-    escalationTrigger: "",
     categoryFields: {},
   };
 }
@@ -735,11 +704,7 @@ function fromCard(card: BuildoutCard): DraftCard {
     businessArea: area,
     status: card.status as ColumnId,
     organizationId: card.organizationId ?? null,
-    kraLink: card.kraLink ?? "",
     targetDoneDate: card.targetDoneDate ?? "",
-    definitionOfDone: card.definitionOfDone,
-    blocker: card.blocker ?? "",
-    escalationTrigger: card.escalationTrigger ?? "",
     categoryFields:
       (card.categoryFields as Record<string, unknown> | null | undefined) ?? {},
   };
@@ -884,8 +849,7 @@ function CardModal({
     draft.title.trim().length > 0 &&
     draft.ownerName.trim().length > 0 &&
     draft.category.trim().length > 0 &&
-    draft.businessArea.trim().length > 0 &&
-    draft.definitionOfDone.trim().length > 0;
+    draft.businessArea.trim().length > 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1046,61 +1010,15 @@ function CardModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Target Done Date</Label>
-                <Input
-                  type="date"
-                  value={draft.targetDoneDate}
-                  onChange={(e) =>
-                    setDraft({ ...draft, targetDoneDate: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <Label>KRA / Rock Link</Label>
-                <Input
-                  value={draft.kraLink}
-                  onChange={(e) => setDraft({ ...draft, kraLink: e.target.value })}
-                  placeholder="(optional)"
-                />
-              </div>
-            </div>
-
             <div>
-              <Label>Definition of Done *</Label>
-              <Textarea
-                rows={2}
-                value={draft.definitionOfDone}
+              <Label>Target Done Date</Label>
+              <Input
+                type="date"
+                value={draft.targetDoneDate}
                 onChange={(e) =>
-                  setDraft({ ...draft, definitionOfDone: e.target.value })
+                  setDraft({ ...draft, targetDoneDate: e.target.value })
                 }
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Blocker / Dependency</Label>
-                <Textarea
-                  rows={2}
-                  value={draft.blocker}
-                  onChange={(e) =>
-                    setDraft({ ...draft, blocker: e.target.value })
-                  }
-                  placeholder="(optional)"
-                />
-              </div>
-              <div>
-                <Label>Escalation Trigger</Label>
-                <Textarea
-                  rows={2}
-                  value={draft.escalationTrigger}
-                  onChange={(e) =>
-                    setDraft({ ...draft, escalationTrigger: e.target.value })
-                  }
-                  placeholder="Date or condition that escalates this card"
-                />
-              </div>
             </div>
 
             {catDefs.length > 0 && (
@@ -1305,9 +1223,6 @@ function classifyForReview(card: BuildoutCard): string[] {
     if (left < 0) reasons.push(`${Math.abs(left)} days past target`);
     else if (left <= 7) reasons.push(`Due in ${left} day${left === 1 ? "" : "s"}`);
   }
-  if (card.blocker && card.blocker.trim().length > 0) {
-    reasons.push("Has blocker");
-  }
   return reasons;
 }
 
@@ -1359,7 +1274,7 @@ function WeeklyReviewView({
           <CheckCircle2 className="h-10 w-10 mx-auto text-emerald-500 mb-2" />
           <div className="text-slate-700 font-medium">All clear</div>
           <div className="text-sm text-slate-500">
-            Nothing is overdue, blocked, or stalled this week.
+            Nothing is overdue or stalled this week.
           </div>
         </div>
       ) : (
@@ -1416,8 +1331,6 @@ function WeeklyReviewView({
                                 "text-[10px] px-1.5 py-0.5 rounded",
                                 r.includes("past")
                                   ? "bg-red-100 text-red-700"
-                                  : r.includes("blocker")
-                                  ? "bg-red-50 text-red-700"
                                   : r.includes("Waiting")
                                   ? "bg-amber-100 text-amber-800"
                                   : "bg-amber-50 text-amber-700",
@@ -1464,7 +1377,6 @@ export function BuildoutBoard() {
   const [filterOwner, setFilterOwner] = useState<string>("all");
   const [filterOrg, setFilterOrg] = useState<string>("all");
   const [filterAreas, setFilterAreas] = useState<Set<BusinessArea>>(new Set());
-  const [filterBlocked, setFilterBlocked] = useState(false);
   const { data: organizations = [] } = useListOrganizations();
   const groupedOrgs = useMemo(
     () => groupOrganizations(organizations),
@@ -1499,7 +1411,6 @@ export function BuildoutBoard() {
       )
         return false;
       if (filterAreas.size > 0 && !filterAreas.has(area)) return false;
-      if (filterBlocked && !(c.blocker && c.blocker.trim().length > 0)) return false;
       if (s) {
         const inTitle = c.title.toLowerCase().includes(s);
         const inLog = (c.activityLog ?? []).some((e) =>
@@ -1509,7 +1420,7 @@ export function BuildoutBoard() {
       }
       return true;
     });
-  }, [cards, search, filterOwner, filterOrg, filterAreas, filterBlocked]);
+  }, [cards, search, filterOwner, filterOrg, filterAreas]);
 
   const cardsByArea = useMemo(() => {
     const m: Record<BusinessArea, BuildoutCard[]> = {
@@ -1547,11 +1458,7 @@ export function BuildoutBoard() {
       businessArea: draft.businessArea,
       status: draft.status,
       organizationId: draft.organizationId,
-      kraLink: draft.kraLink || null,
       targetDoneDate: draft.targetDoneDate || null,
-      definitionOfDone: draft.definitionOfDone,
-      blocker: draft.blocker || null,
-      escalationTrigger: draft.escalationTrigger || null,
       categoryFields: draft.categoryFields,
     };
     if (editingCard) {
@@ -1769,18 +1676,10 @@ export function BuildoutBoard() {
             })}
           </div>
 
-          <label className="flex items-center gap-1.5 text-xs text-slate-700 ml-1">
-            <Checkbox
-              checked={filterBlocked}
-              onCheckedChange={(v) => setFilterBlocked(Boolean(v))}
-            />
-            Blocked only
-          </label>
           {(search ||
             filterOwner !== "all" ||
             filterOrg !== "all" ||
-            filterAreas.size > 0 ||
-            filterBlocked) && (
+            filterAreas.size > 0) && (
             <Button
               variant="ghost"
               size="sm"
@@ -1789,7 +1688,6 @@ export function BuildoutBoard() {
                 setFilterOwner("all");
                 setFilterOrg("all");
                 setFilterAreas(new Set());
-                setFilterBlocked(false);
               }}
             >
               <X className="h-3 w-3 mr-1" />

@@ -3105,18 +3105,7 @@ components:
         organizationId:
           type: integer
           nullable: true
-        kraLink:
-          type: string
-          nullable: true
         targetDoneDate:
-          type: string
-          nullable: true
-        definitionOfDone:
-          type: string
-        blocker:
-          type: string
-          nullable: true
-        escalationTrigger:
           type: string
           nullable: true
         categoryFields:
@@ -3145,7 +3134,6 @@ components:
         - businessArea
         - status
         - position
-        - definitionOfDone
         - activityLog
         - createdAt
         - updatedAt
@@ -3172,18 +3160,7 @@ components:
         organizationId:
           type: integer
           nullable: true
-        kraLink:
-          type: string
-          nullable: true
         targetDoneDate:
-          type: string
-          nullable: true
-        definitionOfDone:
-          type: string
-        blocker:
-          type: string
-          nullable: true
-        escalationTrigger:
           type: string
           nullable: true
         categoryFields:
@@ -3195,7 +3172,6 @@ components:
         - ownerName
         - category
         - businessArea
-        - definitionOfDone
 
     UpdateBuildoutCardBody:
       type: object
@@ -3216,18 +3192,7 @@ components:
         organizationId:
           type: integer
           nullable: true
-        kraLink:
-          type: string
-          nullable: true
         targetDoneDate:
-          type: string
-          nullable: true
-        definitionOfDone:
-          type: string
-        blocker:
-          type: string
-          nullable: true
-        escalationTrigger:
           type: string
           nullable: true
         categoryFields:

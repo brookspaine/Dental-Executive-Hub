@@ -709,11 +709,7 @@ export interface BuildoutCard {
   status: string;
   position: number;
   organizationId?: number | null;
-  kraLink?: string | null;
   targetDoneDate?: string | null;
-  definitionOfDone: string;
-  blocker?: string | null;
-  escalationTrigger?: string | null;
   categoryFields?: BuildoutCardCategoryFields;
   activityLog: BuildoutActivityEntry[];
   waitingSince?: string | null;
@@ -737,11 +733,7 @@ export interface CreateBuildoutCardBody {
   status?: string;
   position?: number;
   organizationId?: number | null;
-  kraLink?: string | null;
   targetDoneDate?: string | null;
-  definitionOfDone: string;
-  blocker?: string | null;
-  escalationTrigger?: string | null;
   categoryFields?: CreateBuildoutCardBodyCategoryFields;
 }
 
@@ -758,11 +750,7 @@ export interface UpdateBuildoutCardBody {
   status?: string;
   position?: number;
   organizationId?: number | null;
-  kraLink?: string | null;
   targetDoneDate?: string | null;
-  definitionOfDone?: string;
-  blocker?: string | null;
-  escalationTrigger?: string | null;
   categoryFields?: UpdateBuildoutCardBodyCategoryFields;
 }
 
