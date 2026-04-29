@@ -7,12 +7,19 @@ import {
   jsonb,
   boolean,
 } from "drizzle-orm/pg-core";
+// `jsonb` import is retained because `sectionData` below still uses it.
 
+/**
+ * Meeting series. The roster used to live here as a `members jsonb`
+ * array of display strings; that field has been retired in Phase 3 in
+ * favor of the canonical `meeting_series_members` join table (see
+ * `meetingSeriesMembersTable`). The API still surfaces a derived
+ * `members: string[]` on responses for back-compat with existing UI.
+ */
 export const meetingSeriesTable = pgTable("meeting_series", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   organization: text("organization"),
-  members: jsonb("members").$type<string[]>().notNull().default([]),
   desiredFuture: text("desired_future"),
   desiredFutureStatus: text("desired_future_status").default("on-pace"),
   createdAt: timestamp("created_at", { withTimezone: true })

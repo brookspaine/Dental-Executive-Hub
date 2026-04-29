@@ -13,10 +13,9 @@ import {
 } from "@workspace/db";
 
 /**
- * Replace this series' team-member roster inside a transaction. Also
- * refreshes the legacy `members jsonb` array on `meeting_series` so any
- * code path still reading the cached display strings stays in sync. When
- * `memberIds` is empty, the roster is cleared.
+ * Replace this series' team-member roster inside a transaction. Returns
+ * the resolved member names in roster order (used to project `members`
+ * onto the response).
  */
 async function syncSeriesMembers(
   seriesId: number,
@@ -26,36 +25,29 @@ async function syncSeriesMembers(
     await tx
       .delete(meetingSeriesMembersTable)
       .where(eq(meetingSeriesMembersTable.seriesId, seriesId));
-    let resolvedNames: string[] = [];
-    if (memberIds.length > 0) {
-      const rows = await tx
-        .select({
-          id: teamMembersTable.id,
-          name: teamMembersTable.name,
-        })
-        .from(teamMembersTable)
-        .where(inArray(teamMembersTable.id, memberIds));
-      const byId = new Map(rows.map((r) => [r.id, r.name]));
-      // Preserve the order the client sent so the picker remains stable.
-      const valuesToInsert = memberIds
-        .filter((id) => byId.has(id))
-        .map((id, i) => ({
-          seriesId,
-          teamMemberId: id,
-          position: i,
-        }));
-      if (valuesToInsert.length > 0) {
-        await tx.insert(meetingSeriesMembersTable).values(valuesToInsert);
-      }
-      resolvedNames = memberIds
-        .map((id) => byId.get(id))
-        .filter((n): n is string => Boolean(n));
+    if (memberIds.length === 0) return [];
+    const rows = await tx
+      .select({
+        id: teamMembersTable.id,
+        name: teamMembersTable.name,
+      })
+      .from(teamMembersTable)
+      .where(inArray(teamMembersTable.id, memberIds));
+    const byId = new Map(rows.map((r) => [r.id, r.name]));
+    // Preserve the order the client sent so the picker remains stable.
+    const valuesToInsert = memberIds
+      .filter((id) => byId.has(id))
+      .map((id, i) => ({
+        seriesId,
+        teamMemberId: id,
+        position: i,
+      }));
+    if (valuesToInsert.length > 0) {
+      await tx.insert(meetingSeriesMembersTable).values(valuesToInsert);
     }
-    await tx
-      .update(meetingSeriesTable)
-      .set({ members: resolvedNames })
-      .where(eq(meetingSeriesTable.id, seriesId));
-    return resolvedNames;
+    return memberIds
+      .map((id) => byId.get(id))
+      .filter((n): n is string => Boolean(n));
   });
 }
 
@@ -68,14 +60,50 @@ async function loadMemberIds(seriesId: number): Promise<number[]> {
   return rows.map((r) => r.teamMemberId);
 }
 
+/**
+ * Read the current roster as display names, in roster order. This is the
+ * source of `members: string[]` on the response; the column on
+ * meeting_series itself is gone.
+ */
+async function loadMemberNames(seriesId: number): Promise<string[]> {
+  const rows = await db
+    .select({ name: teamMembersTable.name })
+    .from(meetingSeriesMembersTable)
+    .innerJoin(
+      teamMembersTable,
+      eq(teamMembersTable.id, meetingSeriesMembersTable.teamMemberId),
+    )
+    .where(eq(meetingSeriesMembersTable.seriesId, seriesId))
+    .orderBy(asc(meetingSeriesMembersTable.position), asc(meetingSeriesMembersTable.id));
+  return rows.map((r) => r.name);
+}
+
 function parseMemberIds(input: unknown): number[] | null {
   if (!Array.isArray(input)) return null;
   const out: number[] = [];
+  const seen = new Set<number>();
   for (const v of input) {
     const n = typeof v === "number" ? v : Number(v);
-    if (Number.isInteger(n) && n > 0) out.push(n);
+    if (Number.isInteger(n) && n > 0 && !seen.has(n)) {
+      seen.add(n);
+      out.push(n);
+    }
   }
   return out;
+}
+
+/**
+ * Returns the subset of `ids` that don't exist in `team_members`.
+ * Caller treats a non-empty result as a 400.
+ */
+async function findUnknownTeamMemberIds(ids: number[]): Promise<number[]> {
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select({ id: teamMembersTable.id })
+    .from(teamMembersTable)
+    .where(inArray(teamMembersTable.id, ids));
+  const known = new Set(rows.map((r) => r.id));
+  return ids.filter((id) => !known.has(id));
 }
 
 async function seriesExists(id: number): Promise<boolean> {
@@ -127,7 +155,18 @@ router.get("/meeting-series", async (_req, res): Promise<void> => {
     .select()
     .from(meetingSeriesTable)
     .orderBy(asc(meetingSeriesTable.id));
-  res.json(rows);
+  // Project the roster onto each series as both `memberIds` (canonical)
+  // and `members: string[]` (back-compat for the existing avatar row).
+  const enriched = await Promise.all(
+    rows.map(async (r) => {
+      const [memberIds, members] = await Promise.all([
+        loadMemberIds(r.id),
+        loadMemberNames(r.id),
+      ]);
+      return { ...r, memberIds, members };
+    }),
+  );
+  res.json(enriched);
 });
 
 router.post("/meeting-series", async (req, res): Promise<void> => {
@@ -137,11 +176,15 @@ router.post("/meeting-series", async (req, res): Promise<void> => {
     return;
   }
   const memberIds = parseMemberIds(req.body?.memberIds);
-  // Legacy support: the old client sent strings; we still accept them but
-  // prefer memberIds when both are present.
-  const legacyMembers = Array.isArray(req.body?.members)
-    ? (req.body.members as unknown[]).map((m) => String(m)).filter(Boolean)
-    : [];
+  if (memberIds !== null) {
+    const unknown = await findUnknownTeamMemberIds(memberIds);
+    if (unknown.length > 0) {
+      res.status(400).json({
+        error: `Unknown team member id(s): ${unknown.join(", ")}`,
+      });
+      return;
+    }
+  }
   const desiredFuture =
     typeof req.body?.desiredFuture === "string" ? req.body.desiredFuture : null;
   const desiredFutureStatus =
@@ -157,34 +200,23 @@ router.post("/meeting-series", async (req, res): Promise<void> => {
     .insert(meetingSeriesTable)
     .values({
       name,
-      members: legacyMembers,
       desiredFuture,
       desiredFutureStatus,
       organization,
     })
     .returning();
-  // Mirror the PATCH semantics: when `memberIds` is present at all
-  // (even as an empty array) it wins over the legacy `members` strings
-  // and rewrites both the join table and the cached jsonb. Only skip
-  // the sync when the caller did not include `memberIds` at all.
   if (memberIds !== null) {
     await syncSeriesMembers(row.id, memberIds);
   }
-  // Read back the persisted IDs so the response only contains members
-  // that actually exist in team_members (syncSeriesMembers silently
-  // drops unknown ids; echoing the raw input would lie about what was
-  // saved).
-  const finalMemberIds =
-    memberIds !== null ? await loadMemberIds(row.id) : [];
-  // Re-read the row so the caller sees the legacy `members` jsonb that
-  // was rewritten inside syncSeriesMembers (the initial insert used the
-  // legacy strings, which may have been overwritten with the resolved
-  // names from team_members).
-  const [refreshed] = await db
-    .select()
-    .from(meetingSeriesTable)
-    .where(eq(meetingSeriesTable.id, row.id));
-  res.status(201).json({ ...(refreshed ?? row), memberIds: finalMemberIds });
+  const [finalMemberIds, finalMemberNames] = await Promise.all([
+    loadMemberIds(row.id),
+    loadMemberNames(row.id),
+  ]);
+  res.status(201).json({
+    ...row,
+    memberIds: finalMemberIds,
+    members: finalMemberNames,
+  });
 });
 
 router.get("/meeting-series/:id", async (req, res): Promise<void> => {
@@ -201,8 +233,11 @@ router.get("/meeting-series/:id", async (req, res): Promise<void> => {
     res.status(404).json({ error: "Not found" });
     return;
   }
-  const memberIds = await loadMemberIds(id);
-  res.json({ ...row, memberIds });
+  const [memberIds, members] = await Promise.all([
+    loadMemberIds(id),
+    loadMemberNames(id),
+  ]);
+  res.json({ ...row, memberIds, members });
 });
 
 router.patch("/meeting-series/:id", async (req, res): Promise<void> => {
@@ -212,15 +247,18 @@ router.patch("/meeting-series/:id", async (req, res): Promise<void> => {
     return;
   }
   const memberIds = parseMemberIds(req.body?.memberIds);
+  if (memberIds !== null) {
+    const unknown = await findUnknownTeamMemberIds(memberIds);
+    if (unknown.length > 0) {
+      res.status(400).json({
+        error: `Unknown team member id(s): ${unknown.join(", ")}`,
+      });
+      return;
+    }
+  }
 
   const updates: Record<string, unknown> = {};
   if (typeof req.body?.name === "string") updates.name = req.body.name;
-  // Legacy: a string-only members payload still works. If memberIds is
-  // also present it wins (and syncSeriesMembers will overwrite this).
-  if (Array.isArray(req.body?.members) && memberIds === null)
-    updates.members = (req.body.members as unknown[])
-      .map((m) => String(m))
-      .filter(Boolean);
   if (typeof req.body?.desiredFuture === "string")
     updates.desiredFuture = req.body.desiredFuture;
   if (typeof req.body?.desiredFutureStatus === "string")
@@ -249,16 +287,15 @@ router.patch("/meeting-series/:id", async (req, res): Promise<void> => {
   if (memberIds !== null) {
     await syncSeriesMembers(id, memberIds);
   }
-  // Always read back from the join table so the response reflects what
-  // is actually persisted (unknown ids are silently dropped during
-  // sync; we must not echo them).
-  const finalMemberIds = await loadMemberIds(id);
-  // Re-read the legacy `members` field in case syncSeriesMembers updated it.
-  const [refreshed] = await db
-    .select()
-    .from(meetingSeriesTable)
-    .where(eq(meetingSeriesTable.id, id));
-  res.json({ ...refreshed, memberIds: finalMemberIds });
+  const [finalMemberIds, finalMemberNames] = await Promise.all([
+    loadMemberIds(id),
+    loadMemberNames(id),
+  ]);
+  res.json({
+    ...row,
+    memberIds: finalMemberIds,
+    members: finalMemberNames,
+  });
 });
 
 router.delete("/meeting-series/:id", async (req, res): Promise<void> => {
@@ -528,11 +565,9 @@ router.get(
 
     // Merge in seat tasks from the org chart for any team member of this
     // series. Match either the task's assignee or the seat's named occupant.
-    const [series] = await db
-      .select({ members: meetingSeriesTable.members })
-      .from(meetingSeriesTable)
-      .where(eq(meetingSeriesTable.id, agenda.seriesId));
-    const members = (series?.members ?? []).filter(Boolean);
+    // Roster comes from the canonical join table now — the legacy
+    // `meeting_series.members` jsonb has been retired.
+    const members = await loadMemberNames(agenda.seriesId);
     let seatItems: AgendaActionItem[] = [];
     if (members.length > 0) {
       const seatRows = await db

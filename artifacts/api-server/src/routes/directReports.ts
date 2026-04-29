@@ -7,6 +7,7 @@ import {
   activityTable,
   viewAsMeGrantsTable,
   additionalViewersTable,
+  usersTable,
 } from "@workspace/db";
 import {
   CreateDirectReportBody,
@@ -34,6 +35,8 @@ const directReportSelect = {
   hireDate: directReportsTable.hireDate,
   performanceRating: directReportsTable.performanceRating,
   avatarUrl: directReportsTable.avatarUrl,
+  managerId: directReportsTable.managerId,
+  clerkUserId: directReportsTable.clerkUserId,
   createdAt: directReportsTable.createdAt,
 };
 
@@ -49,7 +52,37 @@ function mapNulls(r: any) {
     hireDate: r.hireDate ?? undefined,
     performanceRating: r.performanceRating ?? undefined,
     avatarUrl: r.avatarUrl ?? undefined,
+    // managerId / clerkUserId are intentionally surfaced as `null`
+    // (not undefined) so clients can distinguish "no value set" from
+    // "field absent in this response shape".
+    managerId: r.managerId ?? null,
+    clerkUserId: r.clerkUserId ?? null,
   };
+}
+
+/**
+ * Walk a candidate manager chain to make sure assigning `candidateManagerId`
+ * to `selfId` would not create a cycle (A reports to B reports to A).
+ * Returns true if the assignment is safe.
+ */
+async function isManagerAssignmentSafe(
+  selfId: number,
+  candidateManagerId: number,
+): Promise<boolean> {
+  if (selfId === candidateManagerId) return false;
+  let cursor: number | null = candidateManagerId;
+  const seen = new Set<number>();
+  while (cursor !== null) {
+    if (cursor === selfId) return false;
+    if (seen.has(cursor)) return false; // pre-existing cycle, defensively reject
+    seen.add(cursor);
+    const [row] = await db
+      .select({ managerId: directReportsTable.managerId })
+      .from(directReportsTable)
+      .where(eq(directReportsTable.id, cursor));
+    cursor = row?.managerId ?? null;
+  }
+  return true;
 }
 
 router.get("/direct-reports", async (_req, res): Promise<void> => {
@@ -66,6 +99,44 @@ router.post("/direct-reports", async (req, res): Promise<void> => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+
+  // managerId on a brand-new row can't form a cycle with itself, but we
+  // still want to make sure the candidate manager actually exists.
+  if (typeof parsed.data.managerId === "number") {
+    const [m] = await db
+      .select({ id: directReportsTable.id })
+      .from(directReportsTable)
+      .where(eq(directReportsTable.id, parsed.data.managerId));
+    if (!m) {
+      res.status(400).json({ error: "managerId does not reference an existing team member" });
+      return;
+    }
+  }
+
+  // Validate clerkUserId (if provided): must reference an existing Clerk
+  // user and must not already be linked to a different team member. We
+  // pre-check rather than relying on the FK / unique-index error so the
+  // client gets a meaningful 400/409 instead of a generic 500.
+  if (typeof parsed.data.clerkUserId === "string" && parsed.data.clerkUserId.length > 0) {
+    const [u] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, parsed.data.clerkUserId));
+    if (!u) {
+      res.status(400).json({ error: "clerkUserId does not reference an existing user" });
+      return;
+    }
+    const [existing] = await db
+      .select({ id: directReportsTable.id })
+      .from(directReportsTable)
+      .where(eq(directReportsTable.clerkUserId, parsed.data.clerkUserId));
+    if (existing) {
+      res
+        .status(409)
+        .json({ error: "Another team member is already linked to that account" });
+      return;
+    }
   }
 
   const [report] = await db
@@ -123,6 +194,49 @@ router.patch("/direct-reports/:id", async (req, res): Promise<void> => {
   if (!parsed.success) {
     res.status(400).json({ error: parsed.error.message });
     return;
+  }
+
+  // Validate managerId: must reference an existing team member and must
+  // not introduce a cycle.
+  if (typeof parsed.data.managerId === "number") {
+    const [m] = await db
+      .select({ id: directReportsTable.id })
+      .from(directReportsTable)
+      .where(eq(directReportsTable.id, parsed.data.managerId));
+    if (!m) {
+      res.status(400).json({ error: "managerId does not reference an existing team member" });
+      return;
+    }
+    const safe = await isManagerAssignmentSafe(params.data.id, parsed.data.managerId);
+    if (!safe) {
+      res.status(400).json({
+        error: "Cannot set manager: would create a reporting cycle",
+      });
+      return;
+    }
+  }
+
+  // Validate clerkUserId: existence + uniqueness (skip if it's already
+  // pointing at the same row, which is a no-op re-save).
+  if (typeof parsed.data.clerkUserId === "string" && parsed.data.clerkUserId.length > 0) {
+    const [u] = await db
+      .select({ id: usersTable.id })
+      .from(usersTable)
+      .where(eq(usersTable.id, parsed.data.clerkUserId));
+    if (!u) {
+      res.status(400).json({ error: "clerkUserId does not reference an existing user" });
+      return;
+    }
+    const [existing] = await db
+      .select({ id: directReportsTable.id })
+      .from(directReportsTable)
+      .where(eq(directReportsTable.clerkUserId, parsed.data.clerkUserId));
+    if (existing && existing.id !== params.data.id) {
+      res
+        .status(409)
+        .json({ error: "Another team member is already linked to that account" });
+      return;
+    }
   }
 
   const [updated] = await db

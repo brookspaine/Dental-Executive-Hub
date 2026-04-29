@@ -7,10 +7,16 @@ import {
   useUpdateRole,
   useDeleteRole,
   useListOrganizations,
+  useListDirectReports,
+  useUpdateDirectReport,
   getGetRoleQueryKey,
+  getListDirectReportsQueryKey,
   type Role,
   type Organization,
 } from "@workspace/api-client-react";
+import { useQueryClient as useQC } from "@tanstack/react-query";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { resolveAvatarUrl } from "@/components/editable-report-photo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -370,12 +376,15 @@ function buildTree(roles: Role[]): {
 
 const ORG_GROUP_ORDER = ["edge_dso", "edge", "urgent_dental"];
 
+type OrgChartViewMode = "by-role" | "by-people";
+
 export function RolesIndex() {
   const { data: roles = [], isLoading } = useListRoles();
   const { data: organizations = [] } = useListOrganizations();
   const [orgFilter, setOrgFilter] = useState<string>("");
   const [editMode, setEditMode] = useState(false);
   const [editingRole, setEditingRole] = useState<Role | null>(null);
+  const [viewMode, setViewMode] = useState<OrgChartViewMode>("by-role");
 
   // Group organizations by category for the dropdown.
   const groupedOrgs = useMemo(() => {
@@ -512,9 +521,45 @@ export function RolesIndex() {
             )}
           </SelectContent>
         </Select>
+        <div
+          role="tablist"
+          aria-label="Org chart view"
+          className="inline-flex rounded-md border border-slate-200 bg-white p-0.5 text-xs"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "by-role"}
+            onClick={() => setViewMode("by-role")}
+            className={`px-3 py-1.5 rounded-sm font-medium transition-colors ${
+              viewMode === "by-role"
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+            data-testid="org-chart-view-by-role"
+          >
+            By Role
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={viewMode === "by-people"}
+            onClick={() => setViewMode("by-people")}
+            className={`px-3 py-1.5 rounded-sm font-medium transition-colors ${
+              viewMode === "by-people"
+                ? "bg-slate-900 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+            data-testid="org-chart-view-by-people"
+          >
+            By People
+          </button>
+        </div>
       </div>
 
-      {isLoading ? (
+      {viewMode === "by-people" ? (
+        <PeopleTree />
+      ) : isLoading ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
           Loading roles…
         </div>
@@ -569,6 +614,266 @@ export function RolesIndex() {
         open={editingRole !== null}
         onClose={() => setEditingRole(null)}
       />
+    </div>
+  );
+}
+
+/**
+ * People view of the org chart, built from `team_members` joined to
+ * itself by `manager_id`. Each node has an inline picker so a manager
+ * can be re-assigned without leaving the page.
+ */
+function PeopleTree() {
+  const { data: members = [], isLoading } = useListDirectReports();
+  const updateMember = useUpdateDirectReport();
+  const qc = useQC();
+
+  type Person = {
+    id: number;
+    name: string;
+    role?: string;
+    avatarUrl?: string | null;
+    managerId: number | null;
+  };
+
+  const people: Person[] = useMemo(
+    () =>
+      ((members as any[]) ?? []).map((m) => ({
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        avatarUrl: m.avatarUrl ?? null,
+        managerId: typeof m.managerId === "number" ? m.managerId : null,
+      })),
+    [members],
+  );
+
+  const childrenOf = useMemo(() => {
+    const map = new Map<number | null, Person[]>();
+    for (const p of people) {
+      const key = p.managerId ?? null;
+      const arr = map.get(key) ?? [];
+      arr.push(p);
+      map.set(key, arr);
+    }
+    for (const arr of map.values()) {
+      arr.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return map;
+  }, [people]);
+
+  const knownIds = useMemo(() => new Set(people.map((p) => p.id)), [people]);
+
+  // "True" roots: anyone whose managerId is null OR points to a missing
+  // person.
+  const roots = useMemo(
+    () =>
+      people
+        .filter((p) => p.managerId === null || !knownIds.has(p.managerId))
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [people, knownIds],
+  );
+
+  // Walk the tree from those roots and collect every reachable node so we
+  // can detect anyone trapped in a cycle (e.g. legacy data with mutually
+  // pointing manager_ids). Those nodes would otherwise vanish from the UI
+  // and become un-fixable.
+  const orphans = useMemo(() => {
+    const reachable = new Set<number>();
+    const stack: number[] = roots.map((r) => r.id);
+    while (stack.length > 0) {
+      const id = stack.pop()!;
+      if (reachable.has(id)) continue;
+      reachable.add(id);
+      for (const c of childrenOf.get(id) ?? []) {
+        if (!reachable.has(c.id)) stack.push(c.id);
+      }
+    }
+    return people
+      .filter((p) => !reachable.has(p.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [people, roots, childrenOf]);
+
+  function handleSetManager(personId: number, managerId: number | null): void {
+    updateMember.mutate(
+      { id: personId, data: { managerId } as any },
+      {
+        onSuccess: () =>
+          qc.invalidateQueries({ queryKey: getListDirectReportsQueryKey() }),
+        onError: (err: any) => {
+          // Surface the cycle-guard / unknown-id 400 from the server.
+          // eslint-disable-next-line no-alert
+          alert(err?.message ?? "Failed to set manager");
+        },
+      },
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-500">
+        Loading people…
+      </div>
+    );
+  }
+  if (people.length === 0) {
+    return (
+      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-12 text-center">
+        <Users className="mx-auto h-10 w-10 text-slate-300" />
+        <p className="mt-3 text-sm text-slate-500">
+          No team members yet. Add someone on Team Members.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="space-y-2 rounded-xl border border-slate-200 bg-white p-6"
+      data-testid="people-tree"
+    >
+      {roots.map((p) => (
+        <PeopleNode
+          key={p.id}
+          person={p}
+          depth={0}
+          childrenOf={childrenOf}
+          allPeople={people}
+          onSetManager={handleSetManager}
+        />
+      ))}
+      {orphans.length > 0 && (
+        <div
+          className="mt-6 rounded-lg border border-amber-300 bg-amber-50/40 p-4"
+          data-testid="people-tree-orphans"
+        >
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-800">
+            Detached / cyclic ({orphans.length}) — pick a different "Reports
+            to" to bring them back into the tree
+          </div>
+          <div className="space-y-2">
+            {orphans.map((p) => (
+              <PeopleNode
+                key={p.id}
+                person={p}
+                depth={0}
+                childrenOf={new Map()}
+                allPeople={people}
+                onSetManager={handleSetManager}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PeopleNode({
+  person,
+  depth,
+  childrenOf,
+  allPeople,
+  onSetManager,
+}: {
+  person: {
+    id: number;
+    name: string;
+    role?: string;
+    avatarUrl?: string | null;
+    managerId: number | null;
+  };
+  depth: number;
+  childrenOf: Map<
+    number | null,
+    {
+      id: number;
+      name: string;
+      role?: string;
+      avatarUrl?: string | null;
+      managerId: number | null;
+    }[]
+  >;
+  allPeople: {
+    id: number;
+    name: string;
+    role?: string;
+    avatarUrl?: string | null;
+    managerId: number | null;
+  }[];
+  onSetManager: (personId: number, managerId: number | null) => void;
+}) {
+  const kids = childrenOf.get(person.id) ?? [];
+  // Anyone but the person themself is a candidate manager. The server
+  // re-validates with a cycle walk, so listing descendants here is fine
+  // — the user just gets a friendly error if they pick badly.
+  const candidates = allPeople.filter((p) => p.id !== person.id);
+  const initials = (person.name ?? "")
+    .split(/\s+/)
+    .map((n) => n[0])
+    .filter(Boolean)
+    .join("")
+    .toUpperCase()
+    .slice(0, 2);
+  return (
+    <div
+      className="space-y-2"
+      style={{ marginLeft: depth === 0 ? 0 : 24 }}
+      data-testid={`people-node-${person.id}`}
+    >
+      <div className="flex items-center gap-3 rounded-md border border-slate-200 bg-slate-50/40 px-3 py-2">
+        <Avatar className="h-9 w-9 shrink-0">
+          {resolveAvatarUrl(person.avatarUrl) && (
+            <AvatarImage
+              src={resolveAvatarUrl(person.avatarUrl) ?? undefined}
+              alt={person.name}
+            />
+          )}
+          <AvatarFallback className="bg-primary/10 text-primary text-xs font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium truncate">{person.name}</div>
+          {person.role && (
+            <div className="text-xs text-slate-500 truncate">{person.role}</div>
+          )}
+        </div>
+        <div className="shrink-0">
+          <Select
+            value={person.managerId === null ? "__none__" : String(person.managerId)}
+            onValueChange={(v) =>
+              onSetManager(person.id, v === "__none__" ? null : Number(v))
+            }
+          >
+            <SelectTrigger className="h-8 w-[200px] text-xs">
+              <SelectValue placeholder="Reports to…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">— No manager (top) —</SelectItem>
+              {candidates.map((c) => (
+                <SelectItem key={c.id} value={String(c.id)}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      {kids.length > 0 && (
+        <div className="space-y-2 border-l border-slate-200 pl-3 ml-4">
+          {kids.map((k) => (
+            <PeopleNode
+              key={k.id}
+              person={k}
+              depth={depth + 1}
+              childrenOf={childrenOf}
+              allPeople={allPeople}
+              onSetManager={onSetManager}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

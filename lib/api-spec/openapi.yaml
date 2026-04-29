@@ -417,6 +417,25 @@ paths:
         "204":
           description: Deleted
 
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List users with a Clerk identity (read-only)
+      description: |
+        Read-only listing of users that have signed in via Clerk at least
+        once. Used to populate the "Linked account" picker on a team
+        member, so a free-form name/email can be tied to a real identity.
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+
   /direct-reports:
     get:
       operationId: listDirectReports
@@ -2230,6 +2249,14 @@ components:
           type: number
         avatarUrl:
           type: string
+        managerId:
+          type: integer
+          nullable: true
+          description: Self-FK to the team member this person reports to.
+        clerkUserId:
+          type: string
+          nullable: true
+          description: Optional link to a Clerk user (the canonical sign-in identity).
         createdAt:
           type: string
           format: date-time
@@ -2266,6 +2293,12 @@ components:
           type: number
         avatarUrl:
           type: string
+        managerId:
+          type: integer
+          nullable: true
+        clerkUserId:
+          type: string
+          nullable: true
       required:
         - name
         - role
@@ -2296,6 +2329,31 @@ components:
           type: number
         avatarUrl:
           type: string
+        managerId:
+          type: integer
+          nullable: true
+        clerkUserId:
+          type: string
+          nullable: true
+
+    User:
+      type: object
+      description: A Clerk-backed user (one row per authenticated person).
+      properties:
+        id:
+          type: string
+          description: Clerk user id (also the primary key).
+        email:
+          type: string
+          nullable: true
+        name:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+        - id
+        - name
 
     Announcement:
       type: object

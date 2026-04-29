@@ -239,6 +239,10 @@ export interface DirectReport {
   hireDate?: string;
   performanceRating?: number;
   avatarUrl?: string;
+  /** Self-FK to the team member this person reports to. */
+  managerId?: number | null;
+  /** Optional link to a Clerk user (the canonical sign-in identity). */
+  clerkUserId?: string | null;
   createdAt: string;
 }
 
@@ -263,6 +267,8 @@ export interface CreateDirectReportBody {
   hireDate?: string;
   performanceRating?: number;
   avatarUrl?: string;
+  managerId?: number | null;
+  clerkUserId?: string | null;
 }
 
 export type UpdateDirectReportBodyStatus =
@@ -286,6 +292,19 @@ export interface UpdateDirectReportBody {
   hireDate?: string;
   performanceRating?: number;
   avatarUrl?: string;
+  managerId?: number | null;
+  clerkUserId?: string | null;
+}
+
+/**
+ * A Clerk-backed user (one row per authenticated person).
+ */
+export interface User {
+  /** Clerk user id (also the primary key). */
+  id: string;
+  email?: string | null;
+  name: string;
+  imageUrl?: string | null;
 }
 
 export type AnnouncementType =

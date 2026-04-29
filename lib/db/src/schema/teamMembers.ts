@@ -1,4 +1,13 @@
-import { pgTable, text, serial, timestamp, integer, real, date } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  text,
+  serial,
+  timestamp,
+  integer,
+  real,
+  date,
+  type AnyPgColumn,
+} from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
 import { organizationsTable } from "./organizations";
@@ -33,19 +42,32 @@ export const teamMembersTable = pgTable("team_members", {
   phone: text("phone"),
   organizationId: integer("organization_id").references(() => organizationsTable.id),
   /**
-   * Free-text field that the existing UI uses as "Reports to" (the
-   * manager's name). Kept as-is for now; once every team member is
-   * created via the picker we can promote this to a proper FK
-   * (`manager_id`) in a follow-up.
+   * Legacy free-text "Reports to" / business unit string. The canonical
+   * manager link is `managerId` below; this string is preserved for
+   * back-compat (existing UI fields, exports) and is allowed to drift
+   * out of sync — `managerId` wins.
    */
   organization: text("organization"),
+  /**
+   * Self-FK to the team member this person reports to. Nullable (top
+   * of the chart). On parent delete we set to NULL so deleting a
+   * manager doesn't cascade through the org.
+   */
+  managerId: integer("manager_id").references((): AnyPgColumn => teamMembersTable.id, {
+    onDelete: "set null",
+  }),
   status: text("status").notNull().default("active"),
   hireDate: date("hire_date", { mode: "string" }),
   performanceRating: real("performance_rating"),
   avatarUrl: text("avatar_url"),
-  clerkUserId: text("clerk_user_id").references(() => usersTable.id, {
-    onDelete: "set null",
-  }),
+  // Nullable but unique: at most one team member can be linked to a given
+  // Clerk user. The server also pre-validates existence + 409s on conflict
+  // so callers get a friendly error instead of a raw DB constraint failure.
+  clerkUserId: text("clerk_user_id")
+    .references(() => usersTable.id, {
+      onDelete: "set null",
+    })
+    .unique(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

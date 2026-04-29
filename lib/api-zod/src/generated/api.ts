@@ -306,6 +306,23 @@ export const DeleteOrganizationParams = zod.object({
 });
 
 /**
+ * Read-only listing of users that have signed in via Clerk at least
+once. Used to populate the "Linked account" picker on a team
+member, so a free-form name/email can be tied to a real identity.
+
+ * @summary List users with a Clerk identity (read-only)
+ */
+export const ListUsersResponseItem = zod
+  .object({
+    id: zod.string().describe("Clerk user id (also the primary key)."),
+    email: zod.string().nullish(),
+    name: zod.string(),
+    imageUrl: zod.string().nullish(),
+  })
+  .describe("A Clerk-backed user (one row per authenticated person).");
+export const ListUsersResponse = zod.array(ListUsersResponseItem);
+
+/**
  * @summary List all direct reports
  */
 export const ListDirectReportsResponseItem = zod.object({
@@ -321,6 +338,16 @@ export const ListDirectReportsResponseItem = zod.object({
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("Self-FK to the team member this person reports to."),
+  clerkUserId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Optional link to a Clerk user (the canonical sign-in identity).",
+    ),
   createdAt: zod.coerce.date(),
 });
 export const ListDirectReportsResponse = zod.array(
@@ -343,6 +370,8 @@ export const CreateDirectReportBody = zod.object({
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
+  managerId: zod.number().nullish(),
+  clerkUserId: zod.string().nullish(),
 });
 
 /**
@@ -365,6 +394,16 @@ export const GetDirectReportResponse = zod.object({
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("Self-FK to the team member this person reports to."),
+  clerkUserId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Optional link to a Clerk user (the canonical sign-in identity).",
+    ),
   createdAt: zod.coerce.date(),
 });
 
@@ -388,6 +427,8 @@ export const UpdateDirectReportBody = zod.object({
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
+  managerId: zod.number().nullish(),
+  clerkUserId: zod.string().nullish(),
 });
 
 export const UpdateDirectReportResponse = zod.object({
@@ -403,6 +444,16 @@ export const UpdateDirectReportResponse = zod.object({
   hireDate: zod.coerce.date().optional(),
   performanceRating: zod.number().optional(),
   avatarUrl: zod.string().optional(),
+  managerId: zod
+    .number()
+    .nullish()
+    .describe("Self-FK to the team member this person reports to."),
+  clerkUserId: zod
+    .string()
+    .nullish()
+    .describe(
+      "Optional link to a Clerk user (the canonical sign-in identity).",
+    ),
   createdAt: zod.coerce.date(),
 });
 

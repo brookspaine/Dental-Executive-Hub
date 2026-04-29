@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   useListDirectReports,
@@ -21,6 +21,8 @@ import {
   getListViewAsMeGrantsQueryKey,
   getListAdditionalViewersQueryKey,
   getGetDashboardSummaryQueryKey,
+  useListUsers,
+  useListActionItems,
 } from "@workspace/api-client-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,10 +84,13 @@ type ReportFormData = {
   hasDirectReports: "yes" | "no";
   organizationId: string;
   role: string;
+  /** Clerk user id this team member is linked to, or "" for none. */
+  clerkUserId: string;
 };
 
 const SELF_REPORTS_TO = "__self__";
 const NO_ORG = "__none__";
+const NO_CLERK_USER = "__none__";
 
 const emptyForm: ReportFormData = {
   firstName: "",
@@ -95,6 +100,7 @@ const emptyForm: ReportFormData = {
   hasDirectReports: "no",
   organizationId: NO_ORG,
   role: "",
+  clerkUserId: "",
 };
 
 const CURRENT_USER_NAME = "Brooks Paine";
@@ -124,6 +130,187 @@ function formatCompanyLabel(o: any): string {
   return name;
 }
 
+/**
+ * Read-only "Where used" panel surfaced inside the team-member detail sheet.
+ *
+ * Three buckets, all derived client-side from data we already fetch:
+ *   - Seats held: org-chart seats whose assigned `teamMemberId` matches.
+ *   - Open action items: action items with `ownerTeamMemberId` matching and `done = false`.
+ *   - Meeting series attended: fetched on-demand via /api/meeting-series and filtered by `memberIds`.
+ *
+ * The panel is intentionally chatty — it tells the user exactly *why* a person
+ * still has a footprint before they consider deactivating or deleting them.
+ */
+function WhereUsedSection({
+  member,
+  allSeats,
+  organizations,
+  actionItems,
+}: {
+  member: any;
+  allSeats: any[];
+  organizations: any[];
+  actionItems: any[];
+}) {
+  const memberId: number | undefined = member?.id;
+  const [series, setSeries] = useState<any[] | null>(null);
+  const [seriesLoading, setSeriesLoading] = useState(false);
+  const [seriesError, setSeriesError] = useState<string | null>(null);
+
+  // Reset when the panel opens for a different person so the next "Load"
+  // refetches that person's series rather than reusing stale rows.
+  useEffect(() => {
+    setSeries(null);
+    setSeriesError(null);
+  }, [memberId]);
+
+  const seatsHeld = useMemo(() => {
+    if (!memberId) return [];
+    return (allSeats ?? []).filter(
+      (s: any) => s.teamMemberId === memberId,
+    );
+  }, [allSeats, memberId]);
+
+  const openActionItems = useMemo(() => {
+    if (!memberId) return [];
+    return (actionItems ?? []).filter(
+      (a: any) => a.ownerTeamMemberId === memberId && a.done !== true,
+    );
+  }, [actionItems, memberId]);
+
+  const seriesAttended = useMemo(() => {
+    if (!memberId || !series) return [];
+    return series.filter((s: any) =>
+      Array.isArray(s.memberIds) ? s.memberIds.includes(memberId) : false,
+    );
+  }, [series, memberId]);
+
+  async function loadSeries(): Promise<void> {
+    if (series !== null || seriesLoading) return;
+    setSeriesLoading(true);
+    setSeriesError(null);
+    try {
+      const res = await fetch("/api/meeting-series");
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setSeries(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      setSeriesError(err?.message ?? "Failed to load meeting series");
+      setSeries([]);
+    } finally {
+      setSeriesLoading(false);
+    }
+  }
+
+  if (!member) return null;
+  return (
+    <section data-testid="where-used-section">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-1.5">
+        Where used
+      </h4>
+      <div className="rounded-lg border bg-card divide-y text-sm">
+        <div className="px-3 py-2">
+          <div className="text-xs font-medium text-muted-foreground mb-1">
+            Seats held{" "}
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
+              {seatsHeld.length}
+            </span>
+          </div>
+          {seatsHeld.length === 0 ? (
+            <div className="text-muted-foreground italic text-xs">None</div>
+          ) : (
+            <ul className="space-y-1">
+              {seatsHeld.map((s: any) => {
+                const org = (organizations ?? []).find(
+                  (o: any) => o.id === s.organizationId,
+                );
+                return (
+                  <li key={s.id} className="flex items-center justify-between gap-2">
+                    <span className="truncate">{s.title ?? "—"}</span>
+                    <span className="text-xs text-muted-foreground truncate">
+                      {org ? formatCompanyLabel(org) : ""}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+        <div className="px-3 py-2">
+          <div className="text-xs font-medium text-muted-foreground mb-1">
+            Open action items{" "}
+            <span className="ml-1 inline-flex items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
+              {openActionItems.length}
+            </span>
+          </div>
+          {openActionItems.length === 0 ? (
+            <div className="text-muted-foreground italic text-xs">None</div>
+          ) : (
+            <ul className="space-y-1">
+              {openActionItems.slice(0, 8).map((a: any) => (
+                <li key={a.id} className="flex items-center justify-between gap-2">
+                  <span className="truncate">{a.title}</span>
+                  {a.dueByFull && (
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {a.dueByFull}
+                    </span>
+                  )}
+                </li>
+              ))}
+              {openActionItems.length > 8 && (
+                <li className="text-xs text-muted-foreground italic">
+                  +{openActionItems.length - 8} more
+                </li>
+              )}
+            </ul>
+          )}
+        </div>
+        <div className="px-3 py-2">
+          <div className="flex items-center justify-between mb-1">
+            <div className="text-xs font-medium text-muted-foreground">
+              Meeting series attended{" "}
+              {series !== null && (
+                <span className="ml-1 inline-flex items-center justify-center rounded-full bg-muted px-1.5 text-[10px] font-semibold text-muted-foreground">
+                  {seriesAttended.length}
+                </span>
+              )}
+            </div>
+            {series === null && !seriesLoading && (
+              <button
+                type="button"
+                onClick={loadSeries}
+                className="text-xs text-primary hover:underline"
+                data-testid="where-used-load-series"
+              >
+                Load
+              </button>
+            )}
+          </div>
+          {seriesLoading && (
+            <div className="text-muted-foreground text-xs">Loading…</div>
+          )}
+          {seriesError && (
+            <div className="text-destructive text-xs">{seriesError}</div>
+          )}
+          {series !== null && !seriesLoading && (
+            seriesAttended.length === 0 ? (
+              <div className="text-muted-foreground italic text-xs">None</div>
+            ) : (
+              <ul className="space-y-1">
+                {seriesAttended.map((s: any) => (
+                  <li key={s.id} className="truncate">
+                    {s.name}
+                  </li>
+                ))}
+              </ul>
+            )
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function getInitials(name: string) {
   return name
     .split(/\s+/)
@@ -139,6 +326,8 @@ export function DirectReports() {
   const { data: reports, isLoading } = useListDirectReports();
   const { data: organizations } = useListOrganizations();
   const { data: allSeats } = useListAllSeats();
+  const { data: clerkUsers } = useListUsers();
+  const { data: actionItems } = useListActionItems();
   const createReport = useCreateDirectReport();
   const updateReport = useUpdateDirectReport();
   const deleteReport = useDeleteDirectReport();
@@ -148,6 +337,13 @@ export function DirectReports() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<ReportFormData>(emptyForm);
+  // Snapshot of form.reportsTo when the dialog opened. Used in handleSubmit
+  // to decide whether the user actually changed the picker — if they didn't,
+  // we leave managerId out of the PATCH so a stale legacy `r.organization`
+  // text (pre-Phase 3 free-text) doesn't accidentally get auto-resolved into
+  // a real reporting edge that may form a cycle (e.g. Carrie's legacy
+  // `organization="Brooks Paine"` while Brooks already reports to Carrie).
+  const [initialReportsTo, setInitialReportsTo] = useState<string>(SELF_REPORTS_TO);
   const [search, setSearch] = useState("");
   const [orgFilter, setOrgFilter] = useState<string>("all");
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -277,6 +473,18 @@ export function DirectReports() {
       form.reportsTo === SELF_REPORTS_TO
         ? CURRENT_USER_NAME
         : form.reportsTo;
+    // Resolve the reports-to *name* to a canonical team_member id so the
+    // backend can populate the new managerId self-FK. The legacy
+    // `organization` string is kept too for back-compat with code that
+    // still keys on the display name (e.g. visual grouping).
+    const managerCandidate = ((reports as any[] | undefined) ?? []).find(
+      (r) => (r.name ?? "").trim().toLowerCase() === reportsToName.trim().toLowerCase(),
+    );
+    const managerId = managerCandidate ? managerCandidate.id : null;
+    // Only send managerId when the user actually touched the picker. This
+    // prevents the silent flip-from-legacy-text problem described above the
+    // initialReportsTo state declaration.
+    const reportsToChanged = form.reportsTo !== initialReportsTo;
 
     const data: any = {
       name: fullName,
@@ -289,6 +497,18 @@ export function DirectReports() {
       email: form.email,
       organization: reportsToName || undefined,
       organizationId: undefined,
+      ...(reportsToChanged
+        ? {
+            managerId:
+              editingId && managerCandidate?.id === editingId ? null : managerId,
+          }
+        : {}),
+      // Send the linked Clerk user id, or null to clear the link. The
+      // sentinel value means "no linked account".
+      clerkUserId:
+        !form.clerkUserId || form.clerkUserId === NO_CLERK_USER
+          ? null
+          : form.clerkUserId,
       status: editingId ? undefined : "invite_not_sent",
     };
 
@@ -315,13 +535,39 @@ export function DirectReports() {
       setForm(emptyForm);
     };
 
+    // Surface server-side validation errors (409 unique-link conflict, 400
+    // unknown clerkUserId, 400 manager cycle/unknown) to the user instead of
+    // silently swallowing them. Keep the dialog open so they can fix it.
+    // Custom-fetch throws an ApiError whose `data` is the parsed JSON body;
+    // our routes return `{ error: string }`.
+    const showServerError = (err: unknown, fallback: string) => {
+      const anyErr = err as { data?: { error?: string }; message?: string };
+      const msg =
+        (anyErr?.data && typeof anyErr.data.error === "string"
+          ? anyErr.data.error
+          : null) ??
+        anyErr?.message ??
+        fallback;
+      window.alert(msg);
+    };
+
     if (editingId) {
       updateReport.mutate(
         { id: editingId, data },
-        { onSuccess: () => void finalize() },
+        {
+          onSuccess: () => void finalize(),
+          onError: (err) => showServerError(err, "Could not save changes."),
+        },
       );
     } else {
-      createReport.mutate({ data }, { onSuccess: () => void finalize() });
+      createReport.mutate(
+        { data },
+        {
+          onSuccess: () => void finalize(),
+          onError: (err) =>
+            showServerError(err, "Could not create team member."),
+        },
+      );
     }
   };
 
@@ -329,23 +575,35 @@ export function DirectReports() {
     const parts = (r.name ?? "").trim().split(/\s+/);
     const firstName = parts.shift() ?? "";
     const lastName = parts.join(" ");
-    const reportsToValue = r.organization || r.organizationName || "";
+    // Prefer the canonical managerId pointer (Phase 3) over the legacy
+    // organization-as-name hack: if managerId is set, look up that
+    // person's name and use it. Otherwise fall back to the old behavior.
+    const list = (reports as any[] | undefined) ?? [];
+    const managerName: string | null =
+      typeof r.managerId === "number"
+        ? (list.find((x) => x.id === r.managerId)?.name ?? null)
+        : null;
+    const reportsToValue =
+      managerName ?? r.organization ?? r.organizationName ?? "";
     const primarySeat = findPrimarySeat(r.name ?? "");
+    const initialReportsToValue =
+      !reportsToValue || reportsToValue === CURRENT_USER_NAME
+        ? SELF_REPORTS_TO
+        : reportsToValue;
     setEditingId(r.id);
     setForm({
       firstName,
       lastName,
       email: r.email ?? "",
-      reportsTo:
-        !reportsToValue || reportsToValue === CURRENT_USER_NAME
-          ? SELF_REPORTS_TO
-          : reportsToValue,
+      reportsTo: initialReportsToValue,
       hasDirectReports: "no",
       organizationId: primarySeat
         ? String(primarySeat.organizationId)
         : NO_ORG,
       role: primarySeat?.title ?? "",
+      clerkUserId: r.clerkUserId ?? "",
     });
+    setInitialReportsTo(initialReportsToValue);
     setDialogOpen(true);
   };
 
@@ -609,6 +867,56 @@ export function DirectReports() {
                 </div>
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold">
+                    Linked account
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Optionally link this team member to a sign-in identity
+                    so their dashboard activity flows back to them.
+                  </p>
+                  <Select
+                    value={form.clerkUserId || NO_CLERK_USER}
+                    onValueChange={(v) =>
+                      setForm({
+                        ...form,
+                        clerkUserId: v === NO_CLERK_USER ? "" : v,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="h-11">
+                      <SelectValue placeholder="No linked account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NO_CLERK_USER}>
+                        None (no linked account)
+                      </SelectItem>
+                      {(clerkUsers ?? []).map((u: any) => (
+                        <SelectItem key={u.id} value={u.id}>
+                          <span className="flex items-center gap-2">
+                            <Avatar className="h-6 w-6">
+                              {u.imageUrl ? (
+                                <AvatarImage src={u.imageUrl} alt={u.name} />
+                              ) : null}
+                              <AvatarFallback className="bg-primary/10 text-primary text-[10px] font-semibold">
+                                {getInitials(u.name)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>
+                              {u.name}
+                              {u.email && (
+                                <span className="text-muted-foreground">
+                                  {" "}
+                                  ({u.email})
+                                </span>
+                              )}
+                            </span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">
                     Do they have direct reports?
                   </Label>
                   <RadioGroup
@@ -767,8 +1075,17 @@ export function DirectReports() {
                       </AvatarFallback>
                     </Avatar>
                     <div className="min-w-0">
-                      <div className="font-medium text-sm truncate">
-                        {r.name}
+                      <div className="font-medium text-sm truncate flex items-center gap-2">
+                        <span className="truncate">{r.name}</span>
+                        {r.clerkUserId && (
+                          <span
+                            className="inline-flex items-center gap-1 rounded-full bg-emerald-100 text-emerald-700 px-1.5 py-0.5 text-[10px] font-semibold"
+                            title="Linked to a sign-in account"
+                          >
+                            <Check className="h-3 w-3" />
+                            Linked
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-muted-foreground truncate">
                         {r.email}
@@ -1026,6 +1343,13 @@ export function DirectReports() {
                     </button>
                   </div>
                 </section>
+
+                <WhereUsedSection
+                  member={detailMember}
+                  allSeats={allSeats ?? []}
+                  organizations={organizations ?? []}
+                  actionItems={actionItems ?? []}
+                />
 
                 <div className="flex items-center justify-between gap-2 pt-1">
                   <Button

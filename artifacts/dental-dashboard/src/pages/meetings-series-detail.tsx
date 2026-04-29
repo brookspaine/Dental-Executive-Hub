@@ -1,17 +1,29 @@
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation, useParams } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Input } from "@/components/ui/input";
 import { MemberAvatar } from "@/components/member-avatar";
+import { MemberPicker } from "@/components/team/member-picker";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, Plus, Pencil, Building2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, Plus, Pencil, Building2, X } from "lucide-react";
+import { useListDirectReports } from "@workspace/api-client-react";
 
 type Series = {
   id: number;
   name: string;
   organization: string | null;
   members: string[];
+  memberIds: number[];
 };
 
 type Agenda = {
@@ -48,6 +60,10 @@ export function MeetingsSeriesDetail() {
   const seriesId = Number(params.id);
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editMemberIds, setEditMemberIds] = useState<number[]>([]);
+  const [editError, setEditError] = useState<string | null>(null);
 
   const { data: series } = useQuery<Series>({
     queryKey: [`/api/meeting-series/${seriesId}`],
@@ -57,6 +73,56 @@ export function MeetingsSeriesDetail() {
       return res.json();
     },
   });
+
+  const { data: allMembers } = useListDirectReports();
+  const memberById = useMemo(() => {
+    const m = new Map<number, { id: number; name: string }>();
+    for (const r of allMembers ?? []) m.set(r.id, { id: r.id, name: r.name });
+    return m;
+  }, [allMembers]);
+
+  // Seed the dialog from server state when it opens or series changes.
+  useEffect(() => {
+    if (!editOpen || !series) return;
+    setEditName(series.name);
+    setEditMemberIds(series.memberIds ?? []);
+    setEditError(null);
+  }, [editOpen, series]);
+
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`/api/meeting-series/${seriesId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editName.trim(),
+          memberIds: editMemberIds,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body?.error ?? "Failed to update");
+      }
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: [`/api/meeting-series/${seriesId}`],
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/meeting-series"] });
+      setEditOpen(false);
+    },
+    onError: (e: Error) => setEditError(e.message),
+  });
+
+  function addEditMember(id: number | null): void {
+    if (id === null) return;
+    if (editMemberIds.includes(id)) return;
+    setEditMemberIds([...editMemberIds, id]);
+  }
+  function removeEditMember(id: number): void {
+    setEditMemberIds(editMemberIds.filter((x) => x !== id));
+  }
 
   const { data: agendas = [] } = useQuery<Agenda[]>({
     queryKey: [`/api/meeting-series/${seriesId}/agendas`],
@@ -117,7 +183,7 @@ export function MeetingsSeriesDetail() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" disabled>
+          <Button variant="ghost" onClick={() => setEditOpen(true)} disabled={!series}>
             <Pencil className="w-4 h-4 mr-2" />
             Edit Series
           </Button>
@@ -127,6 +193,81 @@ export function MeetingsSeriesDetail() {
           </Button>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Series</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <Label htmlFor="series-name">Name</Label>
+              <Input
+                id="series-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="e.g. Weekly Growth Meeting"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Roster</Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <MemberPicker
+                  value={null}
+                  onChange={(id) => addEditMember(id)}
+                  allowCreate
+                  placeholder="Add a team member"
+                />
+                <div className="border rounded-md p-3 min-h-[120px] space-y-2">
+                  {editMemberIds.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No members. Use the picker to add people.
+                    </p>
+                  ) : (
+                    editMemberIds.map((id) => {
+                      const m = memberById.get(id);
+                      const label = m?.name ?? `Member #${id}`;
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <MemberAvatar name={label} className="w-7 h-7" />
+                            <span className="text-sm truncate">{label}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeEditMember(id)}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={`Remove ${label}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+            {editError && (
+              <p className="text-sm text-destructive">{editError}</p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => updateMutation.mutate()}
+              disabled={!editName.trim() || updateMutation.isPending}
+            >
+              {updateMutation.isPending ? "Saving…" : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <div className="grid grid-cols-[1fr_180px_180px] gap-4 px-5 py-3 border-b font-semibold text-sm">

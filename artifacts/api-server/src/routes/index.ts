@@ -25,6 +25,7 @@ import roleTasksRouter from "./roleTasks";
 import playbooksRouter from "./playbooks";
 import futureTodosRouter from "./futureTodos";
 import meRouter from "./me";
+import usersRouter from "./users";
 
 const router: IRouter = Router();
 
@@ -54,5 +55,6 @@ router.use(roleTasksRouter);
 router.use(playbooksRouter);
 router.use(futureTodosRouter);
 router.use(meRouter);
+router.use(usersRouter);
 
 export default router;
