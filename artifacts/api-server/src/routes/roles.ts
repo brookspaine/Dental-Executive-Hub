@@ -3,6 +3,7 @@ import { eq, asc, sql } from "drizzle-orm";
 import {
   db,
   rolesTable,
+  teamMembersTable,
   type RoleChecklists,
   type RoleDecision,
 } from "@workspace/db";
@@ -13,6 +14,35 @@ import {
   ListRolesResponse,
   UpdateRoleResponse,
 } from "@workspace/api-zod";
+
+function initialsFor(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("");
+}
+
+/**
+ * Look up the cached display name/initials for a team member. Used when a
+ * caller writes `seatHolderId` so the legacy `seatHolderName`/`seatHolderInitials`
+ * columns stay in sync without the client having to send them.
+ */
+async function loadSeatHolderDisplay(
+  teamMemberId: number,
+): Promise<{ name: string; initials: string } | null> {
+  const [row] = await db
+    .select({
+      name: teamMembersTable.name,
+    })
+    .from(teamMembersTable)
+    .where(eq(teamMembersTable.id, teamMemberId))
+    .limit(1);
+  if (!row) return null;
+  return { name: row.name, initials: initialsFor(row.name) };
+}
 
 const router: IRouter = Router();
 
@@ -375,6 +405,7 @@ export async function ensureSeeded(): Promise<void> {
 function serializeRow(row: typeof rolesTable.$inferSelect) {
   return {
     ...row,
+    seatHolderId: row.seatHolderId ?? null,
     reportsToRoleId: row.reportsToRoleId ?? null,
     lastReviewedAt: row.lastReviewedAt ? row.lastReviewedAt.toISOString() : null,
     createdAt: row.createdAt.toISOString(),
@@ -416,12 +447,27 @@ router.post("/roles", async (req, res): Promise<void> => {
     return;
   }
   const data = parsed.data;
+  // If seatHolderId is provided, derive the cached name/initials from the
+  // canonical team_members row so we never disagree with it.
+  let seatHolderName = data.seatHolderName ?? "Open";
+  let seatHolderInitials = data.seatHolderInitials ?? "";
+  let seatHolderId: number | null = data.seatHolderId ?? null;
+  if (seatHolderId !== null) {
+    const display = await loadSeatHolderDisplay(seatHolderId);
+    if (!display) {
+      res.status(400).json({ error: "seatHolderId references unknown team member" });
+      return;
+    }
+    seatHolderName = display.name;
+    seatHolderInitials = display.initials;
+  }
   const [item] = await db
     .insert(rolesTable)
     .values({
       title: data.title,
-      seatHolderName: data.seatHolderName ?? "Open",
-      seatHolderInitials: data.seatHolderInitials ?? "",
+      seatHolderId,
+      seatHolderName,
+      seatHolderInitials,
       reportsToRoleId: data.reportsToRoleId ?? null,
       organizationId: data.organizationId ?? null,
       businessArea: data.businessArea,
@@ -456,6 +502,26 @@ router.patch("/roles/:id", async (req, res): Promise<void> => {
   const updates: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(parsed.data)) {
     if (v !== undefined) updates[k] = v;
+  }
+  // If seatHolderId is changing, derive the cached display name/initials so
+  // they always match the canonical team_members row. seatHolderId === null
+  // clears the seat back to "Open".
+  if ("seatHolderId" in parsed.data) {
+    const newId = parsed.data.seatHolderId ?? null;
+    if (newId === null) {
+      updates.seatHolderId = null;
+      updates.seatHolderName = "Open";
+      updates.seatHolderInitials = "";
+    } else {
+      const display = await loadSeatHolderDisplay(newId);
+      if (!display) {
+        res.status(400).json({ error: "seatHolderId references unknown team member" });
+        return;
+      }
+      updates.seatHolderId = newId;
+      updates.seatHolderName = display.name;
+      updates.seatHolderInitials = display.initials;
+    }
   }
   // Any edit bumps lastReviewedAt + updatedAt — the page header reads off it.
   updates.lastReviewedAt = new Date();

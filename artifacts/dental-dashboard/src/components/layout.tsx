@@ -43,7 +43,6 @@ type NavItem = NavLeaf | NavGroup;
 
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
-  { href: "/my-roles", label: "Organizational Chart", icon: IdCard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
   { href: "/edge-buildout-board", label: "Big Board", icon: KanbanSquare },
@@ -51,10 +50,11 @@ const navItems: NavItem[] = [
     label: "Team",
     icon: Users,
     children: [
+      { href: "/team/members", label: "Members" },
+      { href: "/team/org-chart", label: "Org Chart" },
       { href: "/team/reports", label: "Team Reports" },
       { href: "/team/my-reports", label: "My Reports" },
       { href: "/team/fill-out-a-report", label: "Fill Out a Report" },
-      { href: "/direct-reports", label: "Manage Teams" },
     ],
   },
   {

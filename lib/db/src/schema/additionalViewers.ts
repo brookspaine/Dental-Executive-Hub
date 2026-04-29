@@ -7,26 +7,26 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { directReportsTable } from "./directReports";
+import { teamMembersTable } from "./teamMembers";
 
 export const additionalViewersTable = pgTable(
-  "direct_report_additional_viewers",
+  "team_member_additional_viewers",
   {
     id: serial("id").primaryKey(),
-    directReportId: integer("direct_report_id")
+    teamMemberId: integer("team_member_id")
       .notNull()
-      .references(() => directReportsTable.id, { onDelete: "cascade" }),
-    viewerReportId: integer("viewer_report_id")
+      .references(() => teamMembersTable.id, { onDelete: "cascade" }),
+    viewerTeamMemberId: integer("viewer_team_member_id")
       .notNull()
-      .references(() => directReportsTable.id, { onDelete: "cascade" }),
+      .references(() => teamMembersTable.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => ({
     pairUnique: uniqueIndex("additional_viewers_pair_unique").on(
-      table.directReportId,
-      table.viewerReportId,
+      table.teamMemberId,
+      table.viewerTeamMemberId,
     ),
   }),
 );

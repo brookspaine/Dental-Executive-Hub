@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, asc } from "drizzle-orm";
-import { db, actionItemsTable } from "@workspace/db";
+import { db, actionItemsTable, teamMembersTable } from "@workspace/db";
 import {
   CreateActionItemBody,
   UpdateActionItemBody,
@@ -10,6 +10,34 @@ import {
   ListActionItemsResponse,
   UpdateActionItemResponse,
 } from "@workspace/api-zod";
+
+function initialsFor(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("");
+}
+
+/**
+ * When a caller sets `ownerTeamMemberId`, we re-derive the cached
+ * `ownerName`/`ownerInitials` from the canonical team_members row so a
+ * later rename of that team member is reflected here without any
+ * additional client work.
+ */
+async function loadOwnerDisplay(
+  teamMemberId: number,
+): Promise<{ name: string; initials: string } | null> {
+  const [row] = await db
+    .select({ name: teamMembersTable.name })
+    .from(teamMembersTable)
+    .where(eq(teamMembersTable.id, teamMemberId))
+    .limit(1);
+  if (!row) return null;
+  return { name: row.name, initials: initialsFor(row.name) };
+}
 
 /**
  * `requireAuth` is mounted on the whole `/api` router in `app.ts`, so
@@ -92,6 +120,7 @@ async function ensureSeeded(): Promise<void> {
 function serializeRow(row: typeof actionItemsTable.$inferSelect) {
   return {
     ...row,
+    ownerTeamMemberId: row.ownerTeamMemberId ?? null,
     notes: row.notes ?? null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -142,15 +171,31 @@ router.post("/action-items", async (req, res): Promise<void> => {
     bodyOwnerUserId === me.id ||
     parsed.data.ownerName!.trim().toLowerCase() === me.name.trim().toLowerCase();
 
-  const ownerUserId = isSelf ? me.id : bodyOwnerUserId;
-  const ownerName = isSelf
+  let ownerUserId = isSelf ? me.id : bodyOwnerUserId;
+  let ownerName = isSelf
     ? me.name
     : (parsed.data.ownerName as string);
-  const ownerInitials = isSelf
+  let ownerInitials = isSelf
     ? me.initials
     : bodyHasOwnerInitials
       ? (parsed.data.ownerInitials as string)
       : me.initials;
+
+  // ownerTeamMemberId is the new canonical assignee. When provided we
+  // overwrite the legacy cached owner display so the two never disagree.
+  const ownerTeamMemberId = parsed.data.ownerTeamMemberId ?? null;
+  if (ownerTeamMemberId !== null) {
+    const display = await loadOwnerDisplay(ownerTeamMemberId);
+    if (!display) {
+      res
+        .status(400)
+        .json({ error: "ownerTeamMemberId references unknown team member" });
+      return;
+    }
+    ownerName = display.name;
+    ownerInitials = display.initials;
+    ownerUserId = null;
+  }
 
   const [item] = await db
     .insert(actionItemsTable)
@@ -158,6 +203,7 @@ router.post("/action-items", async (req, res): Promise<void> => {
       title: parsed.data.title,
       source: parsed.data.source,
       ownerUserId,
+      ownerTeamMemberId,
       ownerName,
       ownerInitials,
       dueBy: parsed.data.dueBy ?? "—",
@@ -257,6 +303,25 @@ router.patch(
       !("ownerUserId" in parsed.data)
     ) {
       updates.ownerUserId = me.id;
+    }
+    // If a team member id is being assigned (or cleared), keep the cached
+    // owner_name / owner_initials in sync with the canonical row.
+    if ("ownerTeamMemberId" in parsed.data) {
+      const tmId = parsed.data.ownerTeamMemberId ?? null;
+      updates.ownerTeamMemberId = tmId;
+      if (tmId !== null) {
+        const display = await loadOwnerDisplay(tmId);
+        if (!display) {
+          res
+            .status(400)
+            .json({ error: "ownerTeamMemberId references unknown team member" });
+          return;
+        }
+        updates.ownerName = display.name;
+        updates.ownerInitials = display.initials;
+        // Clear the legacy ownerUserId pointer so we don't have two truths.
+        if (!("ownerUserId" in parsed.data)) updates.ownerUserId = null;
+      }
     }
 
     const [item] = await db

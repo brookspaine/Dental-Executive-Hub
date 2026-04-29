@@ -36,6 +36,12 @@ export type ActionItem = {
   serverId: number;
   title: string;
   owner: { name: string; initials: string };
+  /**
+   * The canonical assignee. When set, the cached `owner.name` /
+   * `owner.initials` strings are derived from the team_members row by the
+   * server; renaming the member updates this item automatically.
+   */
+  ownerTeamMemberId: number | null;
   source: string;
   dueBy: string;
   dueByFull: string;
@@ -60,6 +66,7 @@ type ActionItemsContextValue = {
     source: string;
     ownerName: string;
     ownerInitials: string;
+    ownerTeamMemberId?: number | null;
     dueDate?: string;
     notes?: string;
   }) => void;
@@ -81,6 +88,7 @@ function fromApi(item: ApiActionItem): ActionItem {
     serverId: item.id,
     title: item.title,
     owner: { name: item.ownerName, initials: item.ownerInitials },
+    ownerTeamMemberId: item.ownerTeamMemberId ?? null,
     source: item.source,
     dueBy: item.dueBy,
     dueByFull: item.dueByFull,
@@ -211,6 +219,7 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
     source,
     ownerName,
     ownerInitials,
+    ownerTeamMemberId,
     dueDate,
     notes,
   }) => {
@@ -228,6 +237,10 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
       source,
       ownerName,
       ownerInitials,
+      // When ownerTeamMemberId is provided the server overwrites
+      // ownerName/ownerInitials from the canonical row, so the legacy
+      // strings above just become the fallback for un-linked items.
+      ownerTeamMemberId: ownerTeamMemberId ?? null,
       dueBy: dueDate || "—",
       dueByFull: dueDate || "",
       notes: noteList,
@@ -313,6 +326,8 @@ export function ActionItemsProvider({ children }: { children: ReactNode }) {
       if (item.owner.name !== before.owner.name) patch.ownerName = item.owner.name;
       if (item.owner.initials !== before.owner.initials)
         patch.ownerInitials = item.owner.initials;
+      if ((item.ownerTeamMemberId ?? null) !== (before.ownerTeamMemberId ?? null))
+        patch.ownerTeamMemberId = item.ownerTeamMemberId ?? null;
       if (!!item.starred !== !!before.starred) patch.starred = !!item.starred;
       if (!!item.done !== !!before.done) patch.done = !!item.done;
       if (notesToString(item.notes) !== notesToString(before.notes)) {

@@ -647,6 +647,7 @@ export interface ActionItem {
   title: string;
   source: string;
   ownerUserId?: string | null;
+  ownerTeamMemberId?: number | null;
   ownerName: string;
   ownerInitials: string;
   dueBy: string;
@@ -664,6 +665,7 @@ export interface CreateActionItemBody {
   title: string;
   source: string;
   ownerUserId?: string | null;
+  ownerTeamMemberId?: number | null;
   ownerName?: string;
   ownerInitials?: string;
   dueBy?: string;
@@ -679,6 +681,7 @@ export interface UpdateActionItemBody {
   title?: string;
   source?: string;
   ownerUserId?: string | null;
+  ownerTeamMemberId?: number | null;
   ownerName?: string;
   ownerInitials?: string;
   dueBy?: string;
@@ -788,6 +791,7 @@ export interface Role {
   title: string;
   seatHolderName: string;
   seatHolderInitials: string;
+  seatHolderId?: number | null;
   reportsToRoleId?: number | null;
   organizationId?: number | null;
   businessArea: string;
@@ -809,6 +813,7 @@ export interface CreateRoleBody {
   title: string;
   seatHolderName?: string;
   seatHolderInitials?: string;
+  seatHolderId?: number | null;
   reportsToRoleId?: number | null;
   organizationId?: number | null;
   /** @minLength 1 */
@@ -822,6 +827,7 @@ export interface UpdateRoleBody {
   title?: string;
   seatHolderName?: string;
   seatHolderInitials?: string;
+  seatHolderId?: number | null;
   reportsToRoleId?: number | null;
   organizationId?: number | null;
   businessArea?: string;

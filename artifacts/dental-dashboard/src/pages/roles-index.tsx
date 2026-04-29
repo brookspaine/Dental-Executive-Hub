@@ -31,6 +31,7 @@ import {
 import { areaStyle } from "@/lib/role-styles";
 import { useQueryClient } from "@tanstack/react-query";
 import { getListRolesQueryKey } from "@workspace/api-client-react";
+import { MemberPicker } from "@/components/team/member-picker";
 
 function NewRoleButton({
   roles,
@@ -228,7 +229,7 @@ function EditRoleDialog({
   onClose: () => void;
 }) {
   const [title, setTitle] = useState("");
-  const [seatHolderName, setSeatHolderName] = useState("");
+  const [seatHolderId, setSeatHolderId] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const qc = useQueryClient();
   const updateRole = useUpdateRole({
@@ -253,20 +254,12 @@ function EditRoleDialog({
   useEffect(() => {
     if (role) {
       setTitle(role.title);
-      setSeatHolderName(role.seatHolderName === "Open" ? "" : role.seatHolderName);
+      setSeatHolderId(role.seatHolderId ?? null);
       setConfirmDelete(false);
     }
   }, [role]);
 
   if (!role) return null;
-  const trimmedName = seatHolderName.trim();
-  const initials = trimmedName
-    ? trimmedName
-        .split(/\s+/)
-        .slice(0, 2)
-        .map((p) => p[0]?.toUpperCase() ?? "")
-        .join("")
-    : "";
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
@@ -285,12 +278,20 @@ function EditRoleDialog({
             />
           </div>
           <div>
-            <Label htmlFor="edit-seat-holder">Seat holder name</Label>
-            <Input
-              id="edit-seat-holder"
-              value={seatHolderName}
-              onChange={(e) => setSeatHolderName(e.target.value)}
-              placeholder="Leave blank for Open seat"
+            <Label>Seat holder</Label>
+            {/*
+             * The picker is the single source of truth — assigning here
+             * writes seatHolderId on the role, and the API derives the
+             * cached display name/initials from the canonical
+             * team_members row.
+             */}
+            <MemberPicker
+              value={seatHolderId}
+              onChange={(id) => setSeatHolderId(id)}
+              allowUnassigned
+              allowCreate
+              defaultOrganizationId={role.organizationId ?? null}
+              placeholder="Open seat — pick a team member…"
             />
           </div>
         </div>
@@ -335,8 +336,7 @@ function EditRoleDialog({
                   id: role.id,
                   data: {
                     title: title.trim(),
-                    seatHolderName: trimmedName || "Open",
-                    seatHolderInitials: initials,
+                    seatHolderId,
                   },
                 })
               }

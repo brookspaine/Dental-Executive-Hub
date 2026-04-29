@@ -157,10 +157,10 @@ router.get(
       return;
     }
     const rows = await db
-      .select({ granteeReportId: viewAsMeGrantsTable.granteeReportId })
+      .select({ granteeTeamMemberId: viewAsMeGrantsTable.granteeTeamMemberId })
       .from(viewAsMeGrantsTable)
-      .where(eq(viewAsMeGrantsTable.directReportId, id));
-    res.json(rows.map((r) => r.granteeReportId));
+      .where(eq(viewAsMeGrantsTable.teamMemberId, id));
+    res.json(rows.map((r) => r.granteeTeamMemberId));
   },
 );
 
@@ -181,13 +181,13 @@ router.post(
     }
     await db
       .insert(viewAsMeGrantsTable)
-      .values({ directReportId: id, granteeReportId })
+      .values({ teamMemberId: id, granteeTeamMemberId: granteeReportId })
       .onConflictDoNothing();
     const rows = await db
-      .select({ granteeReportId: viewAsMeGrantsTable.granteeReportId })
+      .select({ granteeTeamMemberId: viewAsMeGrantsTable.granteeTeamMemberId })
       .from(viewAsMeGrantsTable)
-      .where(eq(viewAsMeGrantsTable.directReportId, id));
-    res.status(201).json(rows.map((r) => r.granteeReportId));
+      .where(eq(viewAsMeGrantsTable.teamMemberId, id));
+    res.status(201).json(rows.map((r) => r.granteeTeamMemberId));
   },
 );
 
@@ -204,8 +204,8 @@ router.delete(
       .delete(viewAsMeGrantsTable)
       .where(
         and(
-          eq(viewAsMeGrantsTable.directReportId, id),
-          eq(viewAsMeGrantsTable.granteeReportId, granteeReportId),
+          eq(viewAsMeGrantsTable.teamMemberId, id),
+          eq(viewAsMeGrantsTable.granteeTeamMemberId, granteeReportId),
         ),
       );
     res.sendStatus(204);
@@ -221,10 +221,10 @@ router.get(
       return;
     }
     const rows = await db
-      .select({ viewerReportId: additionalViewersTable.viewerReportId })
+      .select({ viewerTeamMemberId: additionalViewersTable.viewerTeamMemberId })
       .from(additionalViewersTable)
-      .where(eq(additionalViewersTable.directReportId, id));
-    res.json(rows.map((r) => r.viewerReportId));
+      .where(eq(additionalViewersTable.teamMemberId, id));
+    res.json(rows.map((r) => r.viewerTeamMemberId));
   },
 );
 
@@ -245,13 +245,13 @@ router.post(
     }
     await db
       .insert(additionalViewersTable)
-      .values({ directReportId: id, viewerReportId })
+      .values({ teamMemberId: id, viewerTeamMemberId: viewerReportId })
       .onConflictDoNothing();
     const rows = await db
-      .select({ viewerReportId: additionalViewersTable.viewerReportId })
+      .select({ viewerTeamMemberId: additionalViewersTable.viewerTeamMemberId })
       .from(additionalViewersTable)
-      .where(eq(additionalViewersTable.directReportId, id));
-    res.status(201).json(rows.map((r) => r.viewerReportId));
+      .where(eq(additionalViewersTable.teamMemberId, id));
+    res.status(201).json(rows.map((r) => r.viewerTeamMemberId));
   },
 );
 
@@ -268,8 +268,8 @@ router.delete(
       .delete(additionalViewersTable)
       .where(
         and(
-          eq(additionalViewersTable.directReportId, id),
-          eq(additionalViewersTable.viewerReportId, viewerReportId),
+          eq(additionalViewersTable.teamMemberId, id),
+          eq(additionalViewersTable.viewerTeamMemberId, viewerReportId),
         ),
       );
     res.sendStatus(204);

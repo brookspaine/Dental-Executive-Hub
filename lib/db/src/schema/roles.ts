@@ -42,6 +42,13 @@ export const rolesTable = pgTable("roles", {
   seatHolderInitials: text("seat_holder_initials").notNull().default(""),
   reportsToRoleId: integer("reports_to_role_id"),
   organizationId: integer("organization_id"),
+  /**
+   * Optional FK to the canonical team_members row that holds this seat.
+   * When set, `seatHolderName`/`seatHolderInitials` are kept in sync as
+   * a denormalized cache so legacy code paths (and historical exports)
+   * continue to work. When null the seat is treated as Open.
+   */
+  seatHolderId: integer("seat_holder_id"),
   businessArea: text("business_area").notNull().default("Operations"),
   tier: text("tier").notNull().default("Operations Support"),
 

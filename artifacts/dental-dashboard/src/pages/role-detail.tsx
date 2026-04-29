@@ -105,6 +105,8 @@ import {
   type BusinessArea,
 } from "@/lib/role-styles";
 import { cn } from "@/lib/utils";
+import { MemberPicker } from "@/components/team/member-picker";
+import { getInitials } from "@/lib/current-user";
 
 // ---------------------------------------------------------------------------
 // Types & helpers
@@ -202,12 +204,14 @@ export function RoleDetail() {
 
   function save() {
     if (!draft) return;
+    // seatHolderId is the canonical assignment; the server derives the
+    // cached name/initials from team_members when an id is set, so we
+    // intentionally do not echo the strings here.
     updateMutation.mutate({
       id,
       data: {
         title: draft.title,
-        seatHolderName: draft.seatHolderName,
-        seatHolderInitials: draft.seatHolderInitials,
+        seatHolderId: draft.seatHolderId ?? null,
         reportsToRoleId: draft.reportsToRoleId,
         businessArea: draft.businessArea,
         tier: draft.tier,
@@ -254,24 +258,24 @@ export function RoleDetail() {
                 label="Seat holder"
                 editing={mode === "edit"}
                 editor={
-                  <Input
-                    value={view.seatHolderName}
-                    onChange={(e) =>
+                  <MemberPicker
+                    value={view.seatHolderId ?? null}
+                    onChange={(id, member) =>
                       patchDraft({
-                        seatHolderName: e.target.value,
-                        seatHolderInitials:
-                          e.target.value === "Open"
-                            ? ""
-                            : e.target.value
-                                .split(/\s+/)
-                                .map((s) => s[0])
-                                .filter(Boolean)
-                                .slice(0, 2)
-                                .join("")
-                                .toUpperCase(),
+                        seatHolderId: id,
+                        // Optimistically update the cached strings so
+                        // the header reflects the new assignment
+                        // before the server refetch completes; the
+                        // server overwrites them from team_members on
+                        // save.
+                        seatHolderName: member?.name ?? "Open",
+                        seatHolderInitials: member
+                          ? getInitials(member.name)
+                          : "",
                       })
                     }
-                    placeholder="Open"
+                    allowUnassigned
+                    allowCreate
                   />
                 }
                 value={

@@ -184,16 +184,26 @@ function AppRouter() {
         <Route path="/organizations" component={Organizations} />
         <Route path="/organizations/:id" component={OrganizationDetail} />
         <Route path="/urgent-dental" component={UrgentDental} />
-        <Route path="/org-chart"><Redirect to="/my-roles" /></Route>
-        <Route path="/org-chart/seats/:id"><Redirect to="/my-roles" /></Route>
-        <Route path="/direct-reports" component={DirectReports} />
+        {/*
+         * Phase 2 IA: Members + Org Chart now live under the Team group.
+         * The previous URLs (/direct-reports, /my-roles, /org-chart) keep
+         * working for one cycle as redirects so any bookmarks stay valid.
+         */}
+        <Route path="/team/members" component={DirectReports} />
+        <Route path="/team/org-chart" component={RolesIndex} />
+        <Route path="/team/org-chart/:id" component={RoleDetail} />
+        <Route path="/direct-reports"><Redirect to="/team/members" /></Route>
+        <Route path="/my-roles"><Redirect to="/team/org-chart" /></Route>
+        <Route path="/my-roles/:id">
+          {(params) => <Redirect to={`/team/org-chart/${params.id}`} />}
+        </Route>
+        <Route path="/org-chart"><Redirect to="/team/org-chart" /></Route>
+        <Route path="/org-chart/seats/:id"><Redirect to="/team/org-chart" /></Route>
         <Route path="/action-items" component={ActionItems} />
         <Route path="/edge-buildout-board" component={BuildoutBoard} />
         <Route path="/edge-lease-matrix">
           <Redirect to="/organizations?tab=lease-matrix" />
         </Route>
-        <Route path="/my-roles" component={RolesIndex} />
-        <Route path="/my-roles/:id" component={RoleDetail} />
         <Route path="/playbook-library" component={PlaybookLibrary} />
         <Route path="/playbook-library/:id" component={PlaybookDetail} />
         <Route path="/team/reports">

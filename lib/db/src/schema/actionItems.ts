@@ -24,6 +24,12 @@ export const actionItemsTable = pgTable("action_items", {
   ownerUserId: text("owner_user_id").references(() => usersTable.id, {
     onDelete: "set null",
   }),
+  /**
+   * Canonical FK to the assignee team member. Preferred over
+   * `ownerName`/`ownerInitials`, which are now denormalized display
+   * caches that survive a member's display name change.
+   */
+  ownerTeamMemberId: integer("owner_team_member_id"),
   ownerName: text("owner_name").notNull(),
   ownerInitials: text("owner_initials").notNull(),
   dueBy: text("due_by").notNull().default("—"),

@@ -7,26 +7,26 @@ import {
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod/v4";
-import { directReportsTable } from "./directReports";
+import { teamMembersTable } from "./teamMembers";
 
 export const viewAsMeGrantsTable = pgTable(
-  "direct_report_view_as_me_grants",
+  "team_member_view_as_me_grants",
   {
     id: serial("id").primaryKey(),
-    directReportId: integer("direct_report_id")
+    teamMemberId: integer("team_member_id")
       .notNull()
-      .references(() => directReportsTable.id, { onDelete: "cascade" }),
-    granteeReportId: integer("grantee_report_id")
+      .references(() => teamMembersTable.id, { onDelete: "cascade" }),
+    granteeTeamMemberId: integer("grantee_team_member_id")
       .notNull()
-      .references(() => directReportsTable.id, { onDelete: "cascade" }),
+      .references(() => teamMembersTable.id, { onDelete: "cascade" }),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
       .defaultNow(),
   },
   (table) => ({
     pairUnique: uniqueIndex("view_as_me_grants_pair_unique").on(
-      table.directReportId,
-      table.granteeReportId,
+      table.teamMemberId,
+      table.granteeTeamMemberId,
     ),
   }),
 );

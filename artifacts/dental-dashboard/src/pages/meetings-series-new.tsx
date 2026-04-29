@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { MemberAvatar } from "@/components/member-avatar";
+import { MemberPicker } from "@/components/team/member-picker";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -14,18 +14,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ChevronLeft, X, Plus, Search } from "lucide-react";
+import { ChevronLeft, X } from "lucide-react";
 import { useMeetingOrgOptions } from "@/lib/meeting-orgs";
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .map((p) => p[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
+import { useListDirectReports } from "@workspace/api-client-react";
 
 export function MeetingsSeriesNew() {
   const [, setLocation] = useLocation();
@@ -33,22 +24,31 @@ export function MeetingsSeriesNew() {
   const [name, setName] = useState("");
   const [organization, setOrganization] = useState<string>("");
   const { options: orgOptions } = useMeetingOrgOptions();
-  const [memberInput, setMemberInput] = useState("");
-  const [members, setMembers] = useState<string[]>(["Brooks Paine"]);
+  const [memberIds, setMemberIds] = useState<number[]>([]);
   const [desiredFuture, setDesiredFuture] = useState(
     "By April 2027 we will implement alignment and accountability strategies, resulting in a 20% revenue growth. [DRAFT]"
   );
   const [status, setStatus] = useState("on-pace");
 
+  const { data: allMembers } = useListDirectReports();
+  const memberById = useMemo(() => {
+    const m = new Map<number, { id: number; name: string }>();
+    for (const r of allMembers ?? []) m.set(r.id, { id: r.id, name: r.name });
+    return m;
+  }, [allMembers]);
+
   const createMutation = useMutation({
     mutationFn: async () => {
+      // The server prefers `memberIds` when present and writes the join
+      // table; the legacy `members` jsonb is derived from it, so we no
+      // longer send a parallel string list.
       const res = await fetch("/api/meeting-series", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name,
           organization: organization || null,
-          members,
+          memberIds,
           desiredFuture,
           desiredFutureStatus: status,
         }),
@@ -62,16 +62,14 @@ export function MeetingsSeriesNew() {
     },
   });
 
-  function addMember() {
-    const t = memberInput.trim();
-    if (!t) return;
-    if (members.includes(t)) return;
-    setMembers([...members, t]);
-    setMemberInput("");
+  function addMember(id: number | null): void {
+    if (id === null) return;
+    if (memberIds.includes(id)) return;
+    setMemberIds([...memberIds, id]);
   }
 
-  function removeMember(m: string) {
-    setMembers(members.filter((x) => x !== m));
+  function removeMember(id: number): void {
+    setMemberIds(memberIds.filter((x) => x !== id));
   }
 
   return (
@@ -136,51 +134,50 @@ export function MeetingsSeriesNew() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <div className="relative">
-                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      value={memberInput}
-                      onChange={(e) => setMemberInput(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addMember();
-                        }
-                      }}
-                      placeholder="Search for Team Member"
-                      className="pl-9"
-                    />
-                  </div>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addMember}
-                    className="w-full"
-                  >
-                    <Plus className="w-3 h-3 mr-1" /> Add
-                  </Button>
+                  {/*
+                   * MemberPicker is single-select; for multi-add we
+                   * reset its value to null after each pick so the user
+                   * can keep adding people from the same control. The
+                   * shared cache means newly created members appear in
+                   * every other picker without an extra fetch.
+                   */}
+                  <MemberPicker
+                    value={null}
+                    onChange={(id) => addMember(id)}
+                    allowCreate
+                    placeholder="Search for team member"
+                  />
                 </div>
                 <div className="border rounded-md p-3 min-h-[120px] space-y-2">
-                  {members.map((m) => (
-                    <div
-                      key={m}
-                      className="flex items-center justify-between gap-2"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <MemberAvatar name={m} className="w-7 h-7" />
-                        <span className="text-sm truncate">{m}</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeMember(m)}
-                        className="text-muted-foreground hover:text-foreground"
-                        aria-label={`Remove ${m}`}
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
+                  {memberIds.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                      No members added yet.
+                    </p>
+                  ) : (
+                    memberIds.map((id) => {
+                      const m = memberById.get(id);
+                      const label = m?.name ?? `Member #${id}`;
+                      return (
+                        <div
+                          key={id}
+                          className="flex items-center justify-between gap-2"
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <MemberAvatar name={label} className="w-7 h-7" />
+                            <span className="text-sm truncate">{label}</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeMember(id)}
+                            className="text-muted-foreground hover:text-foreground"
+                            aria-label={`Remove ${label}`}
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      );
+                    })
+                  )}
                 </div>
               </div>
             </div>

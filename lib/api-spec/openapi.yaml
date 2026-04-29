@@ -3065,6 +3065,9 @@ components:
         ownerUserId:
           type: string
           nullable: true
+        ownerTeamMemberId:
+          type: integer
+          nullable: true
         ownerName:
           type: string
         ownerInitials:
@@ -3115,6 +3118,9 @@ components:
         ownerUserId:
           type: string
           nullable: true
+        ownerTeamMemberId:
+          type: integer
+          nullable: true
         ownerName:
           type: string
         ownerInitials:
@@ -3148,6 +3154,9 @@ components:
           type: string
         ownerUserId:
           type: string
+          nullable: true
+        ownerTeamMemberId:
+          type: integer
           nullable: true
         ownerName:
           type: string
@@ -3381,6 +3390,9 @@ components:
           type: string
         seatHolderInitials:
           type: string
+        seatHolderId:
+          type: integer
+          nullable: true
         reportsToRoleId:
           type: integer
           nullable: true
@@ -3446,6 +3458,9 @@ components:
           type: string
         seatHolderInitials:
           type: string
+        seatHolderId:
+          type: integer
+          nullable: true
         reportsToRoleId:
           type: integer
           nullable: true
@@ -3470,6 +3485,9 @@ components:
           type: string
         seatHolderInitials:
           type: string
+        seatHolderId:
+          type: integer
+          nullable: true
         reportsToRoleId:
           type: integer
           nullable: true

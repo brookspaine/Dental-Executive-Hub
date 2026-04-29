@@ -5,10 +5,16 @@
   "type": "module",
   "scripts": {
     "hello": "tsx ./src/hello.ts",
+    "rename:direct-reports": "tsx ./src/renameDirectReportsToTeamMembers.ts",
+    "backfill:team-members": "tsx ./src/backfillTeamMembers.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pg": "^8.18.0",
     "tsx": "catalog:"
   }
 }
