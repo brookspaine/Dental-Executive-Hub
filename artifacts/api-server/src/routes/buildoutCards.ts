@@ -86,13 +86,7 @@ const SEED_CARDS = [
     status: "backlog",
     position: 1,
     targetDoneDate: null as string | null,
-    categoryFields: {
-      equipmentCategory: "Imaging",
-      vendorAndQuote: "Vatech / Quote #VQ-4421",
-      leadTime: "10 weeks",
-      installDependency: "Operatory rough-in complete",
-      poStatus: "Quoted",
-    },
+    categoryFields: {},
   },
   {
     title: "Execute Treloar & Heisel professional liability binder",

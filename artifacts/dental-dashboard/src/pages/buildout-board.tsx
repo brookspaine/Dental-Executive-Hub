@@ -306,23 +306,6 @@ const CATEGORY_FIELD_DEFS: Record<string, FieldDef[]> = {
     },
     { key: "manufactureLeadTime", label: "Manufacture Lead Time", type: "text" },
   ],
-  "Equipment & IT": [
-    {
-      key: "equipmentCategory",
-      label: "Equipment Category",
-      type: "select",
-      options: ["Operatory", "Sterilization", "Imaging", "IT-Network", "Software", "Office"],
-    },
-    { key: "vendorAndQuote", label: "Vendor & Quote #", type: "text" },
-    { key: "leadTime", label: "Lead Time", type: "text" },
-    { key: "installDependency", label: "Install Dependency", type: "text" },
-    {
-      key: "poStatus",
-      label: "PO Status",
-      type: "select",
-      options: ["Quoted", "Approved", "PO Issued", "Shipped", "Delivered", "Installed"],
-    },
-  ],
   "Vendor Contracts": [
     {
       key: "vendorType",
