@@ -30,7 +30,6 @@ import {
 } from "@/components/ui/popover";
 import { useActiveUser } from "@/contexts/active-user-context";
 import { getInitials } from "@/lib/current-user";
-import edgLogo from "@assets/edg-logo-cropped.png";
 
 type NavLeaf = { href: string; label: string; icon: any };
 type NavGroup = {
@@ -275,18 +274,6 @@ function UserBadge() {
   );
 }
 
-function BrandHeader() {
-  return (
-    <div className="h-16 flex items-center px-4 border-b border-slate-200 shrink-0 bg-white">
-      <img
-        src={edgLogo}
-        alt="Emergency Dental Group"
-        className="h-12 w-auto object-contain"
-      />
-    </div>
-  );
-}
-
 export function Layout({ children }: { children: React.ReactNode }) {
   const [location] = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -304,18 +291,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
       {/* Full-width navy top bar */}
       <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
-        {/* Brand block — aligned with sidebar width on desktop. The logo
-            sits in a white rounded badge on the navy bar so the on-white
-            EDG mark reads cleanly while the navy header stays intact. */}
-        <div className="hidden md:flex w-64 items-center justify-center px-3 border-r border-white/10 shrink-0">
-          <span className="inline-flex items-center justify-center bg-white rounded-lg px-3 py-1 shadow-sm">
-            <img
-              src={edgLogo}
-              alt="Emergency Dental Group"
-              className="h-14 w-auto object-contain"
-            />
-          </span>
-        </div>
+        {/* Brand spacer — aligned with sidebar width on desktop. */}
+        <div className="hidden md:flex w-64 items-center justify-center px-3 border-r border-white/10 shrink-0" />
 
         {/* Mobile: hamburger + condensed brand */}
         <div className="md:hidden flex items-center gap-2 px-3 flex-1 min-w-0">
@@ -336,7 +313,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <SheetHeader className="sr-only">
                 <SheetTitle>Navigation</SheetTitle>
               </SheetHeader>
-              <BrandHeader />
               <NavList
                 location={location}
                 onNavigate={() => setDrawerOpen(false)}
@@ -344,13 +320,6 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <UserBadge />
             </SheetContent>
           </Sheet>
-          <span className="inline-flex items-center justify-center bg-white rounded-md px-1.5 py-1 shrink-0">
-            <img
-              src={edgLogo}
-              alt="Emergency Dental Group"
-              className="h-7 w-auto object-contain"
-            />
-          </span>
           {showTitle && (
             <span className="font-semibold text-white text-sm tracking-tight truncate">
               {currentLabel}
