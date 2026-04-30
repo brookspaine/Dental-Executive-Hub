@@ -418,15 +418,9 @@ router.patch("/meeting-agendas/:id", async (req, res): Promise<void> => {
   const updates: Record<string, unknown> = { updatedAt: new Date() };
   if (typeof req.body?.name === "string") updates.name = req.body.name;
   if (req.body?.sectionData && typeof req.body.sectionData === "object") {
-    // Each section owns its own value shape (string, array, or object).
-    // We whitelist keys but accept any JSON-serializable value so the
-    // structured editors (Wins, Score Card, Close-the-Loop, etc.) can
-    // persist their richer per-section data alongside the legacy notes
-    // strings. Non-JSON values (functions, undefined) are dropped by
-    // JSON.stringify naturally.
-    const filtered: Record<string, unknown> = {};
+    const filtered: Record<string, string> = {};
     for (const [k, v] of Object.entries(req.body.sectionData)) {
-      if (ALLOWED_SECTION_KEYS.has(k) && v !== undefined) {
+      if (ALLOWED_SECTION_KEYS.has(k) && typeof v === "string") {
         filtered[k] = v;
       }
     }
