@@ -26,10 +26,9 @@ import { ChevronLeft, Plus, Lock, Trash2, Check } from "lucide-react";
 const SECTIONS = [
   {
     key: "iceBreaker",
-    label: "Segue",
-    description:
-      "Kick things off with a quick, fun question or activity to get everyone talking. It's a simple way to start the meeting on a positive note and build team connection.",
-    type: "notes" as const,
+    label: "Segue - 5 min",
+    description: "",
+    type: "titleOnly" as const,
   },
   {
     key: "winsShoutouts",
@@ -170,6 +169,14 @@ export function MeetingsAgenda() {
           description={current.description}
           initialValue={agenda.sectionData?.[current.key] ?? ""}
         />
+      )}
+
+      {current.type === "titleOnly" && (
+        <Card>
+          <CardContent className="p-5">
+            <h2 className="text-lg font-bold">{current.label}</h2>
+          </CardContent>
+        </Card>
       )}
 
       {current.type === "keyTopics" && (
