@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   useGetLeaseToolkit,
   updateLeaseToolkit,
@@ -134,14 +136,29 @@ export default function LeaseToolkit() {
               placeholder="Paste your toolkit content here…"
               data-testid="lease-toolkit-textarea"
             />
-          ) : (
+          ) : data?.content?.trim() ? (
             <div
-              className="whitespace-pre-wrap text-sm leading-relaxed"
+              className="prose prose-sm max-w-none dark:prose-invert
+                prose-headings:font-semibold prose-h1:text-2xl prose-h1:mt-0
+                prose-h2:text-lg prose-h2:mt-6 prose-h2:mb-2
+                prose-h3:text-base prose-h3:mt-4 prose-h3:mb-1
+                prose-p:my-2 prose-li:my-0.5 prose-ol:my-2 prose-ul:my-2
+                prose-blockquote:border-l-4 prose-blockquote:border-muted
+                prose-blockquote:pl-4 prose-blockquote:italic
+                prose-blockquote:text-muted-foreground
+                prose-strong:text-foreground"
               data-testid="lease-toolkit-content"
             >
-              {data?.content?.trim()
-                ? data.content
-                : "No content yet. Click Edit to add your Lease Toolkit."}
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {data.content}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            <div
+              className="text-sm text-muted-foreground"
+              data-testid="lease-toolkit-content"
+            >
+              No content yet. Click Edit to add your Lease Toolkit.
             </div>
           )}
           {saveMutation.isError && (
