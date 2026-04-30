@@ -633,6 +633,30 @@ router.get(
   }
 );
 
+/**
+ * Format an ISO date string ("YYYY-MM-DD") into the short "Mon DD"
+ * label used everywhere else for action item due dates (e.g. "Apr 23").
+ * Returns the em-dash placeholder when the input is empty or unparseable.
+ * Parses the date components manually to avoid the timezone shift you
+ * get from `new Date("2026-04-23")` (UTC midnight) on locales west of
+ * UTC, which would render as the previous day.
+ */
+function formatDueByShort(iso: string): string {
+  const trimmed = iso.trim();
+  if (!trimmed) return "—";
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (!m) return trimmed;
+  const [, , monthStr, dayStr] = m;
+  const monthIdx = Number(monthStr) - 1;
+  const day = Number(dayStr);
+  if (monthIdx < 0 || monthIdx > 11 || !day) return trimmed;
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+  ];
+  return `${months[monthIdx]} ${day}`;
+}
+
 function initialsForName(name: string): string {
   return name
     .trim()
@@ -724,7 +748,7 @@ router.post(
         ownerTeamMemberId,
         ownerName,
         ownerInitials,
-        dueBy: dueDate || "—",
+        dueBy: formatDueByShort(dueDate),
         dueByFull: dueDate,
         notes: notesText ? [{ label: notesText }] : null,
         starred: isDailyTop3,
