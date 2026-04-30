@@ -75,7 +75,7 @@ const SECTIONS = [
   },
   {
     key: "actionItems",
-    label: "To-Do List",
+    label: "Action Items",
     description: "Capture the commitments coming out of this meeting.",
     type: "actionItems" as const,
   },
