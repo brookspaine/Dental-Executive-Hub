@@ -45,7 +45,7 @@ const SECTIONS = [
   },
   {
     key: "desiredFuture",
-    label: "Desired Future",
+    label: "Desired Future - 5 min",
     description:
       "Check progress against your long-term Desired Future goal and current pace.",
     type: "notes" as const,
