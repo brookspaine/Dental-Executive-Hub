@@ -28,6 +28,8 @@ tags:
     description: Words of Wisdom quote pool
   - name: actionItems
     description: Shared action items synchronized across devices and users
+  - name: leaseToolkit
+    description: Editable Lease Toolkit document under EDGE Organizations
   - name: me
     description: Authenticated user identity
   - name: Storage
@@ -694,6 +696,36 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Announcement"
+
+  /lease-toolkit:
+    get:
+      operationId: getLeaseToolkit
+      tags: [leaseToolkit]
+      summary: Get the editable Lease Toolkit document
+      responses:
+        "200":
+          description: Lease Toolkit document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaseToolkitDoc"
+    put:
+      operationId: updateLeaseToolkit
+      tags: [leaseToolkit]
+      summary: Replace the Lease Toolkit document content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLeaseToolkitBody"
+      responses:
+        "200":
+          description: Updated Lease Toolkit document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LeaseToolkitDoc"
 
   /me:
     get:
@@ -2391,6 +2423,29 @@ components:
         - title
         - content
         - type
+
+    LeaseToolkitDoc:
+      type: object
+      properties:
+        id:
+          type: integer
+        content:
+          type: string
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - content
+        - updatedAt
+
+    UpdateLeaseToolkitBody:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
 
     DashboardSummary:
       type: object

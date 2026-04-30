@@ -550,6 +550,28 @@ export const CreateAnnouncementBody = zod.object({
 });
 
 /**
+ * @summary Get the editable Lease Toolkit document
+ */
+export const GetLeaseToolkitResponse = zod.object({
+  id: zod.number(),
+  content: zod.string(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
+ * @summary Replace the Lease Toolkit document content
+ */
+export const UpdateLeaseToolkitBody = zod.object({
+  content: zod.string(),
+});
+
+export const UpdateLeaseToolkitResponse = zod.object({
+  id: zod.number(),
+  content: zod.string(),
+  updatedAt: zod.coerce.date(),
+});
+
+/**
  * @summary Get the currently signed-in user
  */
 export const GetCurrentUserResponse = zod.object({

@@ -55,6 +55,7 @@ import type {
   ImportActionItemsBody,
   LeaseDocument,
   LeaseRecord,
+  LeaseToolkitDoc,
   ListIdealWeekCompletionsParams,
   OrgChartSeat,
   OrgPerformance,
@@ -74,6 +75,7 @@ import type {
   UpdateFutureTodoBody,
   UpdateIdealWeekRitualBody,
   UpdateLeaseRecordBody,
+  UpdateLeaseToolkitBody,
   UpdateOrgChartSeatBody,
   UpdateOrganizationBody,
   UpdatePlaybookBody,
@@ -3014,6 +3016,167 @@ export const useCreateAnnouncement = <
   TContext
 > => {
   return useMutation(getCreateAnnouncementMutationOptions(options));
+};
+
+/**
+ * @summary Get the editable Lease Toolkit document
+ */
+export const getGetLeaseToolkitUrl = () => {
+  return `/api/lease-toolkit`;
+};
+
+export const getLeaseToolkit = async (
+  options?: RequestInit,
+): Promise<LeaseToolkitDoc> => {
+  return customFetch<LeaseToolkitDoc>(getGetLeaseToolkitUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetLeaseToolkitQueryKey = () => {
+  return [`/api/lease-toolkit`] as const;
+};
+
+export const getGetLeaseToolkitQueryOptions = <
+  TData = Awaited<ReturnType<typeof getLeaseToolkit>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaseToolkit>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetLeaseToolkitQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getLeaseToolkit>>> = ({
+    signal,
+  }) => getLeaseToolkit({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaseToolkit>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetLeaseToolkitQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getLeaseToolkit>>
+>;
+export type GetLeaseToolkitQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get the editable Lease Toolkit document
+ */
+
+export function useGetLeaseToolkit<
+  TData = Awaited<ReturnType<typeof getLeaseToolkit>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getLeaseToolkit>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetLeaseToolkitQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Replace the Lease Toolkit document content
+ */
+export const getUpdateLeaseToolkitUrl = () => {
+  return `/api/lease-toolkit`;
+};
+
+export const updateLeaseToolkit = async (
+  updateLeaseToolkitBody: UpdateLeaseToolkitBody,
+  options?: RequestInit,
+): Promise<LeaseToolkitDoc> => {
+  return customFetch<LeaseToolkitDoc>(getUpdateLeaseToolkitUrl(), {
+    ...options,
+    method: "PUT",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(updateLeaseToolkitBody),
+  });
+};
+
+export const getUpdateLeaseToolkitMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLeaseToolkit>>,
+    TError,
+    { data: BodyType<UpdateLeaseToolkitBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateLeaseToolkit>>,
+  TError,
+  { data: BodyType<UpdateLeaseToolkitBody> },
+  TContext
+> => {
+  const mutationKey = ["updateLeaseToolkit"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateLeaseToolkit>>,
+    { data: BodyType<UpdateLeaseToolkitBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return updateLeaseToolkit(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateLeaseToolkitMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateLeaseToolkit>>
+>;
+export type UpdateLeaseToolkitMutationBody = BodyType<UpdateLeaseToolkitBody>;
+export type UpdateLeaseToolkitMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Replace the Lease Toolkit document content
+ */
+export const useUpdateLeaseToolkit = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateLeaseToolkit>>,
+    TError,
+    { data: BodyType<UpdateLeaseToolkitBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateLeaseToolkit>>,
+  TError,
+  { data: BodyType<UpdateLeaseToolkitBody> },
+  TContext
+> => {
+  return useMutation(getUpdateLeaseToolkitMutationOptions(options));
 };
 
 /**

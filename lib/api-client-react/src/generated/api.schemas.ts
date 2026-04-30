@@ -341,6 +341,16 @@ export interface CreateAnnouncementBody {
   type: CreateAnnouncementBodyType;
 }
 
+export interface LeaseToolkitDoc {
+  id: number;
+  content: string;
+  updatedAt: string;
+}
+
+export interface UpdateLeaseToolkitBody {
+  content: string;
+}
+
 export interface DashboardSummary {
   totalOrganizations: number;
   totalDirectReports: number;

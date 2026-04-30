@@ -39,6 +39,7 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { LeaseMatrix } from "@/pages/lease-matrix";
+import LeaseToolkit from "@/pages/lease-toolkit";
 import {
   Plus,
   Building2,
@@ -111,12 +112,14 @@ function BeltBadge({ belt }: { belt: string | null | undefined }) {
   return <Badge className={beltClasses[belt as Belt]}>{beltLabel(belt as Belt)}</Badge>;
 }
 
-type OrgTab = "locations" | "lease-matrix";
+type OrgTab = "locations" | "lease-matrix" | "lease-toolkit";
 
 function parseTab(search: string): OrgTab {
   const params = new URLSearchParams(search);
   const t = params.get("tab");
-  return t === "lease-matrix" ? "lease-matrix" : "locations";
+  if (t === "lease-matrix") return "lease-matrix";
+  if (t === "lease-toolkit") return "lease-toolkit";
+  return "locations";
 }
 
 export function Organizations() {
@@ -133,9 +136,12 @@ export function Organizations() {
   const search = useSearch();
   const activeTab = parseTab(search);
   const setActiveTab = (next: OrgTab) => {
-    const path = next === "lease-matrix"
-      ? "/organizations?tab=lease-matrix"
-      : "/organizations";
+    const path =
+      next === "lease-matrix"
+        ? "/organizations?tab=lease-matrix"
+        : next === "lease-toolkit"
+          ? "/organizations?tab=lease-toolkit"
+          : "/organizations";
     setLocation(path);
   };
 
@@ -369,6 +375,7 @@ export function Organizations() {
         <TabsList>
           <TabsTrigger value="locations">Locations</TabsTrigger>
           <TabsTrigger value="lease-matrix">Lease Matrix</TabsTrigger>
+          <TabsTrigger value="lease-toolkit">Lease Toolkit</TabsTrigger>
         </TabsList>
 
         <TabsContent value="locations" className="space-y-6 mt-4">
@@ -415,6 +422,10 @@ export function Organizations() {
 
         <TabsContent value="lease-matrix" className="mt-4">
           <LeaseMatrix embedded />
+        </TabsContent>
+
+        <TabsContent value="lease-toolkit" className="mt-4">
+          <LeaseToolkit />
         </TabsContent>
       </Tabs>
     </div>
