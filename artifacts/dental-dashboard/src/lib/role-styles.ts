@@ -1,6 +1,5 @@
 // Shared color tokens for the My Role module so the index, detail, and
-// playbook pages all match the Buildout Board aesthetic. Keep these in
-// sync with `BUSINESS_AREAS` / `AREA_STYLES` in pages/buildout-board.tsx.
+// playbook pages share a consistent Business Area palette.
 
 export const BUSINESS_AREAS = [
   "Location",

@@ -79,8 +79,7 @@ export const leaseRecordsTable = pgTable(
     signagePylon: text("signage_pylon"),
     signageNotes: text("signage_notes"),
 
-    // Dates (stored as ISO date strings — match existing app convention
-    // used by buildoutCards.targetDoneDate and seed_tasks.dueDate)
+    // Dates (stored as ISO date strings — match existing app convention)
     leaseExecutionDate: text("lease_execution_date"),
     anticipatedDeliveryDate: text("anticipated_delivery_date"),
     rentCommencementDate: text("rent_commencement_date"),

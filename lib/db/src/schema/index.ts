@@ -22,7 +22,6 @@ export * from "./viewAsMeGrants";
 export * from "./additionalViewers";
 export * from "./actionItems";
 export * from "./oneOnOnes";
-export * from "./buildoutCards";
 export * from "./leaseRecords";
 export * from "./leaseDocuments";
 export * from "./leaseToolkit";

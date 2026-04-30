@@ -10,7 +10,6 @@ import {
   CalendarDays,
   ListChecks,
   Compass,
-  KanbanSquare,
   LogOut,
   IdCard,
   BookOpen,
@@ -45,7 +44,6 @@ const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
-  { href: "/edge-buildout-board", label: "Big Board", icon: KanbanSquare },
   {
     label: "Team",
     icon: Users,

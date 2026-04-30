@@ -38,7 +38,6 @@ import { MeetingsAgenda } from "@/pages/meetings-agenda";
 import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
 import { TeamPlaceholder } from "@/pages/team-placeholder";
 import { ActionItems } from "@/pages/action-items";
-import { BuildoutBoard } from "@/pages/buildout-board";
 import { RolesIndex } from "@/pages/roles-index";
 import { RoleDetail } from "@/pages/role-detail";
 import { PlaybookLibrary } from "@/pages/playbook-library";
@@ -200,7 +199,6 @@ function AppRouter() {
         <Route path="/org-chart"><Redirect to="/team/org-chart" /></Route>
         <Route path="/org-chart/seats/:id"><Redirect to="/team/org-chart" /></Route>
         <Route path="/action-items" component={ActionItems} />
-        <Route path="/edge-buildout-board" component={BuildoutBoard} />
         <Route path="/edge-lease-matrix">
           <Redirect to="/organizations?tab=lease-matrix" />
         </Route>
