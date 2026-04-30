@@ -584,6 +584,17 @@ export const ListActionItemsResponseItem = zod.object({
   starred: zod.boolean(),
   done: zod.boolean(),
   position: zod.number(),
+  sourceKind: zod.enum([
+    "manual",
+    "leadership_meeting",
+    "key_topic",
+    "seat",
+    "one_on_one",
+  ]),
+  agendaId: zod.number().nullish(),
+  keyTopicId: zod.number().nullish(),
+  seatId: zod.number().nullish(),
+  oneOnOneId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -613,6 +624,13 @@ export const CreateActionItemBody = zod.object({
   starred: zod.boolean().optional(),
   done: zod.boolean().optional(),
   position: zod.number().optional(),
+  sourceKind: zod
+    .enum(["manual", "leadership_meeting", "key_topic", "seat", "one_on_one"])
+    .optional(),
+  agendaId: zod.number().nullish(),
+  keyTopicId: zod.number().nullish(),
+  seatId: zod.number().nullish(),
+  oneOnOneId: zod.number().nullish(),
 });
 
 /**
@@ -641,6 +659,19 @@ export const ImportActionItemsBody = zod.object({
       starred: zod.boolean().optional(),
       done: zod.boolean().optional(),
       position: zod.number().optional(),
+      sourceKind: zod
+        .enum([
+          "manual",
+          "leadership_meeting",
+          "key_topic",
+          "seat",
+          "one_on_one",
+        ])
+        .optional(),
+      agendaId: zod.number().nullish(),
+      keyTopicId: zod.number().nullish(),
+      seatId: zod.number().nullish(),
+      oneOnOneId: zod.number().nullish(),
     }),
   ),
 });
@@ -666,6 +697,17 @@ export const ImportActionItemsResponseItem = zod.object({
   starred: zod.boolean(),
   done: zod.boolean(),
   position: zod.number(),
+  sourceKind: zod.enum([
+    "manual",
+    "leadership_meeting",
+    "key_topic",
+    "seat",
+    "one_on_one",
+  ]),
+  agendaId: zod.number().nullish(),
+  keyTopicId: zod.number().nullish(),
+  seatId: zod.number().nullish(),
+  oneOnOneId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });
@@ -700,6 +742,13 @@ export const UpdateActionItemBody = zod.object({
   starred: zod.boolean().optional(),
   done: zod.boolean().optional(),
   position: zod.number().optional(),
+  sourceKind: zod
+    .enum(["manual", "leadership_meeting", "key_topic", "seat", "one_on_one"])
+    .optional(),
+  agendaId: zod.number().nullish(),
+  keyTopicId: zod.number().nullish(),
+  seatId: zod.number().nullish(),
+  oneOnOneId: zod.number().nullish(),
 });
 
 export const UpdateActionItemResponse = zod.object({
@@ -723,6 +772,17 @@ export const UpdateActionItemResponse = zod.object({
   starred: zod.boolean(),
   done: zod.boolean(),
   position: zod.number(),
+  sourceKind: zod.enum([
+    "manual",
+    "leadership_meeting",
+    "key_topic",
+    "seat",
+    "one_on_one",
+  ]),
+  agendaId: zod.number().nullish(),
+  keyTopicId: zod.number().nullish(),
+  seatId: zod.number().nullish(),
+  oneOnOneId: zod.number().nullish(),
   createdAt: zod.coerce.date(),
   updatedAt: zod.coerce.date(),
 });

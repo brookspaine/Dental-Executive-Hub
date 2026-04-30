@@ -75,21 +75,8 @@ export const meetingKeyTopicsTable = pgTable("meeting_key_topics", {
 
 export type MeetingKeyTopic = typeof meetingKeyTopicsTable.$inferSelect;
 
-export const meetingActionItemsTable = pgTable("meeting_action_items", {
-  id: serial("id").primaryKey(),
-  agendaId: integer("agenda_id")
-    .notNull()
-    .references(() => meetingAgendasTable.id, { onDelete: "cascade" }),
-  item: text("item").notNull(),
-  owner: text("owner"),
-  dueDate: text("due_date"),
-  isDailyTop3: boolean("is_daily_top_3").notNull().default(false),
-  notes: text("notes"),
-  completed: boolean("completed").notNull().default(false),
-  sortOrder: integer("sort_order").notNull().default(0),
-  createdAt: timestamp("created_at", { withTimezone: true })
-    .notNull()
-    .defaultNow(),
-});
-
-export type MeetingActionItem = typeof meetingActionItemsTable.$inferSelect;
+// Phase 4: `meeting_action_items` retired. Leadership-meeting action
+// items now live in the canonical `action_items` table tagged with
+// `agendaId` and `sourceKind = "leadership_meeting"`. The legacy table
+// was empty at retirement (verified before drop) so no migration was
+// required.

@@ -7,7 +7,7 @@ import {
   teamMembersTable,
   meetingAgendasTable,
   meetingKeyTopicsTable,
-  meetingActionItemsTable,
+  actionItemsTable,
   seatTasksTable,
   orgChartSeatsTable,
 } from "@workspace/db";
@@ -365,13 +365,18 @@ router.post(
       );
     if (priorAgendas.length > 0) {
       const priorIds = priorAgendas.map((a) => a.id);
+      // Carry over any incomplete leadership-meeting items from prior
+      // agendas. They live in the canonical `action_items` table now
+      // (Phase 4) and are filtered by `sourceKind` so we don't sweep up
+      // unrelated action items that happen to share an agenda id.
       await db
-        .update(meetingActionItemsTable)
+        .update(actionItemsTable)
         .set({ agendaId: row.id })
         .where(
           and(
-            inArray(meetingActionItemsTable.agendaId, priorIds),
-            eq(meetingActionItemsTable.completed, false)
+            inArray(actionItemsTable.agendaId, priorIds),
+            eq(actionItemsTable.sourceKind, "leadership_meeting"),
+            eq(actionItemsTable.done, false)
           )
         );
     }
@@ -543,23 +548,38 @@ router.get(
       res.status(404).json({ error: "Agenda not found" });
       return;
     }
+    /**
+     * Phase 4: meeting items now live in the canonical `action_items`
+     * table tagged with `agendaId`. We project them onto the legacy
+     * AgendaActionItem shape so the existing UI keeps working — `id` is
+     * an action_items id (the UI uses it for PATCH/DELETE against
+     * `/api/action-items/:id`), and `notes` is flattened from the jsonb
+     * note array down to its first label so the agenda's text-only
+     * notes input continues to round-trip cleanly.
+     */
     const meetingRows = await db
       .select()
-      .from(meetingActionItemsTable)
-      .where(eq(meetingActionItemsTable.agendaId, id))
-      .orderBy(
-        asc(meetingActionItemsTable.sortOrder),
-        asc(meetingActionItemsTable.id)
-      );
+      .from(actionItemsTable)
+      .where(
+        and(
+          eq(actionItemsTable.agendaId, id),
+          // Only the meeting's own action items belong on this card.
+          // Phase 5 key-topic items will share the same agenda_id but
+          // belong on a separate surface, so we narrow by sourceKind to
+          // keep the views isolated even before that work lands.
+          eq(actionItemsTable.sourceKind, "leadership_meeting"),
+        ),
+      )
+      .orderBy(asc(actionItemsTable.position), asc(actionItemsTable.id));
     const meetingItems = meetingRows.map((r) => ({
       source: "meeting" as const,
       id: r.id,
-      item: r.item,
-      owner: r.owner,
-      dueDate: r.dueDate,
-      isDailyTop3: r.isDailyTop3,
-      notes: r.notes,
-      completed: r.completed,
+      item: r.title,
+      owner: r.ownerName,
+      dueDate: r.dueByFull || null,
+      isDailyTop3: r.starred,
+      notes: r.notes?.[0]?.label ?? null,
+      completed: r.done,
       seatTitle: null as string | null,
     }));
 
@@ -613,6 +633,37 @@ router.get(
   }
 );
 
+function initialsForName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((p) => p[0]?.toUpperCase() ?? "")
+    .filter(Boolean)
+    .slice(0, 3)
+    .join("");
+}
+
+/**
+ * Best-effort lookup of a team member by display name. The agenda UI
+ * still types owners as plain strings (e.g. "Brooks Paine"), so when we
+ * upgrade those into canonical action_items rows we try to attach an
+ * `ownerTeamMemberId` for stable identity. If the name doesn't match
+ * any team member we fall back to the denormalized name + initials —
+ * same fallback Phase 1 used for legacy action items.
+ */
+async function lookupTeamMemberByName(
+  name: string,
+): Promise<{ id: number; name: string } | null> {
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  const [row] = await db
+    .select({ id: teamMembersTable.id, name: teamMembersTable.name })
+    .from(teamMembersTable)
+    .where(sql`lower(${teamMembersTable.name}) = lower(${trimmed})`)
+    .limit(1);
+  return row ?? null;
+}
+
 router.post(
   "/meeting-agendas/:id/action-items",
   async (req, res): Promise<void> => {
@@ -621,7 +672,14 @@ router.post(
       res.status(400).json({ error: "Invalid id" });
       return;
     }
-    if (!(await agendaExists(agendaId))) {
+    const [agenda] = await db
+      .select({
+        id: meetingAgendasTable.id,
+        seriesId: meetingAgendasTable.seriesId,
+      })
+      .from(meetingAgendasTable)
+      .where(eq(meetingAgendasTable.id, agendaId));
+    if (!agenda) {
       res.status(404).json({ error: "Agenda not found" });
       return;
     }
@@ -630,62 +688,66 @@ router.post(
       res.status(400).json({ error: "Item is required" });
       return;
     }
-    const owner = typeof req.body?.owner === "string" ? req.body.owner : null;
+    const ownerInput =
+      typeof req.body?.owner === "string" ? req.body.owner.trim() : "";
     const dueDate =
-      typeof req.body?.dueDate === "string" ? req.body.dueDate : null;
+      typeof req.body?.dueDate === "string" ? req.body.dueDate : "";
     const isDailyTop3 = Boolean(req.body?.isDailyTop3);
-    const notes = typeof req.body?.notes === "string" ? req.body.notes : null;
-    const [row] = await db
-      .insert(meetingActionItemsTable)
-      .values({ agendaId, item, owner, dueDate, isDailyTop3, notes })
-      .returning();
-    res.status(201).json(row);
-  }
-);
+    const notesText =
+      typeof req.body?.notes === "string" ? req.body.notes.trim() : "";
 
-router.patch(
-  "/meeting-action-items/:id",
-  async (req, res): Promise<void> => {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) {
-      res.status(400).json({ error: "Invalid id" });
-      return;
-    }
-    const updates: Record<string, unknown> = {};
-    if (typeof req.body?.item === "string") updates.item = req.body.item;
-    if (typeof req.body?.owner === "string") updates.owner = req.body.owner;
-    if (typeof req.body?.dueDate === "string")
-      updates.dueDate = req.body.dueDate;
-    if (typeof req.body?.isDailyTop3 === "boolean")
-      updates.isDailyTop3 = req.body.isDailyTop3;
-    if (typeof req.body?.notes === "string") updates.notes = req.body.notes;
-    if (typeof req.body?.completed === "boolean")
-      updates.completed = req.body.completed;
-    const [row] = await db
-      .update(meetingActionItemsTable)
-      .set(updates)
-      .where(eq(meetingActionItemsTable.id, id))
-      .returning();
-    if (!row) {
-      res.status(404).json({ error: "Not found" });
-      return;
-    }
-    res.json(row);
-  }
-);
+    // Resolve the series name once so the canonical `source` column
+    // displays a useful label everywhere (sidebar, exports, etc.).
+    const [series] = await db
+      .select({ name: meetingSeriesTable.name })
+      .from(meetingSeriesTable)
+      .where(eq(meetingSeriesTable.id, agenda.seriesId));
 
-router.delete(
-  "/meeting-action-items/:id",
-  async (req, res): Promise<void> => {
-    const id = Number(req.params.id);
-    if (!Number.isFinite(id)) {
-      res.status(400).json({ error: "Invalid id" });
-      return;
+    let ownerTeamMemberId: number | null = null;
+    let ownerName = ownerInput;
+    if (ownerInput) {
+      const tm = await lookupTeamMemberByName(ownerInput);
+      if (tm) {
+        ownerTeamMemberId = tm.id;
+        ownerName = tm.name;
+      }
     }
-    await db
-      .delete(meetingActionItemsTable)
-      .where(eq(meetingActionItemsTable.id, id));
-    res.sendStatus(204);
+    if (!ownerName) ownerName = req.authedUser?.name ?? "Unassigned";
+    const ownerInitials = initialsForName(ownerName);
+
+    const [row] = await db
+      .insert(actionItemsTable)
+      .values({
+        title: item,
+        source: series?.name ?? "Leadership Meeting",
+        ownerUserId: null,
+        ownerTeamMemberId,
+        ownerName,
+        ownerInitials,
+        dueBy: dueDate || "—",
+        dueByFull: dueDate,
+        notes: notesText ? [{ label: notesText }] : null,
+        starred: isDailyTop3,
+        done: false,
+        sourceKind: "leadership_meeting",
+        agendaId,
+      })
+      .returning();
+
+    // Project back into the legacy AgendaActionItem shape that the UI
+    // already understands; the existing query invalidation will refetch
+    // the GET above which uses the same projection.
+    res.status(201).json({
+      source: "meeting",
+      id: row.id,
+      item: row.title,
+      owner: row.ownerName,
+      dueDate: row.dueByFull || null,
+      isDailyTop3: row.starred,
+      notes: row.notes?.[0]?.label ?? null,
+      completed: row.done,
+      seatTitle: null,
+    });
   }
 );
 

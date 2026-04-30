@@ -197,6 +197,12 @@ router.post("/action-items", async (req, res): Promise<void> => {
     ownerUserId = null;
   }
 
+  // Source classification (sourceKind + agendaId/keyTopicId/seatId/
+  // oneOnOneId) is set ONLY by the source-surface handlers (e.g. the
+  // leadership-meeting agenda POST). The canonical /api/action-items
+  // POST always creates manual items so the sidebar can't reclassify
+  // an item into a foreign source. Any classification fields in the
+  // body are silently ignored here.
   const [item] = await db
     .insert(actionItemsTable)
     .values({
@@ -212,6 +218,7 @@ router.post("/action-items", async (req, res): Promise<void> => {
       starred: parsed.data.starred ?? false,
       done: parsed.data.done ?? false,
       position: parsed.data.position ?? 0,
+      sourceKind: "manual",
     })
     .returning();
 
@@ -283,8 +290,16 @@ router.patch(
       return;
     }
 
+    // Strip source-classification fields out of the canonical PATCH:
+    // the sidebar / generic editor must never reclassify an item from
+    // (e.g.) leadership_meeting back to manual or move it under a
+    // different agenda. Those fields are set only by the source-surface
+    // handlers.
+    const { sourceKind: _sk, agendaId: _aid, keyTopicId: _ktid, seatId: _sid,
+            oneOnOneId: _ooid, ...safeData } = parsed.data;
+    void _sk; void _aid; void _ktid; void _sid; void _ooid;
     const updates: Record<string, unknown> = {
-      ...parsed.data,
+      ...safeData,
       updatedAt: new Date(),
     };
     if ("notes" in parsed.data) {

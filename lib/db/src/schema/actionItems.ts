@@ -8,8 +8,30 @@ import {
   jsonb,
 } from "drizzle-orm/pg-core";
 import { usersTable } from "./users";
+import {
+  meetingAgendasTable,
+  meetingKeyTopicsTable,
+} from "./leadershipMeetings";
+import { rolesTable } from "./roles";
+import { oneOnOnesTable } from "./oneOnOnes";
 
 export type ActionItemNoteJson = { label: string; href?: string };
+
+/**
+ * Canonical action-item source kinds (Phase 4). `source_kind` is a
+ * denormalized discriminator so the sidebar can filter and render the
+ * "Source" chip without joining four optional FKs. The matching FK column
+ * (agenda_id / key_topic_id / seat_id / one_on_one_id) MUST be set when
+ * source_kind != 'manual'.
+ */
+export const ACTION_ITEM_SOURCE_KINDS = [
+  "manual",
+  "leadership_meeting",
+  "key_topic",
+  "seat",
+  "one_on_one",
+] as const;
+export type ActionItemSourceKind = (typeof ACTION_ITEM_SOURCE_KINDS)[number];
 
 export const actionItemsTable = pgTable("action_items", {
   id: serial("id").primaryKey(),
@@ -38,6 +60,27 @@ export const actionItemsTable = pgTable("action_items", {
   starred: boolean("starred").notNull().default(false),
   done: boolean("done").notNull().default(false),
   position: integer("position").notNull().default(0),
+  /**
+   * Phase 4: source FKs. Each is independent and nullable; at most one
+   * will be set per row, with `sourceKind` telling the UI which one is
+   * authoritative for the deep link / Source chip. On-delete set null so
+   * the item survives the source being removed (it just becomes a manual
+   * item the user can re-classify).
+   */
+  sourceKind: text("source_kind").notNull().default("manual"),
+  agendaId: integer("agenda_id").references(() => meetingAgendasTable.id, {
+    onDelete: "set null",
+  }),
+  keyTopicId: integer("key_topic_id").references(
+    () => meetingKeyTopicsTable.id,
+    { onDelete: "set null" },
+  ),
+  seatId: integer("seat_id").references(() => rolesTable.id, {
+    onDelete: "set null",
+  }),
+  oneOnOneId: integer("one_on_one_id").references(() => oneOnOnesTable.id, {
+    onDelete: "set null",
+  }),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

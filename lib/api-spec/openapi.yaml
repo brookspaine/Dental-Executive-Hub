@@ -3111,6 +3111,15 @@ components:
       required:
         - label
 
+    ActionItemSourceKind:
+      type: string
+      enum:
+        - manual
+        - leadership_meeting
+        - key_topic
+        - seat
+        - one_on_one
+
     ActionItem:
       type: object
       properties:
@@ -3145,6 +3154,20 @@ components:
           type: boolean
         position:
           type: integer
+        sourceKind:
+          $ref: "#/components/schemas/ActionItemSourceKind"
+        agendaId:
+          type: integer
+          nullable: true
+        keyTopicId:
+          type: integer
+          nullable: true
+        seatId:
+          type: integer
+          nullable: true
+        oneOnOneId:
+          type: integer
+          nullable: true
         createdAt:
           type: string
           format: date-time
@@ -3162,6 +3185,7 @@ components:
         - starred
         - done
         - position
+        - sourceKind
         - createdAt
         - updatedAt
 
@@ -3198,6 +3222,20 @@ components:
           type: boolean
         position:
           type: integer
+        sourceKind:
+          $ref: "#/components/schemas/ActionItemSourceKind"
+        agendaId:
+          type: integer
+          nullable: true
+        keyTopicId:
+          type: integer
+          nullable: true
+        seatId:
+          type: integer
+          nullable: true
+        oneOnOneId:
+          type: integer
+          nullable: true
       required:
         - title
         - source
@@ -3235,6 +3273,20 @@ components:
           type: boolean
         position:
           type: integer
+        sourceKind:
+          $ref: "#/components/schemas/ActionItemSourceKind"
+        agendaId:
+          type: integer
+          nullable: true
+        keyTopicId:
+          type: integer
+          nullable: true
+        seatId:
+          type: integer
+          nullable: true
+        oneOnOneId:
+          type: integer
+          nullable: true
 
     ImportActionItemsBody:
       type: object

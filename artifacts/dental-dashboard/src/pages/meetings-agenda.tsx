@@ -481,14 +481,18 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
       completed: boolean;
       source: ActionItem["source"];
     }) => {
+      // Phase 4: meeting items are stored in `action_items`, so toggling
+      // them goes through the canonical PATCH /api/action-items/:id
+      // (which expects `done`, not `completed`). Seat tasks still live
+      // in their own table for now.
       const url =
         source === "seatTask"
           ? `/api/seat-tasks/${id}`
-          : `/api/meeting-action-items/${id}`;
+          : `/api/action-items/${id}`;
       const body =
         source === "seatTask"
           ? JSON.stringify({ completed, status: completed ? "done" : "todo" })
-          : JSON.stringify({ completed });
+          : JSON.stringify({ done: completed });
       const res = await fetch(url, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -513,7 +517,9 @@ function ActionItemsSection({ agendaId }: { agendaId: number }) {
       source: ActionItem["source"];
     }) => {
       if (source === "seatTask") return;
-      await fetch(`/api/meeting-action-items/${id}`, { method: "DELETE" });
+      // Phase 4: meeting items live in `action_items`, so deletes go
+      // through the canonical endpoint.
+      await fetch(`/api/action-items/${id}`, { method: "DELETE" });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({

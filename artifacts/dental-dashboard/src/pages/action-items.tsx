@@ -1,4 +1,5 @@
 import { useMemo, useState, type ComponentProps } from "react";
+import { useLocation } from "wouter";
 import {
   Info,
   Search,
@@ -91,6 +92,66 @@ const BURST_PARTICLES = [
   { tx: "2px", ty: "14px", color: "#F59E0B" },
   { tx: "10px", ty: "10px", color: "#10B981" },
 ] as const;
+
+/**
+ * Phase 4: small pill rendered next to the free-text Source column on
+ * each action-items row, showing where the item originated and offering
+ * a deep link back to that surface (agenda, seat, etc.). Manual items
+ * skip the chip entirely. The chip stops click propagation so it
+ * doesn't also open the row's detail slide-over.
+ */
+function SourceChip({ item }: { item: ActionItem }) {
+  const [, setLocation] = useLocation();
+  if (item.sourceKind === "manual") return null;
+
+  const meta = (() => {
+    if (item.sourceKind === "leadership_meeting" && item.agendaId !== null) {
+      return {
+        label: "Leadership meeting",
+        href: `/meetings/leadership/agendas/${item.agendaId}`,
+      };
+    }
+    if (item.sourceKind === "key_topic" && item.agendaId !== null) {
+      return {
+        label: "Key topic",
+        href: `/meetings/leadership/agendas/${item.agendaId}`,
+      };
+    }
+    if (item.sourceKind === "seat" && item.seatId !== null) {
+      return {
+        label: "Seat",
+        href: `/team/org-chart/${item.seatId}`,
+      };
+    }
+    if (item.sourceKind === "one_on_one") {
+      return { label: "1-on-1", href: null };
+    }
+    return null;
+  })();
+
+  if (!meta) return null;
+
+  const className =
+    "inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-wide text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded px-1.5 py-0.5 transition-colors";
+
+  if (meta.href === null) {
+    return <span className={className}>{meta.label}</span>;
+  }
+  return (
+    <button
+      type="button"
+      data-testid="action-item-source-chip"
+      className={className}
+      onClick={(e) => {
+        e.stopPropagation();
+        setLocation(meta.href!);
+      }}
+    >
+      {meta.label}
+      <ExternalLink className="h-3 w-3" />
+    </button>
+  );
+}
 
 function CheckBurst() {
   return (
@@ -649,7 +710,12 @@ export function ActionItems() {
                       <span className="text-sm">{item.owner.name}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-sm">{item.source}</TableCell>
+                  <TableCell className="text-sm">
+                    <div className="flex flex-col gap-1 items-start">
+                      <span>{item.source}</span>
+                      <SourceChip item={item} />
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm font-medium text-rose-500">
                     {item.dueBy}
                   </TableCell>

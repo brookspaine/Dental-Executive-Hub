@@ -48,6 +48,22 @@ export type ActionItem = {
   notes?: ActionItemNote[];
   starred?: boolean;
   done?: boolean;
+  /**
+   * Phase 4: where this action item originated. The four FK fields below
+   * are set at most one at a time; `sourceKind` is the discriminator the
+   * sidebar uses to render the deep-link "Source" chip without joining.
+   * `manual` rows have no FK and skip the chip entirely.
+   */
+  sourceKind:
+    | "manual"
+    | "leadership_meeting"
+    | "key_topic"
+    | "seat"
+    | "one_on_one";
+  agendaId: number | null;
+  keyTopicId: number | null;
+  seatId: number | null;
+  oneOnOneId: number | null;
 };
 
 type ActionItemsContextValue = {
@@ -95,6 +111,11 @@ function fromApi(item: ApiActionItem): ActionItem {
     notes: item.notes ?? undefined,
     starred: item.starred,
     done: item.done,
+    sourceKind: item.sourceKind ?? "manual",
+    agendaId: item.agendaId ?? null,
+    keyTopicId: item.keyTopicId ?? null,
+    seatId: item.seatId ?? null,
+    oneOnOneId: item.oneOnOneId ?? null,
   };
 }
 

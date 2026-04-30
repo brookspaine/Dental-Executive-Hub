@@ -661,6 +661,17 @@ export interface ActionItemNote {
   href?: string;
 }
 
+export type ActionItemSourceKind =
+  (typeof ActionItemSourceKind)[keyof typeof ActionItemSourceKind];
+
+export const ActionItemSourceKind = {
+  manual: "manual",
+  leadership_meeting: "leadership_meeting",
+  key_topic: "key_topic",
+  seat: "seat",
+  one_on_one: "one_on_one",
+} as const;
+
 export interface ActionItem {
   id: number;
   title: string;
@@ -675,6 +686,11 @@ export interface ActionItem {
   starred: boolean;
   done: boolean;
   position: number;
+  sourceKind: ActionItemSourceKind;
+  agendaId?: number | null;
+  keyTopicId?: number | null;
+  seatId?: number | null;
+  oneOnOneId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -693,6 +709,11 @@ export interface CreateActionItemBody {
   starred?: boolean;
   done?: boolean;
   position?: number;
+  sourceKind?: ActionItemSourceKind;
+  agendaId?: number | null;
+  keyTopicId?: number | null;
+  seatId?: number | null;
+  oneOnOneId?: number | null;
 }
 
 export interface UpdateActionItemBody {
@@ -709,6 +730,11 @@ export interface UpdateActionItemBody {
   starred?: boolean;
   done?: boolean;
   position?: number;
+  sourceKind?: ActionItemSourceKind;
+  agendaId?: number | null;
+  keyTopicId?: number | null;
+  seatId?: number | null;
+  oneOnOneId?: number | null;
 }
 
 export interface ImportActionItemsBody {
