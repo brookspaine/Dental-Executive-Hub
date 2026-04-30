@@ -411,6 +411,7 @@ router.patch("/meeting-agendas/:id", async (req, res): Promise<void> => {
   const ALLOWED_SECTION_KEYS = new Set([
     "iceBreaker",
     "winsShoutouts",
+    "foundationalPrinciples",
     "scoreCard",
     "desiredFuture",
     "closeTheLoop",

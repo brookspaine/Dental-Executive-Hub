@@ -26,7 +26,7 @@ import { ChevronLeft, Plus, Lock, Trash2, Check } from "lucide-react";
 const SECTIONS = [
   {
     key: "iceBreaker",
-    label: "Ice Breaker",
+    label: "Segue",
     description:
       "Kick things off with a quick, fun question or activity to get everyone talking. It's a simple way to start the meeting on a positive note and build team connection.",
     type: "notes" as const,
@@ -39,10 +39,10 @@ const SECTIONS = [
     type: "notes" as const,
   },
   {
-    key: "scoreCard",
-    label: "Score Card",
+    key: "foundationalPrinciples",
+    label: "Foundational Principles",
     description:
-      "Review the key metrics that tell you whether the business is healthy this week.",
+      "Reaffirm the team's core operating principles and discuss how they're showing up in the work this week.",
     type: "notes" as const,
   },
   {
@@ -53,10 +53,17 @@ const SECTIONS = [
     type: "notes" as const,
   },
   {
-    key: "closeTheLoop",
-    label: "Close the Loop",
+    key: "scoreCard",
+    label: "Scorecard",
     description:
-      "Revisit Action Items and Key Topics from last week to confirm completion.",
+      "Review the key metrics that tell you whether the business is healthy this week.",
+    type: "notes" as const,
+  },
+  {
+    key: "closeTheLoop",
+    label: "Open Loops",
+    description:
+      "Revisit open items and key topics from last week to confirm completion or carry them forward.",
     type: "notes" as const,
   },
   {
@@ -68,7 +75,7 @@ const SECTIONS = [
   },
   {
     key: "actionItems",
-    label: "Action Items",
+    label: "To-Do List",
     description: "Capture the commitments coming out of this meeting.",
     type: "actionItems" as const,
   },
