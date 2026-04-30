@@ -39,9 +39,8 @@ const SECTIONS = [
   },
   {
     key: "foundationalPrinciples",
-    label: "Foundational Principles",
-    description:
-      "Reaffirm the team's core operating principles and discuss how they're showing up in the work this week.",
+    label: "Foundational Principles - 5 min",
+    description: "",
     type: "notes" as const,
   },
   {
@@ -238,7 +237,50 @@ function NotesSection({
     <Card>
       <CardContent className="p-5 space-y-3">
         <h2 className="text-lg font-bold">{label}</h2>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        {description && (
+          <p className="text-sm text-muted-foreground">{description}</p>
+        )}
+        {sectionKey === "foundationalPrinciples" && (
+          <div className="space-y-3">
+            <div className="rounded-md border bg-muted/40 p-4 space-y-2">
+              <h3 className="text-sm font-semibold">Purpose Statement</h3>
+              <p className="text-sm text-muted-foreground">
+                At Urgent Dental, our purpose is to strengthen our communities
+                by providing compassionate, high-quality dental care 7 days a
+                week. We're driven by a mission to deliver timely, same-day
+                treatment with integrity, respect, and an unwavering commitment
+                to every patient's comfort, confidence, and trust.
+              </p>
+            </div>
+            <div className="rounded-md border bg-muted/40 p-4 space-y-2">
+              <h3 className="text-sm font-semibold">
+                Core Values: UD "CARES"
+              </h3>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>
+                  <span className="font-semibold text-foreground">C</span> -
+                  Compassionate
+                </li>
+                <li>
+                  <span className="font-semibold text-foreground">A</span> -
+                  authentic, accountable, and always learning
+                </li>
+                <li>
+                  <span className="font-semibold text-foreground">R</span> -
+                  reliable, ready, and respectful
+                </li>
+                <li>
+                  <span className="font-semibold text-foreground">E</span> -
+                  exceptional patient experience
+                </li>
+                <li>
+                  <span className="font-semibold text-foreground">S</span> -
+                  serve our community
+                </li>
+              </ul>
+            </div>
+          </div>
+        )}
         <div>
           <label className="text-sm font-semibold block mb-2">Notes</label>
           <Textarea
