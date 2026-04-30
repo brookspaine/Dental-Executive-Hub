@@ -40,7 +40,7 @@ type NavGroup = {
 type NavItem = NavLeaf | NavGroup;
 
 const navItems: NavItem[] = [
-  { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
+  { href: "/ideal-week", label: "Today", icon: CalendarCheck },
   { href: "/organizations", label: "EDGE", icon: Building2 },
   { href: "/action-items", label: "Action Items", icon: ListChecks },
   {
@@ -283,8 +283,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
     setDrawerOpen(false);
   }, [location]);
 
-  const currentLabel = findCurrentLabel(location) || "Ideal Week";
-  // Page title in the navy bar is intentionally only shown for Ideal Week.
+  const currentLabel = findCurrentLabel(location) || "Today";
+  // Page title in the navy bar is intentionally only shown for the Today page.
   const showTitle = location === "/ideal-week" || location === "/";
 
   return (
@@ -327,7 +327,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           )}
         </div>
 
-        {/* Desktop: page title (Ideal Week only) + center slot */}
+        {/* Desktop: page title (Today only) + center slot */}
         <div className="hidden md:flex items-center gap-6 px-8 flex-1 min-w-0">
           {showTitle && (
             <h1 className="text-xl font-semibold text-white tracking-tight truncate shrink-0">

@@ -1950,7 +1950,7 @@ function WeeklyScheduleTemplate({ weekStart }: { weekStart: Date }) {
       <Card>
         <CardContent className="px-3 py-2">
           <div className="flex flex-wrap items-center gap-1">
-            <span className="text-xs font-semibold mr-1">Ideal Week</span>
+            <span className="text-xs font-semibold mr-1">Today</span>
             {Object.entries(categoryLabels).map(([key, label]) => {
               const c = categoryColors[key];
               return (

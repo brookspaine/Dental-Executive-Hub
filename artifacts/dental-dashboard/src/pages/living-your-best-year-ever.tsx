@@ -891,7 +891,7 @@ export function LivingYourBestYearEver() {
       <div>
         <Link href="/ideal-week">
           <Button variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Ideal Week
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Today
           </Button>
         </Link>
       </div>
