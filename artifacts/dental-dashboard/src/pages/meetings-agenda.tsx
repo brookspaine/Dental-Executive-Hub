@@ -52,28 +52,28 @@ const SECTIONS = [
   },
   {
     key: "scoreCard",
-    label: "Scorecard",
+    label: "Scorecard - 10 min",
     description:
       "Review the key metrics that tell you whether the business is healthy this week.",
     type: "notes" as const,
   },
   {
     key: "closeTheLoop",
-    label: "Open Loops",
+    label: "Open Loops - 10 min",
     description:
       "Revisit open items and key topics from last week to confirm completion or carry them forward.",
     type: "notes" as const,
   },
   {
     key: "keyTopics",
-    label: "Key Topics",
+    label: "Key Topics - 10 min",
     description:
       "Surface and work through the most important issues facing the team.",
     type: "keyTopics" as const,
   },
   {
     key: "actionItems",
-    label: "Action Items",
+    label: "Action Items - 10 min",
     description: "Capture the commitments coming out of this meeting.",
     type: "actionItems" as const,
   },
