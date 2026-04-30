@@ -32,7 +32,7 @@ const SECTIONS = [
   },
   {
     key: "winsShoutouts",
-    label: "Wins and Shoutouts",
+    label: "Wins and Shoutouts - 5 min",
     description:
       "Celebrate recent wins and recognize team members who went above and beyond.",
     type: "notes" as const,
