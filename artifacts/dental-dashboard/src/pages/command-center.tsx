@@ -252,9 +252,96 @@ function OverviewTab() {
   if (!data) return <div style={{ color: C.textSecondary }}>Loading…</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Top3Card top3={data.top3} onChange={reload} />
+      <OverviewSection title="Direct Reports">
+        <DirectReportsTab />
+      </OverviewSection>
+      <OverviewSection title="Projects">
+        <ProjectsTab />
+      </OverviewSection>
+      <OverviewSection title="Life Areas">
+        <LifeAreasTab />
+      </OverviewSection>
+      <OverviewSection title="Brain Dump">
+        <BrainDumpTab />
+      </OverviewSection>
     </div>
+  );
+}
+
+function OverviewSection({
+  title,
+  children,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: React.ReactNode;
+  defaultOpen?: boolean;
+}) {
+  const storageKey = `cc-overview-section:${title}`;
+  const [open, setOpen] = useState<boolean>(() => {
+    try {
+      const v = localStorage.getItem(storageKey);
+      return v === null ? defaultOpen : v === "1";
+    } catch {
+      return defaultOpen;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(storageKey, open ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, [open, storageKey]);
+
+  return (
+    <section>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          width: "100%",
+          background: "transparent",
+          border: "none",
+          borderBottom: `1px solid ${C.divider}`,
+          padding: "8px 2px",
+          cursor: "pointer",
+          textAlign: "left",
+          fontFamily: SANS,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            color: C.textSecondary,
+            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+            transition: "transform 120ms ease",
+            display: "inline-block",
+            width: 10,
+            lineHeight: 1,
+          }}
+        >
+          ▼
+        </span>
+        <span
+          style={{
+            fontFamily: SERIF,
+            fontSize: 18,
+            fontWeight: 600,
+            color: C.textPrimary,
+            letterSpacing: 0.1,
+          }}
+        >
+          {title}
+        </span>
+      </button>
+      {open && <div style={{ paddingTop: 14 }}>{children}</div>}
+    </section>
   );
 }
 
