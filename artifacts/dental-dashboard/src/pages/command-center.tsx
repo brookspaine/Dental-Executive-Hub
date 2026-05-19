@@ -254,8 +254,6 @@ function OverviewTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <Top3Card top3={data.top3} onChange={reload} />
-      <StatsGrid stats={data.stats} />
-      <SnapshotCard groups={data.snapshot} />
     </div>
   );
 }
