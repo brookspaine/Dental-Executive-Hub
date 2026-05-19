@@ -24,6 +24,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 import { Organizations } from "@/pages/organizations";
+import { CommandCenter } from "@/pages/command-center";
 import { IdealWeek } from "@/pages/ideal-week";
 import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
 import { VisionBoard } from "@/pages/vision-board";
@@ -166,6 +167,7 @@ function AppRouter() {
         />
         <Route path="/vision-board" component={VisionBoard} />
         <Route path="/organizations" component={Organizations} />
+        <Route path="/command-center" component={CommandCenter} />
         <Route path="/edge-lease-matrix">
           <Redirect to="/organizations?tab=lease-matrix" />
         </Route>

@@ -1,0 +1,31 @@
+I want to add a new page called "Command Center" to this existing app. First, inspect the current codebase to identify the framework (React, Next.js, plain HTML, etc.) and how the sidebar navigation is structured. Then do the following:
+
+1. CREATE a new Command Center page/component and wire it into the existing sidebar as a new nav item labeled "Command Center." Match the routing pattern already used in this app — do not introduce a new router if one is not already present.
+
+2. The Command Center page should be self-contained in its own file(s) and should not break any existing pages or functionality.
+
+3. DESIGN DIRECTION — Asana-style on a light background with EDGE brand accents:
+- Background: white (#ffffff) with light gray section backgrounds (#f6f6f7)
+- Text: near-black (#1a1a2e) for headers, #4a4a5a for secondary
+- Accent colors from EDGE brand: Red #CC2030 for primary actions and active states, Navy #1B2A4A for header bar and sidebar highlights, Burgundy #6B1D2A for hover states
+- Fonts: Inter or DM Sans for body text; use font-weight variation (400/500/600) for hierarchy — no display fonts
+- Task rows styled like Asana list rows: full-width, horizontal, with a checkbox on the left and metadata fields (priority, due date, assignee) aligned to the right
+- Top header bar with page title "Command Center" in Navy, with the AI Suggest button in the top right of the header
+- Clean dividers between sections, no heavy borders or card shadows
+- Collapsible sections with a chevron toggle and section task count badge
+
+4. COMMAND CENTER FEATURES:
+
+DAILY TOP 3: A pinned section at the very top below the header bar. Three numbered slots (1, 2, 3). Each slot shows the task text, its source bucket, and a clear button. An "AI Suggest" button in the header collects all open tasks across all buckets, sends them to the Anthropic API (POST to https://api.anthropic.com/v1/messages, model: claude-sonnet-4-20250514, max_tokens: 1000), and asks the model to return exactly 3 suggested tasks as a JSON array with fields: id, text, bucket, and reason. Show suggestions in a clean modal with checkboxes and the reason shown in small gray text under each suggestion. Confirmed tasks populate the Top 3 slots. Slots persist in localStorage.
+
+COLLAPSIBLE BUCKET SECTIONS: Start with two seeded buckets — "EDGE / Buildout" and "Urgent Dental." Each bucket is a collapsible section with a chevron, section name, and open task count badge. Tasks inside display as Asana-style list rows with: checkbox on the left, task name, then right-aligned fields for Priority (High / Med / Low shown as a small colored pill), Due Date (date picker or text input), and Assignee (plain text field). Clicking the checkbox marks the task done and fades it. Completed tasks collapse to a "X completed" toggle at the bottom of the section. Double-click a section name to rename it. An "Add task" row at the bottom of each section adds inline. A button below all sections adds a new named bucket with a randomly assigned left-border accent color.
+
+BRAIN DUMP: A collapsible section at the bottom labeled "Brain Dump." Contains a clean full-width textarea with no visible border, just a subtle background. Auto-saves to localStorage on keystroke with a small "Saved" indicator.
+
+PERSISTENCE: Store all state in localStorage under the key "edge-command-center". Load on mount, save on every change.
+
+ANTHROPIC API KEY: Read from VITE_ANTHROPIC_API_KEY or process.env.ANTHROPIC_API_KEY depending on the stack. Show a dismissible yellow warning banner if the key is missing.
+
+LAYOUT: Full-width page with a top header bar spanning the full width (Navy #1B2A4A background, white text, page title left, AI Suggest button right). Below the header, content is a single centered column at max-width 760px with 32px side padding. Section order: Daily Top 3, then bucket sections, then Add Bucket button, then Brain Dump.
+
+Do not use any external component libraries like shadcn, MUI, or Chakra. Inline styles or CSS modules only. Do not modify any existing pages, routes, or components other than adding the new sidebar nav item. Read relevant files before making changes if the existing structure is unclear.
