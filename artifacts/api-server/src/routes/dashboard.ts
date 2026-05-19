@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq, and, sql, desc, count } from "drizzle-orm";
-import { db, organizationsTable, directReportsTable, dailyTop3Table, activityTable } from "@workspace/db";
+import { db, organizationsTable, dailyTop3Table, activityTable } from "@workspace/db";
 import {
   GetDashboardSummaryResponse,
   GetOrgPerformanceResponse,
@@ -15,7 +15,6 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
 
   const orgs = await db.select().from(organizationsTable);
   const edgeOrgs = orgs.filter((o) => o.category !== "urgent_dental");
-  const reports = await db.select().from(directReportsTable);
   const todayItems = await db
     .select()
     .from(dailyTop3Table)
@@ -23,7 +22,6 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
 
   const totalOrganizations = edgeOrgs.length;
   const activeOrganizations = edgeOrgs.filter((o) => o.status === "active").length;
-  const totalDirectReports = reports.length;
   const totalPatients = orgs.reduce((sum, o) => sum + (o.patientCount ?? 0), 0);
   const totalMonthlyRevenue = orgs.reduce((sum, o) => sum + (o.monthlyRevenue ?? 0), 0);
   const dailyTop3Completed = todayItems.filter((i) => i.completed).length;
@@ -31,7 +29,6 @@ router.get("/dashboard/summary", async (_req, res): Promise<void> => {
 
   const summary = {
     totalOrganizations,
-    totalDirectReports,
     totalPatients,
     totalMonthlyRevenue,
     dailyTop3Completed,

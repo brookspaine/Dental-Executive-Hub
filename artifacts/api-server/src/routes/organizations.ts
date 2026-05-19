@@ -1,6 +1,6 @@
 import { Router, type IRouter } from "express";
 import { eq } from "drizzle-orm";
-import { db, organizationsTable, activityTable, directReportsTable } from "@workspace/db";
+import { db, organizationsTable, activityTable } from "@workspace/db";
 import {
   CreateOrganizationBody,
   GetOrganizationParams,
@@ -141,11 +141,6 @@ router.delete("/organizations/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: params.error.message });
     return;
   }
-
-  await db
-    .update(directReportsTable)
-    .set({ organizationId: null })
-    .where(eq(directReportsTable.organizationId, params.data.id));
 
   const [org] = await db
     .delete(organizationsTable)

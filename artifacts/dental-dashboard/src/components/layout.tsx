@@ -2,17 +2,13 @@ import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
   Building2,
-  Users,
   Bell,
   CalendarCheck,
   Menu,
   ChevronDown,
-  CalendarDays,
-  ListChecks,
   Compass,
   LogOut,
   IdCard,
-  BookOpen,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useClerk } from "@clerk/react";
@@ -42,27 +38,6 @@ type NavItem = NavLeaf | NavGroup;
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Today", icon: CalendarCheck },
   { href: "/organizations", label: "EDGE", icon: Building2 },
-  { href: "/action-items", label: "Action Items", icon: ListChecks },
-  {
-    label: "Team",
-    icon: Users,
-    children: [
-      { href: "/team/members", label: "Team Members" },
-      { href: "/team/org-chart", label: "Org Chart" },
-      { href: "/team/reports", label: "Team Reports" },
-      { href: "/team/my-reports", label: "My Reports" },
-      { href: "/team/fill-out-a-report", label: "Fill Out a Report" },
-    ],
-  },
-  {
-    label: "Meetings",
-    icon: CalendarDays,
-    children: [
-      { href: "/meetings/leadership", label: "Leadership Team" },
-      { href: "/meetings/one-on-ones", label: "1-on-1s" },
-    ],
-  },
-  { href: "/playbook-library", label: "Playbook Library", icon: BookOpen },
 ];
 
 function isGroup(item: NavItem): item is NavGroup {
@@ -79,8 +54,7 @@ function findCurrentLabel(location: string): string | null {
       candidates.push({ href: item.href, label: item.label });
     }
   }
-  // Longest prefix wins so nested routes resolve to the deepest nav entry
-  // (e.g. /team/reports beats /team, /meetings/leadership/series/123 → "Leadership Team").
+  // Longest prefix wins so nested routes resolve to the deepest nav entry.
   candidates.sort((a, b) => b.href.length - a.href.length);
   const match = candidates.find(
     (c) => location === c.href || location.startsWith(c.href + "/"),

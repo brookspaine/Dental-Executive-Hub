@@ -24,25 +24,10 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
 import { Organizations } from "@/pages/organizations";
-import { OrganizationDetail } from "@/pages/organization-detail";
-import { UrgentDental } from "@/pages/urgent-dental";
 import { IdealWeek } from "@/pages/ideal-week";
 import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
 import { VisionBoard } from "@/pages/vision-board";
-import { DirectReports } from "@/pages/direct-reports";
 import { WeeklyReview } from "@/pages/weekly-review";
-import { MeetingsLeadership } from "@/pages/meetings-leadership";
-import { MeetingsSeriesNew } from "@/pages/meetings-series-new";
-import { MeetingsSeriesDetail } from "@/pages/meetings-series-detail";
-import { MeetingsAgenda } from "@/pages/meetings-agenda";
-import { MeetingsOneOnOnes } from "@/pages/meetings-one-on-ones";
-import { TeamPlaceholder } from "@/pages/team-placeholder";
-import { ActionItems } from "@/pages/action-items";
-import { RolesIndex } from "@/pages/roles-index";
-import { RoleDetail } from "@/pages/role-detail";
-import { PlaybookLibrary } from "@/pages/playbook-library";
-import { PlaybookDetail } from "@/pages/playbook-detail";
-import { ActionItemsProvider } from "@/contexts/action-items-context";
 import { ActiveUserProvider } from "@/contexts/active-user-context";
 
 const queryClient = new QueryClient();
@@ -181,67 +166,9 @@ function AppRouter() {
         />
         <Route path="/vision-board" component={VisionBoard} />
         <Route path="/organizations" component={Organizations} />
-        <Route path="/organizations/:id" component={OrganizationDetail} />
-        <Route path="/urgent-dental" component={UrgentDental} />
-        {/*
-         * Phase 2 IA: Members + Org Chart now live under the Team group.
-         * The previous URLs (/direct-reports, /my-roles, /org-chart) keep
-         * working for one cycle as redirects so any bookmarks stay valid.
-         */}
-        <Route path="/team/members" component={DirectReports} />
-        <Route path="/team/org-chart" component={RolesIndex} />
-        <Route path="/team/org-chart/:id" component={RoleDetail} />
-        <Route path="/direct-reports"><Redirect to="/team/members" /></Route>
-        <Route path="/my-roles"><Redirect to="/team/org-chart" /></Route>
-        <Route path="/my-roles/:id">
-          {(params) => <Redirect to={`/team/org-chart/${params.id}`} />}
-        </Route>
-        <Route path="/org-chart"><Redirect to="/team/org-chart" /></Route>
-        <Route path="/org-chart/seats/:id"><Redirect to="/team/org-chart" /></Route>
-        <Route path="/action-items" component={ActionItems} />
         <Route path="/edge-lease-matrix">
           <Redirect to="/organizations?tab=lease-matrix" />
         </Route>
-        <Route path="/playbook-library" component={PlaybookLibrary} />
-        <Route path="/playbook-library/:id" component={PlaybookDetail} />
-        <Route path="/team/reports">
-          <TeamPlaceholder
-            title="Team Reports"
-            description="Reports submitted by your team."
-          />
-        </Route>
-        <Route path="/team/my-reports">
-          <TeamPlaceholder
-            title="My Reports"
-            description="Reports you have submitted."
-          />
-        </Route>
-        <Route path="/team/fill-out-a-report">
-          <TeamPlaceholder
-            title="Fill Out a Report"
-            description="Submit a new report for review."
-          />
-        </Route>
-        <Route path="/team/kra-assistant">
-          <TeamPlaceholder
-            title="KRA Assistant"
-            description="Get help defining Key Result Areas for any role."
-          />
-        </Route>
-        <Route path="/meetings/leadership" component={MeetingsLeadership} />
-        <Route
-          path="/meetings/leadership/new"
-          component={MeetingsSeriesNew}
-        />
-        <Route
-          path="/meetings/leadership/series/:id"
-          component={MeetingsSeriesDetail}
-        />
-        <Route
-          path="/meetings/leadership/agendas/:id"
-          component={MeetingsAgenda}
-        />
-        <Route path="/meetings/one-on-ones" component={MeetingsOneOnOnes} />
         <Route component={NotFound} />
       </Switch>
     </Layout>
@@ -251,15 +178,12 @@ function AppRouter() {
 /**
  * Authenticated shell — only mounted when Clerk reports the visitor is
  * signed in. ActiveUserProvider relies on `useUser()` returning a loaded
- * user, and ActionItemsProvider hits `/api` endpoints that now require
- * a session.
+ * user.
  */
 function AuthedApp() {
   return (
     <ActiveUserProvider>
-      <ActionItemsProvider>
-        <AppRouter />
-      </ActionItemsProvider>
+      <AppRouter />
     </ActiveUserProvider>
   );
 }
