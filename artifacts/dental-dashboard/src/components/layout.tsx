@@ -9,6 +9,7 @@ import {
   Compass,
   LogOut,
   IdCard,
+  LayoutDashboard,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useClerk } from "@clerk/react";
@@ -37,6 +38,7 @@ type NavItem = NavLeaf | NavGroup;
 
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Today", icon: CalendarCheck },
+  { href: "/command-center", label: "Command Center", icon: LayoutDashboard },
   { href: "/organizations", label: "EDGE", icon: Building2 },
 ];
 

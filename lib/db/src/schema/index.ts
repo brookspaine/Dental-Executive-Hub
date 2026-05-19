@@ -16,3 +16,4 @@ export * from "./leaseDocuments";
 export * from "./leaseToolkit";
 export * from "./futureTodos";
 export * from "./users";
+export * from "./commandCenter";
