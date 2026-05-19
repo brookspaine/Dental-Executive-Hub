@@ -29,6 +29,7 @@ type Task = {
   parentId: number;
   text: string;
   done: boolean;
+  dueDate: string | null;
   sortOrder: number;
 };
 type BrainDumpEntry = {
@@ -999,29 +1000,25 @@ function TaskRow({
   onDelete: () => Promise<void> | void;
 }) {
   const [text, setText] = useState(task.text);
+  const [hover, setHover] = useState(false);
   useEffect(() => setText(task.text), [task.text]);
+
+  const due = task.dueDate;
+  const dueInfo = formatDueDate(due, task.done);
+
   return (
     <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 8,
-        padding: "6px 0",
+        gap: 10,
+        padding: "8px 4px",
         borderBottom: `1px solid ${C.divider}`,
       }}
     >
-      <input
-        type="checkbox"
-        checked={task.done}
-        onChange={(e) => onUpdate({ done: e.target.checked })}
-        style={{
-          width: 16,
-          height: 16,
-          accentColor: C.accent,
-          cursor: "pointer",
-          flexShrink: 0,
-        }}
-      />
+      <AsanaCheck done={task.done} onToggle={() => onUpdate({ done: !task.done })} />
       <input
         type="text"
         value={text}
@@ -1037,6 +1034,12 @@ function TaskRow({
           color: task.done ? C.textSecondary : C.textPrimary,
         }}
       />
+      <DueDateField
+        value={due}
+        tone={dueInfo.tone}
+        label={dueInfo.label}
+        onChange={(next) => onUpdate({ dueDate: next })}
+      />
       <button
         type="button"
         onClick={onDelete}
@@ -1049,12 +1052,144 @@ function TaskRow({
           fontSize: 16,
           lineHeight: 1,
           padding: "2px 6px",
+          visibility: hover ? "visible" : "hidden",
         }}
       >
         ×
       </button>
     </div>
   );
+}
+
+function AsanaCheck({ done, onToggle }: { done: boolean; onToggle: () => void }) {
+  const [hover, setHover] = useState(false);
+  const ring = done ? "#1f8a55" : hover ? "#7a7268" : "#c8c2b6";
+  const fill = done ? "#1f8a55" : "transparent";
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      aria-label={done ? "Mark incomplete" : "Mark complete"}
+      style={{
+        background: "transparent",
+        border: "none",
+        padding: 0,
+        cursor: "pointer",
+        flexShrink: 0,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <svg width="18" height="18" viewBox="0 0 20 20" aria-hidden="true">
+        <circle
+          cx="10"
+          cy="10"
+          r="8.5"
+          fill={fill}
+          stroke={ring}
+          strokeWidth="1.5"
+        />
+        <path
+          d="M6 10.2 L9 13 L14 7.5"
+          fill="none"
+          stroke={done ? "#fff" : hover ? "#7a7268" : "transparent"}
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
+
+function DueDateField({
+  value,
+  tone,
+  label,
+  onChange,
+}: {
+  value: string | null;
+  tone: "none" | "overdue" | "today" | "soon" | "future" | "done";
+  label: string;
+  onChange: (next: string | null) => void;
+}) {
+  const colors: Record<typeof tone, { fg: string; bg: string }> = {
+    none: { fg: C.textSecondary, bg: "transparent" },
+    overdue: { fg: "#b1361e", bg: "#fdecea" },
+    today: { fg: "#7a5b00", bg: "#fdf4d3" },
+    soon: { fg: "#4a4036", bg: "#f1ebdf" },
+    future: { fg: C.textSecondary, bg: "transparent" },
+    done: { fg: "#9a948c", bg: "transparent" },
+  };
+  const c = colors[tone];
+  return (
+    <label
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 12,
+        fontFamily: SANS,
+        color: c.fg,
+        background: c.bg,
+        padding: value ? "3px 8px" : "3px 4px",
+        borderRadius: 10,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        minWidth: 56,
+        justifyContent: "center",
+      }}
+      title={value ? `Due ${value}` : "Set due date"}
+    >
+      <span style={{ opacity: value ? 1 : 0.55 }}>{value ? label : "📅"}</span>
+      <input
+        type="date"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value || null)}
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0,
+          cursor: "pointer",
+          width: "100%",
+          height: "100%",
+        }}
+      />
+    </label>
+  );
+}
+
+function formatDueDate(
+  iso: string | null,
+  done: boolean,
+): { tone: "none" | "overdue" | "today" | "soon" | "future" | "done"; label: string } {
+  if (!iso) return { tone: "none", label: "" };
+  if (done) return { tone: "done", label: shortDate(iso) };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
+  const due = new Date(y, m - 1, d);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays < 0) return { tone: "overdue", label: shortDate(iso) };
+  if (diffDays === 0) return { tone: "today", label: "Today" };
+  if (diffDays === 1) return { tone: "soon", label: "Tomorrow" };
+  if (diffDays <= 7) return { tone: "soon", label: shortDate(iso) };
+  return { tone: "future", label: shortDate(iso) };
+}
+
+function shortDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
+  const date = new Date(y, m - 1, d);
+  const sameYear = date.getFullYear() === new Date().getFullYear();
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    ...(sameYear ? {} : { year: "numeric" }),
+  });
 }
 
 /* ========================================================================== */

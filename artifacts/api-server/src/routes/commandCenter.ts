@@ -279,6 +279,7 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
       parentType: z.enum(PARENT_TYPES),
       parentId: z.number().int(),
       text: z.string().min(1),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     })
     .safeParse(req.body);
   if (!body.success) {
@@ -295,6 +296,7 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
     .object({
       text: z.string().min(1).optional(),
       done: z.boolean().optional(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {

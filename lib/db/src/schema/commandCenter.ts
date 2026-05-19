@@ -56,6 +56,7 @@ export const ccTasksTable = pgTable(
     parentId: integer("parent_id").notNull(),
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
+    dueDate: date("due_date", { mode: "string" }),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
