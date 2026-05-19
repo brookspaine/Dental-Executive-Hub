@@ -1,0 +1,59 @@
+Here’s the full revised prompt for your Replit Agent:
+
+Build a personal command center dashboard as a full-stack web app.
+
+Stack: React frontend + Node/Express backend with a SQLite database (or JSON file store if simpler). Host it as a persistent web app I can bookmark.
+
+5-tab layout with a fixed top header:
+
+Header (always visible):
+
+	•	App name / title left-aligned
+	•	Today’s date right-aligned
+	•	Tab navigation below: Overview · Direct Reports · Projects · Life Areas · Brain Dump
+
+Tab 1 — Overview
+
+	•	“Today’s Top 3” card: 3 numbered editable text inputs. These reset automatically at midnight each day (store with a date stamp, compare on load).
+	•	4 stat tiles below: Open Life Tasks · Open Team Items · Open Project Tasks · Brain Dump Count
+	•	“Open Items Snapshot” card: pulls up to 2 open (incomplete) tasks from every section across all tabs, grouped by section name
+
+Tab 2 — Direct Reports
+
+	•	Same collapsible pattern, one accordion per person
+	•	“Add Person” button creates a new accordion
+	•	Each person card has: editable name, task list (same structure as above), delete person button
+	•	Support 6–15 people comfortably
+
+Tab 3 — Projects
+
+	•	Same collapsible pattern, one accordion per project
+	•	Each project has: editable name, status badge (Active / On Hold / Complete) that’s clickable to cycle, task list, delete project button
+	•	“Add Project” button
+	•	Status color: Active = green, On Hold = amber, Complete = gray
+
+Tab 4 — Life Areas
+
+	•	Predefined sections: Health & Fitness, Finance, Relationships, Personal Growth, Home & Environment
+	•	Each is a collapsible accordion with: colored left border accent, editable section name, done/total badge, task list inside
+	•	Tasks: checkbox to complete, inline editable text, delete button, add-task input at bottom
+
+Tab 5 — Brain Dump
+
+	•	Large textarea at top with a Save button (also Cmd+Enter)
+	•	Entries listed below in reverse chronological order with timestamp
+	•	Each entry: inline editable, delete button
+
+Data persistence: All data saved to a backend database (SQLite preferred). Nothing is lost on refresh. Top 3 resets daily server-side by comparing stored date to current date.
+
+Design direction: Clean, light, structured — professional planner feel. Use Playfair Display (serif) for headings and section titles, DM Sans for body/tasks. Warm off-white background (#f4f1ec), dark charcoal header (#2a2520), white cards with subtle borders. Avoid purple gradients and generic AI aesthetics.
+
+Functional requirements:
+
+	•	All text editable inline (click to edit, blur or Enter to save)
+	•	All changes auto-save to backend via API calls (debounced or on blur)
+	•	Collapsible sections remember open/closed state per session
+	•	Mobile-friendly layout (tabs scroll horizontally on small screens)
+	•	No login required — single-user personal tool
+
+Feel free to ask me any clarifying questions before you start, but the above should be enough to build the full app end to end.
