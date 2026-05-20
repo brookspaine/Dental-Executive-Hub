@@ -1264,11 +1264,7 @@ function TaskSectionGroup({
               e.preventDefault();
               addTask();
             }}
-            style={{
-              display: "grid",
-              gridTemplateColumns: GRID_COLS,
-              alignItems: "center",
-            }}
+            style={{ display: "flex", alignItems: "center" }}
           >
             <div
               style={{
@@ -1276,7 +1272,7 @@ function TaskSectionGroup({
                 gap: 10,
                 alignItems: "center",
                 padding: "8px 12px",
-                borderRight: `1px solid ${C.divider}`,
+                flex: 1,
               }}
             >
               <span
@@ -1292,14 +1288,29 @@ function TaskSectionGroup({
                 type="text"
                 value={taskDraft}
                 onChange={(e) => setTaskDraft(e.target.value)}
-                placeholder="Add task…"
-                style={{ ...inputStyle, fontSize: 14, color: C.textSecondary }}
+                placeholder="Add task — type and press Enter (set date & status after)"
+                style={{ ...inputStyle, fontSize: 14, color: C.textPrimary, flex: 1 }}
               />
             </div>
-            <div
-              style={{ padding: "8px 12px", borderRight: `1px solid ${C.divider}` }}
-            />
-            <div style={{ padding: "8px 12px" }} />
+            {taskDraft.trim() && (
+              <button
+                type="submit"
+                style={{
+                  background: C.accent,
+                  color: "#fff",
+                  border: "none",
+                  fontFamily: SANS,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  padding: "6px 14px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  marginRight: 12,
+                }}
+              >
+                Add
+              </button>
+            )}
           </form>
         </div>
       )}
