@@ -1322,7 +1322,7 @@ const GRID_COLS = "1fr 132px 132px";
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string; bg: string; fg: string }[] = [
   { value: "not_started", label: "Not started", bg: "#ece8df", fg: "#5a544a" },
-  { value: "in_progress", label: "In progress", bg: "#fde2cf", fg: "#9a4a1a" },
+  { value: "in_progress", label: "In progress", bg: "#fdf4d3", fg: "#7a5b00" },
   { value: "completed", label: "Completed", bg: "#cfead8", fg: "#1f6a3f" },
 ];
 
