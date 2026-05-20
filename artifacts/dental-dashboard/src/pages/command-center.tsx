@@ -175,7 +175,7 @@ export function CommandCenter() {
               letterSpacing: 0.2,
             }}
           >
-            Command Center
+            Today
           </h1>
           <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
         </div>
