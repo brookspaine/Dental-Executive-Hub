@@ -1202,7 +1202,34 @@ function TaskSectionGroup({
       </div>
 
       {!collapsed && (
-        <>
+        <div
+          style={{
+            border: `1px solid ${C.divider}`,
+            borderRadius: 6,
+            overflow: "hidden",
+            background: C.card,
+          }}
+        >
+          {/* Column header */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: GRID_COLS,
+              background: "#faf7f1",
+              borderBottom: `1px solid ${C.divider}`,
+              fontSize: 11,
+              fontWeight: 600,
+              color: C.textSecondary,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
+              Task name
+            </div>
+            <div style={{ padding: "7px 12px", textAlign: "center" }}>Due date</div>
+          </div>
+
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
@@ -1227,34 +1254,46 @@ function TaskSectionGroup({
               addTask();
             }}
             style={{
-              display: "flex",
-              gap: 10,
+              display: "grid",
+              gridTemplateColumns: GRID_COLS,
               alignItems: "center",
-              padding: "6px 4px",
             }}
           >
-            <span
+            <div
               style={{
-                width: 18,
-                height: 18,
-                borderRadius: "50%",
-                border: `1.5px dashed ${C.cardBorder}`,
-                flexShrink: 0,
+                display: "flex",
+                gap: 10,
+                alignItems: "center",
+                padding: "8px 12px",
+                borderRight: `1px solid ${C.divider}`,
               }}
-            />
-            <input
-              type="text"
-              value={taskDraft}
-              onChange={(e) => setTaskDraft(e.target.value)}
-              placeholder="Add task…"
-              style={{ ...inputStyle, fontSize: 14, color: C.textSecondary }}
-            />
+            >
+              <span
+                style={{
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
+                  border: `1.5px dashed ${C.cardBorder}`,
+                  flexShrink: 0,
+                }}
+              />
+              <input
+                type="text"
+                value={taskDraft}
+                onChange={(e) => setTaskDraft(e.target.value)}
+                placeholder="Add task…"
+                style={{ ...inputStyle, fontSize: 14, color: C.textSecondary }}
+              />
+            </div>
+            <div style={{ padding: "8px 12px" }} />
           </form>
-        </>
+        </div>
       )}
     </div>
   );
 }
+
+const GRID_COLS = "1fr 132px";
 
 function TaskRow({
   task,
@@ -1277,52 +1316,74 @@ function TaskRow({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "8px 4px",
+        display: "grid",
+        gridTemplateColumns: GRID_COLS,
+        alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
       }}
     >
-      <AsanaCheck done={task.done} onToggle={() => onUpdate({ done: !task.done })} />
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text !== task.text && text.trim() && onUpdate({ text: text.trim() })}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
+      <div
         style={{
-          ...inputStyle,
-          fontSize: 14,
-          textDecoration: task.done ? "line-through" : "none",
-          color: task.done ? C.textSecondary : C.textPrimary,
-        }}
-      />
-      <DueDateField
-        value={due}
-        tone={dueInfo.tone}
-        label={dueInfo.label}
-        onChange={(next) => onUpdate({ dueDate: next })}
-      />
-      <button
-        type="button"
-        onClick={onDelete}
-        aria-label="Delete task"
-        style={{
-          background: "transparent",
-          border: "none",
-          color: C.textSecondary,
-          cursor: "pointer",
-          fontSize: 16,
-          lineHeight: 1,
-          padding: "2px 6px",
-          visibility: hover ? "visible" : "hidden",
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 12px",
+          borderRight: `1px solid ${C.divider}`,
+          minWidth: 0,
         }}
       >
-        ×
-      </button>
+        <AsanaCheck done={task.done} onToggle={() => onUpdate({ done: !task.done })} />
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== task.text && text.trim() && onUpdate({ text: text.trim() })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          style={{
+            ...inputStyle,
+            fontSize: 14,
+            textDecoration: task.done ? "line-through" : "none",
+            color: task.done ? C.textSecondary : C.textPrimary,
+            flex: 1,
+            minWidth: 0,
+          }}
+        />
+        <button
+          type="button"
+          onClick={onDelete}
+          aria-label="Delete task"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 16,
+            lineHeight: 1,
+            padding: "2px 6px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+        }}
+      >
+        <DueDateField
+          value={due}
+          tone={dueInfo.tone}
+          label={dueInfo.label}
+          onChange={(next) => onUpdate({ dueDate: next })}
+        />
+      </div>
     </div>
   );
 }
