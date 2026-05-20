@@ -27,6 +27,7 @@ type Task = {
   id: number;
   parentType: ParentType;
   parentId: number;
+  sectionId: number | null;
   text: string;
   done: boolean;
   dueDate: string | null;
@@ -760,6 +761,15 @@ function LifeAreasTab() {
 /* Reusable section accordion with task list                                  */
 /* ========================================================================== */
 
+type TaskSection = {
+  id: number;
+  parentType: ParentType;
+  parentId: number;
+  name: string;
+  sortOrder: number;
+  collapsed: boolean;
+};
+
 function SectionAccordion({
   parentType,
   parentId,
@@ -782,38 +792,54 @@ function SectionAccordion({
   onDelete?: () => Promise<void> | void;
 }) {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [sections, setSections] = useState<TaskSection[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(name);
-  const [taskDraft, setTaskDraft] = useState("");
 
   useEffect(() => setNameDraft(name), [name]);
 
-  const loadTasks = async () => {
-    const rows = await api<Task[]>(
-      `/command-center/tasks?parentType=${parentType}&parentId=${parentId}`,
-    );
-    setTasks(rows);
+  const load = async () => {
+    const [taskRows, sectionRows] = await Promise.all([
+      api<Task[]>(`/command-center/tasks?parentType=${parentType}&parentId=${parentId}`),
+      api<TaskSection[]>(
+        `/command-center/task-sections?parentType=${parentType}&parentId=${parentId}`,
+      ),
+    ]);
+    setTasks(taskRows);
+    setSections(sectionRows);
     setLoaded(true);
   };
 
   useEffect(() => {
-    if (!collapsed && !loaded) loadTasks();
+    if (!collapsed && !loaded) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed]);
 
   const openCount = tasks.filter((t) => !t.done).length;
   const totalCount = tasks.length;
 
-  const addTask = async () => {
-    if (!taskDraft.trim()) return;
-    await api("/command-center/tasks", {
+  const addSection = async () => {
+    const sectionName = window.prompt("Section name?");
+    if (!sectionName?.trim()) return;
+    await api("/command-center/task-sections", {
       method: "POST",
-      body: JSON.stringify({ parentType, parentId, text: taskDraft.trim() }),
+      body: JSON.stringify({ parentType, parentId, name: sectionName.trim() }),
     });
-    setTaskDraft("");
-    loadTasks();
+    load();
   };
+
+  // Group tasks by sectionId. Untitled group only shown if it has tasks
+  // (or there are no sections at all, to give users a place to start).
+  const tasksBySection = new Map<number | null, Task[]>();
+  for (const t of tasks) {
+    const key = t.sectionId ?? null;
+    const arr = tasksBySection.get(key) ?? [];
+    arr.push(t);
+    tasksBySection.set(key, arr);
+  }
+  const untitledTasks = tasksBySection.get(null) ?? [];
+  const showUntitled = untitledTasks.length > 0 || sections.length === 0;
 
   return (
     <div
@@ -937,11 +963,246 @@ function SectionAccordion({
 
       {/* Body */}
       {!collapsed && (
-        <div style={{ borderTop: `1px solid ${C.divider}`, padding: "8px 16px 14px" }}>
+        <div style={{ borderTop: `1px solid ${C.divider}`, padding: "10px 16px 14px" }}>
           {!loaded && <div style={{ fontSize: 13, color: C.textSecondary }}>Loading…</div>}
-          {loaded && tasks.length === 0 && (
-            <EmptyHint text="No tasks yet." compact />
+
+          {loaded && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {showUntitled && (
+                <TaskSectionGroup
+                  parentType={parentType}
+                  parentId={parentId}
+                  section={null}
+                  tasks={untitledTasks}
+                  onChange={load}
+                />
+              )}
+              {sections.map((s) => (
+                <TaskSectionGroup
+                  key={s.id}
+                  parentType={parentType}
+                  parentId={parentId}
+                  section={s}
+                  tasks={tasksBySection.get(s.id) ?? []}
+                  onChange={load}
+                />
+              ))}
+
+              <button
+                type="button"
+                onClick={addSection}
+                style={{
+                  background: "transparent",
+                  border: `1px dashed ${C.cardBorder}`,
+                  color: C.textSecondary,
+                  fontFamily: SANS,
+                  fontSize: 12,
+                  padding: "8px 10px",
+                  borderRadius: 6,
+                  cursor: "pointer",
+                  alignSelf: "flex-start",
+                }}
+              >
+                + Add section
+              </button>
+            </div>
           )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TaskSectionGroup({
+  parentType,
+  parentId,
+  section,
+  tasks,
+  onChange,
+}: {
+  parentType: ParentType;
+  parentId: number;
+  section: TaskSection | null;
+  tasks: Task[];
+  onChange: () => void | Promise<void>;
+}) {
+  const collapsed = section?.collapsed ?? false;
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(section?.name ?? "");
+  const [taskDraft, setTaskDraft] = useState("");
+  const [hoverHeader, setHoverHeader] = useState(false);
+
+  useEffect(() => setNameDraft(section?.name ?? ""), [section?.name]);
+
+  const headerLabel = section?.name ?? "Untitled";
+  const openCount = tasks.filter((t) => !t.done).length;
+
+  const addTask = async () => {
+    const t = taskDraft.trim();
+    if (!t) return;
+    await api("/command-center/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        parentType,
+        parentId,
+        sectionId: section?.id ?? null,
+        text: t,
+      }),
+    });
+    setTaskDraft("");
+    onChange();
+  };
+
+  const toggleCollapsed = async () => {
+    if (!section) return;
+    await api(`/command-center/task-sections/${section.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ collapsed: !collapsed }),
+    });
+    onChange();
+  };
+
+  const renameSection = async (next: string) => {
+    if (!section) return;
+    await api(`/command-center/task-sections/${section.id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name: next }),
+    });
+    onChange();
+  };
+
+  const deleteSection = async () => {
+    if (!section) return;
+    if (
+      !window.confirm(
+        `Delete section "${section.name}"? Tasks inside will move to Untitled.`,
+      )
+    )
+      return;
+    await api(`/command-center/task-sections/${section.id}`, { method: "DELETE" });
+    onChange();
+  };
+
+  return (
+    <div>
+      <div
+        onMouseEnter={() => setHoverHeader(true)}
+        onMouseLeave={() => setHoverHeader(false)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          padding: "2px 0 6px",
+          userSelect: "none",
+        }}
+      >
+        <button
+          type="button"
+          onClick={toggleCollapsed}
+          disabled={!section}
+          style={{
+            background: "transparent",
+            border: "none",
+            cursor: section ? "pointer" : "default",
+            padding: 0,
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 14,
+            height: 14,
+            color: C.textSecondary,
+          }}
+          aria-label={collapsed ? "Expand section" : "Collapse section"}
+        >
+          <span
+            style={{
+              fontSize: 9,
+              transform: collapsed ? "rotate(-90deg)" : "rotate(0deg)",
+              transition: "transform 120ms ease",
+              display: "inline-block",
+              opacity: section ? 1 : 0.3,
+            }}
+          >
+            ▼
+          </span>
+        </button>
+
+        {section && editingName ? (
+          <input
+            type="text"
+            value={nameDraft}
+            autoFocus
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={async () => {
+              setEditingName(false);
+              if (nameDraft.trim() && nameDraft !== section.name)
+                await renameSection(nameDraft.trim());
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setNameDraft(section.name);
+                setEditingName(false);
+              }
+            }}
+            style={{
+              ...inputStyle,
+              fontFamily: SANS,
+              fontSize: 13,
+              fontWeight: 700,
+              padding: "1px 4px",
+            }}
+          />
+        ) : (
+          <div
+            onClick={() => section && setEditingName(true)}
+            style={{
+              fontFamily: SANS,
+              fontSize: 13,
+              fontWeight: 700,
+              color: section ? C.textPrimary : C.textSecondary,
+              letterSpacing: 0.2,
+              cursor: section ? "text" : "default",
+            }}
+          >
+            {headerLabel}
+          </div>
+        )}
+
+        <span
+          style={{
+            fontSize: 11,
+            color: C.textSecondary,
+            fontFamily: SANS,
+          }}
+        >
+          {openCount > 0 ? openCount : ""}
+        </span>
+
+        <span style={{ flex: 1 }} />
+
+        {section && (
+          <button
+            type="button"
+            onClick={deleteSection}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: C.textSecondary,
+              cursor: "pointer",
+              fontSize: 11,
+              fontFamily: SANS,
+              padding: "2px 6px",
+              visibility: hoverHeader ? "visible" : "hidden",
+            }}
+          >
+            Delete section
+          </button>
+        )}
+      </div>
+
+      {!collapsed && (
+        <>
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
@@ -951,16 +1212,15 @@ function SectionAccordion({
                   method: "PATCH",
                   body: JSON.stringify(patch),
                 });
-                loadTasks();
+                onChange();
               }}
               onDelete={async () => {
                 await api(`/command-center/tasks/${task.id}`, { method: "DELETE" });
-                loadTasks();
+                onChange();
               }}
             />
           ))}
 
-          {/* Add task row */}
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -968,23 +1228,29 @@ function SectionAccordion({
             }}
             style={{
               display: "flex",
-              gap: 8,
+              gap: 10,
               alignItems: "center",
-              marginTop: 6,
-              paddingTop: 8,
-              borderTop: `1px dashed ${C.divider}`,
+              padding: "6px 4px",
             }}
           >
-            <span style={{ width: 16, height: 16, flexShrink: 0 }} />
+            <span
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                border: `1.5px dashed ${C.cardBorder}`,
+                flexShrink: 0,
+              }}
+            />
             <input
               type="text"
               value={taskDraft}
               onChange={(e) => setTaskDraft(e.target.value)}
-              placeholder="+ Add task"
-              style={{ ...inputStyle, fontSize: 14 }}
+              placeholder="Add task…"
+              style={{ ...inputStyle, fontSize: 14, color: C.textSecondary }}
             />
           </form>
-        </div>
+        </>
       )}
     </div>
   );

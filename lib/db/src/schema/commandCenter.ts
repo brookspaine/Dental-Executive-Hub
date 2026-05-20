@@ -47,6 +47,20 @@ export const ccLifeAreasTable = pgTable("cc_life_areas", {
 });
 export type CcLifeArea = typeof ccLifeAreasTable.$inferSelect;
 
+/* Task sections — Asana-style named groups within a parent */
+export const ccTaskSectionsTable = pgTable("cc_task_sections", {
+  id: serial("id").primaryKey(),
+  parentType: text("parent_type").notNull(), // life_area | direct_report | project
+  parentId: integer("parent_id").notNull(),
+  name: text("name").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  collapsed: boolean("collapsed").notNull().default(false),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type CcTaskSection = typeof ccTaskSectionsTable.$inferSelect;
+
 /* Tasks (polymorphic parent) */
 export const ccTasksTable = pgTable(
   "cc_tasks",
@@ -54,6 +68,7 @@ export const ccTasksTable = pgTable(
     id: serial("id").primaryKey(),
     parentType: text("parent_type").notNull(), // life_area | direct_report | project
     parentId: integer("parent_id").notNull(),
+    sectionId: integer("section_id"),
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
     dueDate: date("due_date", { mode: "string" }),

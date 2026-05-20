@@ -6,6 +6,7 @@ import {
   ccDirectReportsTable,
   ccProjectsTable,
   ccLifeAreasTable,
+  ccTaskSectionsTable,
   ccTasksTable,
   ccBrainDumpTable,
   ccTop3Table,
@@ -278,6 +279,7 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
     .object({
       parentType: z.enum(PARENT_TYPES),
       parentId: z.number().int(),
+      sectionId: z.number().int().nullable().optional(),
       text: z.string().min(1),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     })
@@ -297,6 +299,7 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
       text: z.string().min(1).optional(),
       done: z.boolean().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      sectionId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
@@ -322,6 +325,101 @@ router.delete("/command-center/tasks/:id", async (req, res): Promise<void> => {
     return;
   }
   await db.delete(ccTasksTable).where(eq(ccTasksTable.id, id.data));
+  res.sendStatus(204);
+});
+
+/* -------------------------------------------------------------------------- */
+/* Task Sections                                                              */
+/* -------------------------------------------------------------------------- */
+
+router.get("/command-center/task-sections", async (req, res): Promise<void> => {
+  const q = z
+    .object({
+      parentType: z.enum(PARENT_TYPES).optional(),
+      parentId: z.coerce.number().int().optional(),
+    })
+    .safeParse(req.query);
+  if (!q.success) {
+    res.status(400).json({ error: "invalid query" });
+    return;
+  }
+  const conds = [];
+  if (q.data.parentType) conds.push(eq(ccTaskSectionsTable.parentType, q.data.parentType));
+  if (q.data.parentId !== undefined) conds.push(eq(ccTaskSectionsTable.parentId, q.data.parentId));
+  const rows = await db
+    .select()
+    .from(ccTaskSectionsTable)
+    .where(conds.length ? and(...conds) : undefined)
+    .orderBy(asc(ccTaskSectionsTable.sortOrder), asc(ccTaskSectionsTable.id));
+  res.json(rows);
+});
+
+router.post("/command-center/task-sections", async (req, res): Promise<void> => {
+  const body = z
+    .object({
+      parentType: z.enum(PARENT_TYPES),
+      parentId: z.number().int(),
+      name: z.string().min(1),
+    })
+    .safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  // Place new sections at the end.
+  const [{ maxOrder }] = await db
+    .select({ maxOrder: sql<number>`coalesce(max(${ccTaskSectionsTable.sortOrder}), -1)` })
+    .from(ccTaskSectionsTable)
+    .where(
+      and(
+        eq(ccTaskSectionsTable.parentType, body.data.parentType),
+        eq(ccTaskSectionsTable.parentId, body.data.parentId),
+      ),
+    );
+  const [row] = await db
+    .insert(ccTaskSectionsTable)
+    .values({ ...body.data, sortOrder: Number(maxOrder) + 1 })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.patch("/command-center/task-sections/:id", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      name: z.string().min(1).optional(),
+      collapsed: z.boolean().optional(),
+      sortOrder: z.number().int().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success || Object.keys(body.data).length === 0) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const [row] = await db
+    .update(ccTaskSectionsTable)
+    .set(body.data)
+    .where(eq(ccTaskSectionsTable.id, id.data))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  res.json(row);
+});
+
+router.delete("/command-center/task-sections/:id", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  // Detach tasks (move to Untitled) rather than deleting them.
+  await db
+    .update(ccTasksTable)
+    .set({ sectionId: null })
+    .where(eq(ccTasksTable.sectionId, id.data));
+  await db.delete(ccTaskSectionsTable).where(eq(ccTaskSectionsTable.id, id.data));
   res.sendStatus(204);
 });
 
