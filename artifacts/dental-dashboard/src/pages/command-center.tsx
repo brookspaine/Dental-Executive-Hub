@@ -1328,15 +1328,13 @@ function TaskRow({
 }
 
 function AsanaCheck({ done, onToggle }: { done: boolean; onToggle: () => void }) {
-  const [hover, setHover] = useState(false);
-  const ring = done ? "#1f8a55" : hover ? "#7a7268" : "#c8c2b6";
-  const fill = done ? "#1f8a55" : "transparent";
+  const ring = done ? "#1f8a55" : "#c8c2b6";
+  const fill = done ? "#1f8a55" : "#eeeae1";
+  const checkColor = done ? "#fff" : "#9a948c";
   return (
     <button
       type="button"
       onClick={onToggle}
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
       aria-label={done ? "Mark incomplete" : "Mark complete"}
       style={{
         background: "transparent",
@@ -1361,7 +1359,7 @@ function AsanaCheck({ done, onToggle }: { done: boolean; onToggle: () => void })
         <path
           d="M6 10.2 L9 13 L14 7.5"
           fill="none"
-          stroke={done ? "#fff" : hover ? "#7a7268" : "transparent"}
+          stroke={checkColor}
           strokeWidth="1.8"
           strokeLinecap="round"
           strokeLinejoin="round"
