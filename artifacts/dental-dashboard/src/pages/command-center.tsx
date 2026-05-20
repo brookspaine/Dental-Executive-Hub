@@ -923,21 +923,21 @@ function SectionAccordion({
           </div>
         )}
 
-        <span
-          style={{
-            background: C.accentSoft,
-            color: C.accent,
-            fontFamily: SANS,
-            fontSize: 11,
-            fontWeight: 600,
-            padding: "2px 8px",
-            borderRadius: 10,
-          }}
-        >
-          {parentType === "life_area"
-            ? `${tasks.filter((t) => t.done).length}/${totalCount}`
-            : openCount}
-        </span>
+        {parentType === "life_area" && (
+          <span
+            style={{
+              background: C.accentSoft,
+              color: C.accent,
+              fontFamily: SANS,
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "2px 8px",
+              borderRadius: 10,
+            }}
+          >
+            {`${tasks.filter((t) => t.done).length}/${totalCount}`}
+          </span>
+        )}
 
         {headerRight}
 
@@ -1032,6 +1032,7 @@ function TaskSectionGroup({
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(section?.name ?? "");
   const [taskDraft, setTaskDraft] = useState("");
+  const [adding, setAdding] = useState(false);
   const [hoverHeader, setHoverHeader] = useState(false);
 
   useEffect(() => setNameDraft(section?.name ?? ""), [section?.name]);
@@ -1171,16 +1172,6 @@ function TaskSectionGroup({
           </div>
         )}
 
-        <span
-          style={{
-            fontSize: 11,
-            color: C.textSecondary,
-            fontFamily: SANS,
-          }}
-        >
-          {openCount > 0 ? openCount : ""}
-        </span>
-
         <span style={{ flex: 1 }} />
 
         {section && (
@@ -1259,59 +1250,98 @@ function TaskSectionGroup({
             />
           ))}
 
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              addTask();
-            }}
-            style={{ display: "flex", alignItems: "center" }}
-          >
-            <div
+          {adding ? (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                addTask();
+              }}
               style={{
                 display: "flex",
-                gap: 10,
                 alignItems: "center",
-                padding: "8px 12px",
-                flex: 1,
+                borderTop: tasks.length > 0 ? `1px solid ${C.divider}` : "none",
               }}
             >
-              <span
+              <div
                 style={{
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  border: `1.5px dashed ${C.cardBorder}`,
-                  flexShrink: 0,
-                }}
-              />
-              <input
-                type="text"
-                value={taskDraft}
-                onChange={(e) => setTaskDraft(e.target.value)}
-                placeholder="Add task — type and press Enter (set date & status after)"
-                style={{ ...inputStyle, fontSize: 14, color: C.textPrimary, flex: 1 }}
-              />
-            </div>
-            {taskDraft.trim() && (
-              <button
-                type="submit"
-                style={{
-                  background: C.accent,
-                  color: "#fff",
-                  border: "none",
-                  fontFamily: SANS,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  padding: "6px 14px",
-                  borderRadius: 6,
-                  cursor: "pointer",
-                  marginRight: 12,
+                  display: "flex",
+                  gap: 10,
+                  alignItems: "center",
+                  padding: "8px 12px",
+                  flex: 1,
                 }}
               >
-                Add
-              </button>
-            )}
-          </form>
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: "50%",
+                    border: `1.5px dashed ${C.cardBorder}`,
+                    flexShrink: 0,
+                  }}
+                />
+                <input
+                  type="text"
+                  value={taskDraft}
+                  autoFocus
+                  onChange={(e) => setTaskDraft(e.target.value)}
+                  onBlur={() => {
+                    if (!taskDraft.trim()) setAdding(false);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      setTaskDraft("");
+                      setAdding(false);
+                    }
+                  }}
+                  placeholder="Task name — press Enter to save"
+                  style={{ ...inputStyle, fontSize: 14, color: C.textPrimary, flex: 1 }}
+                />
+              </div>
+              {taskDraft.trim() && (
+                <button
+                  type="submit"
+                  style={{
+                    background: C.accent,
+                    color: "#fff",
+                    border: "none",
+                    fontFamily: SANS,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    padding: "6px 14px",
+                    borderRadius: 6,
+                    cursor: "pointer",
+                    marginRight: 12,
+                  }}
+                >
+                  Add
+                </button>
+              )}
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "transparent",
+                border: "none",
+                borderTop: tasks.length > 0 ? `1px solid ${C.divider}` : "none",
+                color: C.textSecondary,
+                fontFamily: SANS,
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "6px 12px",
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+            </button>
+          )}
         </div>
       )}
     </div>
