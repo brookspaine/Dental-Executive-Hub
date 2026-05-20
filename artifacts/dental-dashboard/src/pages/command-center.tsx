@@ -80,8 +80,8 @@ const C = {
   inputFocus: "#cbb98a",
 };
 
-const SERIF = '"Playfair Display", Georgia, serif';
-const SANS = '"DM Sans", -apple-system, system-ui, sans-serif';
+const SERIF = 'Inter, -apple-system, system-ui, sans-serif';
+const SANS = 'Inter, -apple-system, system-ui, sans-serif';
 
 /* ========================================================================== */
 /* API client                                                                 */
