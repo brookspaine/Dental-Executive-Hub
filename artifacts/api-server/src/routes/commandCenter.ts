@@ -21,6 +21,8 @@ const router: IRouter = Router();
 const PARENT_TYPES = ["life_area", "direct_report", "project"] as const;
 type ParentType = (typeof PARENT_TYPES)[number];
 
+const TASK_STATUSES = ["not_started", "in_progress", "completed"] as const;
+
 const SEED_LIFE_AREAS = [
   { name: "Health & Fitness", accentColor: "#7fb069", sortOrder: 0 },
   { name: "Finance", accentColor: "#3a7d5e", sortOrder: 1 },
@@ -36,6 +38,16 @@ function todayDateString(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${dd}`;
+}
+
+let taskStatusBackfilled = false;
+async function ensureTaskStatusBackfilled(): Promise<void> {
+  if (taskStatusBackfilled) return;
+  taskStatusBackfilled = true;
+  await db
+    .update(ccTasksTable)
+    .set({ status: "completed" })
+    .where(and(eq(ccTasksTable.done, true), eq(ccTasksTable.status, "not_started")));
 }
 
 async function ensureLifeAreasSeeded(): Promise<void> {
@@ -253,6 +265,7 @@ router.patch("/command-center/life-areas/:id", async (req, res): Promise<void> =
 /* -------------------------------------------------------------------------- */
 
 router.get("/command-center/tasks", async (req, res): Promise<void> => {
+  await ensureTaskStatusBackfilled();
   const q = z
     .object({
       parentType: z.enum(PARENT_TYPES).optional(),
@@ -281,6 +294,7 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
       parentId: z.number().int(),
       sectionId: z.number().int().nullable().optional(),
       text: z.string().min(1),
+      status: z.enum(TASK_STATUSES).optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     })
     .safeParse(req.body);
@@ -288,7 +302,16 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  const [row] = await db.insert(ccTasksTable).values(body.data).returning();
+  const insertData = {
+    ...body.data,
+    done:
+      body.data.status === "completed"
+        ? true
+        : body.data.status !== undefined
+          ? false
+          : undefined,
+  };
+  const [row] = await db.insert(ccTasksTable).values(insertData).returning();
   res.status(201).json(row);
 });
 
@@ -298,6 +321,7 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
     .object({
       text: z.string().min(1).optional(),
       done: z.boolean().optional(),
+      status: z.enum(TASK_STATUSES).optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       sectionId: z.number().int().nullable().optional(),
     })
@@ -306,9 +330,14 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  const patch: Record<string, unknown> = { ...body.data };
+  if (patch.status === "completed") patch.done = true;
+  else if (patch.status !== undefined) patch.done = false;
+  else if (patch.done === true) patch.status = "completed";
+  else if (patch.done === false) patch.status = "not_started";
   const [row] = await db
     .update(ccTasksTable)
-    .set(body.data)
+    .set(patch)
     .where(eq(ccTasksTable.id, id.data))
     .returning();
   if (!row) {

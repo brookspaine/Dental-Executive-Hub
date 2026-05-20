@@ -23,6 +23,7 @@ type LifeArea = {
   sortOrder: number;
   collapsed: boolean;
 };
+type TaskStatus = "not_started" | "in_progress" | "completed";
 type Task = {
   id: number;
   parentType: ParentType;
@@ -30,6 +31,7 @@ type Task = {
   sectionId: number | null;
   text: string;
   done: boolean;
+  status: TaskStatus;
   dueDate: string | null;
   sortOrder: number;
 };
@@ -1227,7 +1229,16 @@ function TaskSectionGroup({
             <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
               Task name
             </div>
-            <div style={{ padding: "7px 12px", textAlign: "center" }}>Due date</div>
+            <div
+              style={{
+                padding: "7px 12px",
+                textAlign: "center",
+                borderRight: `1px solid ${C.divider}`,
+              }}
+            >
+              Due date
+            </div>
+            <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
           </div>
 
           {tasks.map((task) => (
@@ -1285,6 +1296,9 @@ function TaskSectionGroup({
                 style={{ ...inputStyle, fontSize: 14, color: C.textSecondary }}
               />
             </div>
+            <div
+              style={{ padding: "8px 12px", borderRight: `1px solid ${C.divider}` }}
+            />
             <div style={{ padding: "8px 12px" }} />
           </form>
         </div>
@@ -1293,7 +1307,52 @@ function TaskSectionGroup({
   );
 }
 
-const GRID_COLS = "1fr 132px";
+const GRID_COLS = "1fr 132px 132px";
+
+const STATUS_OPTIONS: { value: TaskStatus; label: string; bg: string; fg: string }[] = [
+  { value: "not_started", label: "Not started", bg: "#ece8df", fg: "#5a544a" },
+  { value: "in_progress", label: "In progress", bg: "#fde2cf", fg: "#9a4a1a" },
+  { value: "completed", label: "Completed", bg: "#cfead8", fg: "#1f6a3f" },
+];
+
+function StatusPill({
+  status,
+  onChange,
+}: {
+  status: TaskStatus;
+  onChange: (next: TaskStatus) => void;
+}) {
+  const opt = STATUS_OPTIONS.find((o) => o.value === status) ?? STATUS_OPTIONS[0];
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <select
+        value={status}
+        onChange={(e) => onChange(e.target.value as TaskStatus)}
+        style={{
+          appearance: "none",
+          WebkitAppearance: "none",
+          MozAppearance: "none",
+          background: opt.bg,
+          color: opt.fg,
+          border: "none",
+          borderRadius: 999,
+          padding: "3px 14px",
+          fontSize: 11,
+          fontFamily: SANS,
+          fontWeight: 600,
+          cursor: "pointer",
+          textAlign: "center",
+        }}
+      >
+        {STATUS_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
 
 function TaskRow({
   task,
@@ -1375,6 +1434,7 @@ function TaskRow({
           alignItems: "center",
           justifyContent: "center",
           padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
         }}
       >
         <DueDateField
@@ -1382,6 +1442,19 @@ function TaskRow({
           tone={dueInfo.tone}
           label={dueInfo.label}
           onChange={(next) => onUpdate({ dueDate: next })}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+        }}
+      >
+        <StatusPill
+          status={task.status}
+          onChange={(next) => onUpdate({ status: next })}
         />
       </div>
     </div>

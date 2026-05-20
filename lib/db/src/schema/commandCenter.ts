@@ -71,6 +71,7 @@ export const ccTasksTable = pgTable(
     sectionId: integer("section_id"),
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
+    status: text("status").notNull().default("not_started"), // not_started | in_progress | completed
     dueDate: date("due_date", { mode: "string" }),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
