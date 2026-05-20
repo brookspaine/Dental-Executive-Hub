@@ -354,7 +354,7 @@ function Top3Card({ top3, onChange }: { top3: Top3Row[]; onChange: () => void })
 
   return (
     <Card>
-      <CardHeading title="Today's Top 3" subtitle="Resets daily at midnight" />
+      <CardHeading title="Today's Top 3" />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {slots.map((row, idx) => (
           <Top3Row

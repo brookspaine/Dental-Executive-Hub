@@ -65,15 +65,6 @@ async function ensureTop3Slots(): Promise<void> {
       .values({ slot, text: "", date: today })
       .onConflictDoNothing({ target: ccTop3Table.slot });
   }
-  const rows = await db.select().from(ccTop3Table);
-  for (const r of rows) {
-    if (r.date !== today) {
-      await db
-        .update(ccTop3Table)
-        .set({ text: "", date: today })
-        .where(eq(ccTop3Table.id, r.id));
-    }
-  }
 }
 
 /* -------------------------------------------------------------------------- */
