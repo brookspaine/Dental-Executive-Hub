@@ -235,14 +235,7 @@ export function CommandCenter() {
           >
             Today
           </h1>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <BusinessPicker
-              businesses={businesses}
-              value={businessId}
-              onChange={setBusinessId}
-            />
-            <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
-          </div>
+          <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
         </div>
 
         {/* Tabs */}
