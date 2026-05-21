@@ -14,6 +14,7 @@ import leaseRecordsRouter from "./leaseRecords";
 import leaseToolkitRouter from "./leaseToolkit";
 import futureTodosRouter from "./futureTodos";
 import commandCenterRouter from "./commandCenter";
+import urgentDentalRouter from "./urgentDental";
 import meRouter from "./me";
 import usersRouter from "./users";
 
@@ -34,6 +35,7 @@ router.use(leaseRecordsRouter);
 router.use(leaseToolkitRouter);
 router.use(futureTodosRouter);
 router.use(commandCenterRouter);
+router.use(urgentDentalRouter);
 router.use(meRouter);
 router.use(usersRouter);
 
