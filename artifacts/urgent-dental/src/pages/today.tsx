@@ -72,7 +72,7 @@ type Overview = {
   }>;
 };
 
-type TabId = "overview" | "direct-reports" | "projects" | "life-areas" | "brain-dump";
+type TabId = "overview" | "direct-reports" | "projects" | "brain-dump";
 
 /* ========================================================================== */
 /* Design tokens                                                              */
@@ -151,8 +151,7 @@ export default function Today() {
     { id: "overview", label: "Overview" },
     { id: "direct-reports", label: "Direct Reports" },
     { id: "projects", label: "Projects" },
-    { id: "life-areas", label: "Life Areas" },
-    { id: "brain-dump", label: "Brain Dump" },
+    { id: "brain-dump", label: "Ideas" },
   ];
 
   return (
@@ -239,7 +238,6 @@ export default function Today() {
         {tab === "overview" && <OverviewTab />}
         {tab === "direct-reports" && <DirectReportsTab />}
         {tab === "projects" && <ProjectsTab />}
-        {tab === "life-areas" && <LifeAreasTab />}
         {tab === "brain-dump" && <BrainDumpTab />}
       </div>
     </div>
@@ -279,10 +277,7 @@ function OverviewTab() {
       <OverviewSection title="Projects">
         <ProjectsTab />
       </OverviewSection>
-      <OverviewSection title="Life Areas">
-        <LifeAreasTab />
-      </OverviewSection>
-      <OverviewSection title="Brain Dump">
+      <OverviewSection title="Ideas">
         <BrainDumpTab />
       </OverviewSection>
     </div>
@@ -465,7 +460,7 @@ function StatsGrid({ stats }: { stats: Overview["stats"] }) {
     { label: "Open Life Tasks", value: stats.openLifeTasks },
     { label: "Open Team Items", value: stats.openTeamItems },
     { label: "Open Project Tasks", value: stats.openProjectTasks },
-    { label: "Brain Dump Count", value: stats.brainDumpCount },
+    { label: "Ideas Count", value: stats.brainDumpCount },
   ];
   return (
     <div
