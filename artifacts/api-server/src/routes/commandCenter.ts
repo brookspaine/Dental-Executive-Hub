@@ -1,5 +1,5 @@
 import { Router, type IRouter } from "express";
-import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, or, sql } from "drizzle-orm";
 import { z } from "zod/v4";
 import {
   db,
@@ -155,6 +155,11 @@ router.delete("/command-center/direct-reports/:id", async (req, res): Promise<vo
   await db
     .delete(ccTasksTable)
     .where(and(eq(ccTasksTable.parentType, "direct_report"), eq(ccTasksTable.parentId, id.data)));
+  // Clear ownership references on tasks owned by this DR (e.g. project tasks)
+  await db
+    .update(ccTasksTable)
+    .set({ ownerDirectReportId: null })
+    .where(eq(ccTasksTable.ownerDirectReportId, id.data));
   await db.delete(ccDirectReportsTable).where(eq(ccDirectReportsTable.id, id.data));
   res.sendStatus(204);
 });
@@ -274,6 +279,28 @@ router.get("/command-center/tasks", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid query" });
     return;
   }
+  // Special case: a direct report's task list also includes project tasks
+  // they own (ownerDirectReportId === parentId).
+  if (
+    q.data.parentType === "direct_report" &&
+    q.data.parentId !== undefined
+  ) {
+    const rows = await db
+      .select()
+      .from(ccTasksTable)
+      .where(
+        or(
+          and(
+            eq(ccTasksTable.parentType, "direct_report"),
+            eq(ccTasksTable.parentId, q.data.parentId),
+          ),
+          eq(ccTasksTable.ownerDirectReportId, q.data.parentId),
+        ),
+      )
+      .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id));
+    res.json(rows);
+    return;
+  }
   const conds = [];
   if (q.data.parentType) conds.push(eq(ccTasksTable.parentType, q.data.parentType));
   if (q.data.parentId !== undefined) conds.push(eq(ccTasksTable.parentId, q.data.parentId));
@@ -291,6 +318,7 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
       parentType: z.enum(PARENT_TYPES),
       parentId: z.number().int(),
       sectionId: z.number().int().nullable().optional(),
+      ownerDirectReportId: z.number().int().nullable().optional(),
       text: z.string().min(1),
       status: z.enum(TASK_STATUSES).optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
@@ -322,6 +350,7 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
       status: z.enum(TASK_STATUSES).optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       sectionId: z.number().int().nullable().optional(),
+      ownerDirectReportId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {

@@ -69,6 +69,7 @@ export const ccTasksTable = pgTable(
     parentType: text("parent_type").notNull(), // life_area | direct_report | project
     parentId: integer("parent_id").notNull(),
     sectionId: integer("section_id"),
+    ownerDirectReportId: integer("owner_direct_report_id"),
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
     status: text("status").notNull().default("not_started"), // not_started | in_progress | completed

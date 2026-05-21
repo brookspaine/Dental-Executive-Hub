@@ -29,6 +29,7 @@ type Task = {
   parentType: ParentType;
   parentId: number;
   sectionId: number | null;
+  ownerDirectReportId: number | null;
   text: string;
   done: boolean;
   status: TaskStatus;
@@ -819,6 +820,8 @@ function SectionAccordion({
 }) {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [sections, setSections] = useState<TaskSection[]>([]);
+  const [directReports, setDirectReports] = useState<DirectReport[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(name);
@@ -826,14 +829,22 @@ function SectionAccordion({
   useEffect(() => setNameDraft(name), [name]);
 
   const load = async () => {
-    const [taskRows, sectionRows] = await Promise.all([
+    const [taskRows, sectionRows, drRows, projRows] = await Promise.all([
       api<Task[]>(`/command-center/tasks?parentType=${parentType}&parentId=${parentId}`),
       api<TaskSection[]>(
         `/command-center/task-sections?parentType=${parentType}&parentId=${parentId}`,
       ),
+      parentType === "project"
+        ? api<DirectReport[]>("/command-center/direct-reports")
+        : Promise.resolve([] as DirectReport[]),
+      parentType === "direct_report"
+        ? api<Project[]>("/command-center/projects")
+        : Promise.resolve([] as Project[]),
     ]);
     setTasks(taskRows);
     setSections(sectionRows);
+    setDirectReports(drRows);
+    setProjects(projRows);
     setLoaded(true);
   };
 
@@ -859,7 +870,12 @@ function SectionAccordion({
   // (or there are no sections at all, to give users a place to start).
   const tasksBySection = new Map<number | null, Task[]>();
   for (const t of tasks) {
-    const key = t.sectionId ?? null;
+    // Tasks merged in from another parent (e.g. project tasks owned by this
+    // direct report) carry a sectionId that belongs to the foreign parent's
+    // section set, so we surface them in the untitled group instead of
+    // dropping them silently.
+    const isForeign = t.parentType !== parentType || t.parentId !== parentId;
+    const key = isForeign ? null : t.sectionId ?? null;
     const arr = tasksBySection.get(key) ?? [];
     arr.push(t);
     tasksBySection.set(key, arr);
@@ -1000,6 +1016,8 @@ function SectionAccordion({
                   parentId={parentId}
                   section={null}
                   tasks={untitledTasks}
+                  directReports={directReports}
+                  projects={projects}
                   onChange={load}
                 />
               )}
@@ -1010,6 +1028,8 @@ function SectionAccordion({
                   parentId={parentId}
                   section={s}
                   tasks={tasksBySection.get(s.id) ?? []}
+                  directReports={directReports}
+                  projects={projects}
                   onChange={load}
                 />
               ))}
@@ -1044,14 +1064,21 @@ function TaskSectionGroup({
   parentId,
   section,
   tasks,
+  directReports,
+  projects,
   onChange,
 }: {
   parentType: ParentType;
   parentId: number;
   section: TaskSection | null;
   tasks: Task[];
+  directReports: DirectReport[];
+  projects: Project[];
   onChange: () => void | Promise<void>;
 }) {
+  const showOwnerColumn = parentType === "project";
+  const gridCols = showOwnerColumn ? "1fr 140px 132px 132px" : GRID_COLS;
+  const projectsById = new Map(projects.map((p) => [p.id, p]));
   const collapsed = section?.collapsed ?? false;
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(section?.name ?? "");
@@ -1231,7 +1258,7 @@ function TaskSectionGroup({
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: GRID_COLS,
+              gridTemplateColumns: gridCols,
               background: "#faf7f1",
               borderBottom: `1px solid ${C.divider}`,
               fontSize: 11,
@@ -1244,6 +1271,17 @@ function TaskSectionGroup({
             <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
               Task name
             </div>
+            {showOwnerColumn && (
+              <div
+                style={{
+                  padding: "7px 12px",
+                  textAlign: "center",
+                  borderRight: `1px solid ${C.divider}`,
+                }}
+              >
+                Owner
+              </div>
+            )}
             <div
               style={{
                 padding: "7px 12px",
@@ -1260,6 +1298,14 @@ function TaskSectionGroup({
             <TaskRow
               key={task.id}
               task={task}
+              gridCols={gridCols}
+              showOwnerColumn={showOwnerColumn}
+              directReports={directReports}
+              originLabel={
+                parentType === "direct_report" && task.parentType === "project"
+                  ? projectsById.get(task.parentId)?.name ?? null
+                  : null
+              }
               onUpdate={async (patch) => {
                 await api(`/command-center/tasks/${task.id}`, {
                   method: "PATCH",
@@ -1421,10 +1467,18 @@ function StatusPill({
 
 function TaskRow({
   task,
+  gridCols,
+  showOwnerColumn,
+  directReports,
+  originLabel,
   onUpdate,
   onDelete,
 }: {
   task: Task;
+  gridCols: string;
+  showOwnerColumn: boolean;
+  directReports: DirectReport[];
+  originLabel: string | null;
   onUpdate: (patch: Partial<Task>) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
 }) {
@@ -1441,7 +1495,7 @@ function TaskRow({
       onMouseLeave={() => setHover(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: GRID_COLS,
+        gridTemplateColumns: gridCols,
         alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
       }}
@@ -1474,6 +1528,24 @@ function TaskRow({
             minWidth: 0,
           }}
         />
+        {originLabel && (
+          <span
+            title={`From project: ${originLabel}`}
+            style={{
+              fontSize: 10,
+              fontFamily: SANS,
+              fontWeight: 600,
+              color: C.accent,
+              background: C.accentSoft,
+              padding: "2px 6px",
+              borderRadius: 8,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {originLabel}
+          </span>
+        )}
         <button
           type="button"
           onClick={onDelete}
@@ -1493,6 +1565,23 @@ function TaskRow({
           ×
         </button>
       </div>
+      {showOwnerColumn && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "6px 8px",
+            borderRight: `1px solid ${C.divider}`,
+          }}
+        >
+          <OwnerPicker
+            value={task.ownerDirectReportId}
+            options={directReports}
+            onChange={(next) => onUpdate({ ownerDirectReportId: next })}
+          />
+        </div>
+      )}
       <div
         style={{
           display: "flex",
@@ -1523,6 +1612,66 @@ function TaskRow({
         />
       </div>
     </div>
+  );
+}
+
+function OwnerPicker({
+  value,
+  options,
+  onChange,
+}: {
+  value: number | null;
+  options: DirectReport[];
+  onChange: (next: number | null) => void;
+}) {
+  const current = value != null ? options.find((o) => o.id === value) : null;
+  const label = current?.name ?? "Unassigned";
+  return (
+    <label
+      style={{
+        position: "relative",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        fontSize: 12,
+        fontFamily: SANS,
+        color: current ? C.textPrimary : C.textSecondary,
+        background: current ? "#eef2f7" : "transparent",
+        padding: "3px 10px",
+        borderRadius: 10,
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        maxWidth: "100%",
+        overflow: "hidden",
+        textOverflow: "ellipsis",
+      }}
+      title={current ? `Owner: ${label}` : "Assign owner"}
+    >
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+      <select
+        value={value ?? ""}
+        onChange={(e) => {
+          const v = e.target.value;
+          onChange(v === "" ? null : parseInt(v, 10));
+        }}
+        style={{
+          position: "absolute",
+          inset: 0,
+          opacity: 0,
+          cursor: "pointer",
+          width: "100%",
+          height: "100%",
+          border: "none",
+        }}
+      >
+        <option value="">Unassigned</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </label>
   );
 }
 
