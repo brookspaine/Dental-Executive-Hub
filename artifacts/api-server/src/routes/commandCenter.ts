@@ -79,15 +79,22 @@ router.get("/command-center/top3", async (_req, res): Promise<void> => {
 
 router.put("/command-center/top3/:slot", async (req, res): Promise<void> => {
   const slot = z.coerce.number().int().min(1).max(3).safeParse(req.params.slot);
-  const body = z.object({ text: z.string() }).safeParse(req.body);
+  const body = z
+    .object({ text: z.string().optional(), done: z.boolean().optional() })
+    .safeParse(req.body);
   if (!slot.success || !body.success) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
   await ensureTop3Slots();
+  const patch: { text?: string; done?: boolean; date: string } = {
+    date: todayDateString(),
+  };
+  if (body.data.text !== undefined) patch.text = body.data.text;
+  if (body.data.done !== undefined) patch.done = body.data.done;
   const [row] = await db
     .update(ccTop3Table)
-    .set({ text: body.data.text, date: todayDateString() })
+    .set(patch)
     .where(eq(ccTop3Table.slot, slot.data))
     .returning();
   res.json(row);

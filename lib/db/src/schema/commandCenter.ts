@@ -106,6 +106,7 @@ export const ccTop3Table = pgTable(
     id: serial("id").primaryKey(),
     slot: integer("slot").notNull(), // 1, 2, or 3
     text: text("text").notNull().default(""),
+    done: boolean("done").notNull().default(false),
     date: date("date", { mode: "string" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

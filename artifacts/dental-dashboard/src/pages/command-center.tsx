@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 type ParentType = "life_area" | "direct_report" | "project";
 type ProjectStatus = "active" | "on_hold" | "complete";
 
-type Top3Row = { id: number; slot: number; text: string; date: string };
+type Top3Row = { id: number; slot: number; text: string; done: boolean; date: string };
 type DirectReport = { id: number; name: string; sortOrder: number; collapsed: boolean };
 type Project = {
   id: number;
@@ -361,10 +361,18 @@ function Top3Card({ top3, onChange }: { top3: Top3Row[]; onChange: () => void })
             key={idx}
             slot={idx + 1}
             initial={row?.text ?? ""}
+            done={row?.done ?? false}
             onSave={async (text) => {
               await api(`/command-center/top3/${idx + 1}`, {
                 method: "PUT",
                 body: JSON.stringify({ text }),
+              });
+              onChange();
+            }}
+            onToggleDone={async (done) => {
+              await api(`/command-center/top3/${idx + 1}`, {
+                method: "PUT",
+                body: JSON.stringify({ done }),
               });
               onChange();
             }}
@@ -378,22 +386,31 @@ function Top3Card({ top3, onChange }: { top3: Top3Row[]; onChange: () => void })
 function Top3Row({
   slot,
   initial,
+  done,
   onSave,
+  onToggleDone,
 }: {
   slot: number;
   initial: string;
+  done: boolean;
   onSave: (text: string) => Promise<void>;
+  onToggleDone: (done: boolean) => Promise<void>;
 }) {
   const [value, setValue] = useState(initial);
   useEffect(() => setValue(initial), [initial]);
+  const hasText = value.trim().length > 0;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-      <div
+      <button
+        type="button"
+        onClick={() => hasText && onToggleDone(!done)}
+        disabled={!hasText}
+        title={done ? "Mark as not done" : "Mark as done"}
         style={{
           width: 28,
           height: 28,
           borderRadius: "50%",
-          background: C.accent,
+          background: done ? "#1f6a3f" : C.accent,
           color: "#fff",
           display: "flex",
           alignItems: "center",
@@ -402,10 +419,13 @@ function Top3Row({
           fontSize: 14,
           fontWeight: 600,
           flexShrink: 0,
+          border: "none",
+          cursor: hasText ? "pointer" : "default",
+          padding: 0,
         }}
       >
-        {slot}
-      </div>
+        {done ? "✓" : slot}
+      </button>
       <input
         type="text"
         value={value}
@@ -415,7 +435,11 @@ function Top3Row({
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
         }}
         placeholder="What's the one thing…"
-        style={inputStyle}
+        style={{
+          ...inputStyle,
+          textDecoration: done ? "line-through" : "none",
+          color: done ? C.textSecondary : C.textPrimary,
+        }}
       />
     </div>
   );
