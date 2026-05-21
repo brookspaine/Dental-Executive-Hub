@@ -10,6 +10,7 @@ import {
   ccTasksTable,
   ccBrainDumpTable,
   ccTop3Table,
+  futureTodosTable,
 } from "@workspace/db";
 
 const router: IRouter = Router();
@@ -483,11 +484,29 @@ router.delete("/command-center/task-sections/:id", async (req, res): Promise<voi
 /* Brain Dump                                                                 */
 /* -------------------------------------------------------------------------- */
 
-router.get("/command-center/brain-dump", async (_req, res): Promise<void> => {
-  const rows = await db
-    .select()
-    .from(ccBrainDumpTable)
-    .orderBy(desc(ccBrainDumpTable.createdAt));
+const BRAIN_DUMP_FILTERS = ["inbox", "reference", "someday", "processed", "all"] as const;
+
+router.get("/command-center/brain-dump", async (req, res): Promise<void> => {
+  const filter = z
+    .enum(BRAIN_DUMP_FILTERS)
+    .catch("inbox")
+    .parse(req.query.filter ?? "inbox");
+
+  const base = db.select().from(ccBrainDumpTable);
+  const where =
+    filter === "inbox"
+      ? sql`${ccBrainDumpTable.outcome} IS NULL`
+      : filter === "reference"
+        ? eq(ccBrainDumpTable.outcome, "reference")
+        : filter === "someday"
+          ? eq(ccBrainDumpTable.outcome, "someday")
+          : filter === "processed"
+            ? sql`${ccBrainDumpTable.outcome} IS NOT NULL AND ${ccBrainDumpTable.outcome} NOT IN ('reference','someday')`
+            : undefined;
+
+  const rows = await (where ? base.where(where) : base).orderBy(
+    desc(ccBrainDumpTable.createdAt),
+  );
   res.json(rows);
 });
 
@@ -499,6 +518,185 @@ router.post("/command-center/brain-dump", async (req, res): Promise<void> => {
   }
   const [row] = await db.insert(ccBrainDumpTable).values({ text: body.data.text }).returning();
   res.status(201).json(row);
+});
+
+/* GTD process: stamp an outcome + optionally create a routed item.
+   Outcomes that don't create anything: trash, reference, someday, done_now.
+   Outcomes that create a task: delegated (DR), project (project), today (top3 slot), backlog (future_todo). */
+const PROCESS_OUTCOMES = [
+  "trash",
+  "reference",
+  "someday",
+  "done_now",
+  "delegated",
+  "project",
+  "today",
+  "backlog",
+] as const;
+
+router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      outcome: z.enum(PROCESS_OUTCOMES),
+      text: z.string().min(1).optional(),
+      directReportId: z.number().int().optional(),
+      projectId: z.number().int().optional(),
+      ownerDirectReportId: z.number().int().nullable().optional(),
+      dueDate: z.string().nullable().optional(),
+      slot: z.number().int().min(1).max(3).optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+
+  const [entry] = await db
+    .select()
+    .from(ccBrainDumpTable)
+    .where(eq(ccBrainDumpTable.id, id.data));
+  if (!entry) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+
+  const taskText = body.data.text?.trim() || entry.text;
+  let routedTaskId: number | null = null;
+  let routedTaskType: string | null = null;
+
+  if (body.data.outcome === "delegated") {
+    if (body.data.directReportId == null) {
+      res.status(400).json({ error: "directReportId required for delegated outcome" });
+      return;
+    }
+    const [t] = await db
+      .insert(ccTasksTable)
+      .values({
+        parentType: "direct_report",
+        parentId: body.data.directReportId,
+        text: taskText,
+        dueDate: body.data.dueDate ?? null,
+      })
+      .returning();
+    routedTaskId = t.id;
+    routedTaskType = "cc_task";
+  } else if (body.data.outcome === "project") {
+    if (body.data.projectId == null) {
+      res.status(400).json({ error: "projectId required for project outcome" });
+      return;
+    }
+    const [t] = await db
+      .insert(ccTasksTable)
+      .values({
+        parentType: "project",
+        parentId: body.data.projectId,
+        text: taskText,
+        dueDate: body.data.dueDate ?? null,
+        ownerDirectReportId: body.data.ownerDirectReportId ?? null,
+      })
+      .returning();
+    routedTaskId = t.id;
+    routedTaskType = "cc_task";
+  } else if (body.data.outcome === "today") {
+    if (body.data.slot == null) {
+      res.status(400).json({ error: "slot required for today outcome" });
+      return;
+    }
+    // Snapshot the prior slot so undo can restore it
+    const [prior] = await db
+      .select()
+      .from(ccTop3Table)
+      .where(eq(ccTop3Table.slot, body.data.slot));
+    await db
+      .insert(ccTop3Table)
+      .values({ slot: body.data.slot, text: taskText })
+      .onConflictDoUpdate({
+        target: ccTop3Table.slot,
+        set: { text: taskText, done: false },
+      });
+    routedTaskType = "cc_top3";
+    // Stash the slot + previous text/done as JSON for undo
+    await db
+      .update(ccBrainDumpTable)
+      .set({
+        routedSlot: body.data.slot,
+        routedSnapshot: prior
+          ? JSON.stringify({ text: prior.text, done: prior.done })
+          : JSON.stringify({ text: "", done: false }),
+      })
+      .where(eq(ccBrainDumpTable.id, id.data));
+  } else if (body.data.outcome === "backlog") {
+    const [t] = await db
+      .insert(futureTodosTable)
+      .values({ title: taskText, sortOrder: 0 })
+      .returning();
+    routedTaskId = t.id;
+    routedTaskType = "future_todo";
+  }
+
+  const [updated] = await db
+    .update(ccBrainDumpTable)
+    .set({
+      outcome: body.data.outcome,
+      processedAt: new Date(),
+      routedTaskId,
+      routedTaskType,
+    })
+    .where(eq(ccBrainDumpTable.id, id.data))
+    .returning();
+  res.json(updated);
+});
+
+router.post("/command-center/brain-dump/:id/unprocess", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const [entry] = await db
+    .select()
+    .from(ccBrainDumpTable)
+    .where(eq(ccBrainDumpTable.id, id.data));
+  if (!entry) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  // Best-effort: remove the routed item we created
+  if (entry.routedTaskType === "cc_task" && entry.routedTaskId != null) {
+    await db.delete(ccTasksTable).where(eq(ccTasksTable.id, entry.routedTaskId));
+  } else if (entry.routedTaskType === "future_todo" && entry.routedTaskId != null) {
+    await db.delete(futureTodosTable).where(eq(futureTodosTable.id, entry.routedTaskId));
+  } else if (entry.routedTaskType === "cc_top3" && entry.routedSlot != null) {
+    // Restore the prior Big-3 slot from snapshot (or clear if there was none)
+    let snap: { text: string; done: boolean } = { text: "", done: false };
+    if (entry.routedSnapshot) {
+      try {
+        const parsed = JSON.parse(entry.routedSnapshot);
+        if (typeof parsed?.text === "string") snap.text = parsed.text;
+        if (typeof parsed?.done === "boolean") snap.done = parsed.done;
+      } catch {
+        // fall through to defaults
+      }
+    }
+    await db
+      .update(ccTop3Table)
+      .set({ text: snap.text, done: snap.done })
+      .where(eq(ccTop3Table.slot, entry.routedSlot));
+  }
+  const [updated] = await db
+    .update(ccBrainDumpTable)
+    .set({
+      outcome: null,
+      processedAt: null,
+      routedTaskId: null,
+      routedTaskType: null,
+      routedSlot: null,
+      routedSnapshot: null,
+    })
+    .where(eq(ccBrainDumpTable.id, id.data))
+    .returning();
+  res.json(updated);
 });
 
 router.patch("/command-center/brain-dump/:id", async (req, res): Promise<void> => {

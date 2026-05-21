@@ -87,9 +87,19 @@ export const ccTasksTable = pgTable(
 export type CcTask = typeof ccTasksTable.$inferSelect;
 
 /* Brain Dump */
+// outcome values: trash | reference | someday | done_now | delegated | project | today | backlog
+// null = unprocessed (inbox)
 export const ccBrainDumpTable = pgTable("cc_brain_dump", {
   id: serial("id").primaryKey(),
   text: text("text").notNull(),
+  outcome: text("outcome"),
+  processedAt: timestamp("processed_at", { withTimezone: true }),
+  routedTaskId: integer("routed_task_id"),
+  routedTaskType: text("routed_task_type"),
+  // For Big-3 ("today") routing: snapshot of the prior slot so undo can
+  // restore exactly what was overwritten.
+  routedSlot: integer("routed_slot"),
+  routedSnapshot: text("routed_snapshot"),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
