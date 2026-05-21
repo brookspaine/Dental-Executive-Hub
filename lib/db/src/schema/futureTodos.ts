@@ -2,6 +2,7 @@ import { pgTable, text, serial, timestamp, boolean, integer } from "drizzle-orm/
 
 export const futureTodosTable = pgTable("future_todos", {
   id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
   title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),

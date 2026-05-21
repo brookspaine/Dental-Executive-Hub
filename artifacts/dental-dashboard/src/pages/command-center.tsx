@@ -47,6 +47,7 @@ type BrainDumpOutcome =
   | "backlog";
 type BrainDumpEntry = {
   id: number;
+  businessId: number;
   text: string;
   outcome: BrainDumpOutcome | null;
   processedAt: string | null;
@@ -55,6 +56,7 @@ type BrainDumpEntry = {
   createdAt: string;
   updatedAt: string;
 };
+type Business = { id: number; name: string; slug: string; sortOrder: number };
 type BrainDumpFilter = "inbox" | "reference" | "someday" | "processed";
 type Overview = {
   top3: Top3Row[];
@@ -104,10 +106,46 @@ const SANS = 'Inter, -apple-system, system-ui, sans-serif';
 
 const BASE = `${import.meta.env.BASE_URL.replace(/\/$/, "")}/api`;
 
+/* ---- business scope (shared across the whole page) -------------------- */
+const BUSINESS_STORAGE_KEY = "cc-business";
+const BUSINESS_EVENT = "cc-business-changed";
+let currentBusinessId = (() => {
+  try {
+    const raw = localStorage.getItem(BUSINESS_STORAGE_KEY);
+    const n = raw ? parseInt(raw, 10) : NaN;
+    return Number.isFinite(n) && n > 0 ? n : 1;
+  } catch {
+    return 1;
+  }
+})();
+function setCurrentBusinessId(id: number) {
+  if (id === currentBusinessId) return;
+  currentBusinessId = id;
+  try {
+    localStorage.setItem(BUSINESS_STORAGE_KEY, String(id));
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new CustomEvent(BUSINESS_EVENT));
+}
+function useBusiness(): [number, (id: number) => void] {
+  const [id, setId] = useState(currentBusinessId);
+  useEffect(() => {
+    const handler = () => setId(currentBusinessId);
+    window.addEventListener(BUSINESS_EVENT, handler);
+    return () => window.removeEventListener(BUSINESS_EVENT, handler);
+  }, []);
+  return [id, setCurrentBusinessId];
+}
+
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+    headers: {
+      "content-type": "application/json",
+      "x-business-id": String(currentBusinessId),
+      ...(init?.headers ?? {}),
+    },
     ...init,
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
@@ -127,6 +165,11 @@ export function CommandCenter() {
       return "overview";
     }
   });
+  const [businessId, setBusinessId] = useBusiness();
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  useEffect(() => {
+    api<Business[]>("/businesses").then(setBusinesses).catch(() => setBusinesses([]));
+  }, []);
 
   useEffect(() => {
     try {
@@ -192,7 +235,14 @@ export function CommandCenter() {
           >
             Today
           </h1>
-          <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <BusinessPicker
+              businesses={businesses}
+              value={businessId}
+              onChange={setBusinessId}
+            />
+            <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -234,14 +284,169 @@ export function CommandCenter() {
         </div>
       </div>
 
-      {/* Body */}
-      <div style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 80px" }}>
+      {/* Body — keyed by business so all tabs remount & refetch on switch */}
+      <div
+        key={businessId}
+        style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 80px" }}
+      >
         {tab === "overview" && <OverviewTab />}
-        {tab === "direct-reports" && <DirectReportsTab />}
-        {tab === "projects" && <ProjectsTab />}
-        {tab === "life-areas" && <LifeAreasTab />}
-        {tab === "brain-dump" && <BrainDumpTab />}
+        {tab === "direct-reports" && <DirectReportsTab businesses={businesses} />}
+        {tab === "projects" && <ProjectsTab businesses={businesses} />}
+        {tab === "life-areas" && <LifeAreasTab businesses={businesses} />}
+        {tab === "brain-dump" && <BrainDumpTab businesses={businesses} />}
+
       </div>
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* Business picker + per-entity chip                                          */
+/* ========================================================================== */
+
+function BusinessPicker({
+  businesses,
+  value,
+  onChange,
+}: {
+  businesses: Business[];
+  value: number;
+  onChange: (id: number) => void;
+}) {
+  if (businesses.length === 0) return null;
+  return (
+    <div
+      role="tablist"
+      aria-label="Business"
+      style={{
+        display: "inline-flex",
+        background: "rgba(244,241,236,0.08)",
+        border: "1px solid rgba(244,241,236,0.18)",
+        borderRadius: 8,
+        padding: 2,
+      }}
+    >
+      {businesses.map((b) => {
+        const active = b.id === value;
+        return (
+          <button
+            key={b.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(b.id)}
+            style={{
+              background: active ? C.headerText : "transparent",
+              color: active ? C.header : C.headerText,
+              border: "none",
+              borderRadius: 6,
+              padding: "5px 12px",
+              fontFamily: SANS,
+              fontSize: 12,
+              fontWeight: 600,
+              letterSpacing: 0.2,
+              cursor: "pointer",
+              opacity: active ? 1 : 0.75,
+            }}
+          >
+            {b.name}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BusinessChip({
+  businesses,
+  currentId,
+  onChange,
+}: {
+  businesses: Business[];
+  currentId: number;
+  onChange: (id: number) => void | Promise<void>;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  const current = businesses.find((b) => b.id === currentId);
+  return (
+    <div ref={ref} style={{ position: "relative", display: "inline-block" }}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        title="Re-assign to another business"
+        style={{
+          background: "transparent",
+          border: `1px solid ${C.cardBorder}`,
+          color: C.textSecondary,
+          fontFamily: SANS,
+          fontSize: 10,
+          fontWeight: 600,
+          letterSpacing: 0.5,
+          textTransform: "uppercase",
+          padding: "2px 8px",
+          borderRadius: 10,
+          cursor: "pointer",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {current?.name ?? "—"} ▾
+      </button>
+      {open && (
+        <div
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 20,
+            background: C.card,
+            border: `1px solid ${C.cardBorder}`,
+            borderRadius: 6,
+            boxShadow: "0 4px 16px rgba(0,0,0,0.08)",
+            minWidth: 140,
+            padding: 4,
+          }}
+        >
+          {businesses.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={async (e) => {
+                e.stopPropagation();
+                setOpen(false);
+                if (b.id !== currentId) await onChange(b.id);
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                background: b.id === currentId ? C.accentSoft : "transparent",
+                color: b.id === currentId ? C.accent : C.textPrimary,
+                border: "none",
+                borderRadius: 4,
+                padding: "6px 10px",
+                fontFamily: SANS,
+                fontSize: 12,
+                fontWeight: 500,
+                cursor: "pointer",
+              }}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -570,7 +775,7 @@ function labelForParentType(t: ParentType): string {
 /* Direct Reports tab                                                         */
 /* ========================================================================== */
 
-function DirectReportsTab() {
+function DirectReportsTab({ businesses = [] }: { businesses?: Business[] }) {
   const [people, setPeople] = useState<DirectReport[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -607,6 +812,21 @@ function DirectReportsTab() {
           parentId={p.id}
           name={p.name}
           collapsed={p.collapsed}
+          headerRight={
+            businesses.length > 1 ? (
+              <BusinessChip
+                businesses={businesses}
+                currentId={currentBusinessId}
+                onChange={async (newBizId) => {
+                  await api(`/command-center/direct-reports/${p.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ businessId: newBizId }),
+                  });
+                  load();
+                }}
+              />
+            ) : undefined
+          }
           onRename={async (name) => {
             await api(`/command-center/direct-reports/${p.id}`, {
               method: "PATCH",
@@ -653,7 +873,7 @@ const STATUS_CYCLE: Record<ProjectStatus, ProjectStatus> = {
   complete: "active",
 };
 
-function ProjectsTab() {
+function ProjectsTab({ businesses = [] }: { businesses?: Business[] }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -691,34 +911,49 @@ function ProjectsTab() {
           name={p.name}
           collapsed={p.collapsed}
           headerRight={
-            <button
-              type="button"
-              onClick={async (e) => {
-                e.stopPropagation();
-                const next = STATUS_CYCLE[p.status];
-                await api(`/command-center/projects/${p.id}`, {
-                  method: "PATCH",
-                  body: JSON.stringify({ status: next }),
-                });
-                load();
-              }}
-              title="Click to cycle status"
-              style={{
-                background: STATUS_COLORS[p.status],
-                color: "#fff",
-                border: "none",
-                fontFamily: SANS,
-                fontSize: 11,
-                fontWeight: 600,
-                padding: "3px 10px",
-                borderRadius: 10,
-                cursor: "pointer",
-                textTransform: "uppercase",
-                letterSpacing: 0.5,
-              }}
-            >
-              {STATUS_LABELS[p.status]}
-            </button>
+            <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              {businesses.length > 1 && (
+                <BusinessChip
+                  businesses={businesses}
+                  currentId={currentBusinessId}
+                  onChange={async (newBizId) => {
+                    await api(`/command-center/projects/${p.id}`, {
+                      method: "PATCH",
+                      body: JSON.stringify({ businessId: newBizId }),
+                    });
+                    load();
+                  }}
+                />
+              )}
+              <button
+                type="button"
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const next = STATUS_CYCLE[p.status];
+                  await api(`/command-center/projects/${p.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ status: next }),
+                  });
+                  load();
+                }}
+                title="Click to cycle status"
+                style={{
+                  background: STATUS_COLORS[p.status],
+                  color: "#fff",
+                  border: "none",
+                  fontFamily: SANS,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "3px 10px",
+                  borderRadius: 10,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: 0.5,
+                }}
+              >
+                {STATUS_LABELS[p.status]}
+              </button>
+            </div>
           }
           onRename={async (name) => {
             await api(`/command-center/projects/${p.id}`, {
@@ -750,7 +985,7 @@ function ProjectsTab() {
 /* Life Areas tab                                                             */
 /* ========================================================================== */
 
-function LifeAreasTab() {
+function LifeAreasTab({ businesses = [] }: { businesses?: Business[] }) {
   const [areas, setAreas] = useState<LifeArea[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -778,6 +1013,21 @@ function LifeAreasTab() {
           name={a.name}
           collapsed={a.collapsed}
           accentColor={a.accentColor}
+          headerRight={
+            businesses.length > 1 ? (
+              <BusinessChip
+                businesses={businesses}
+                currentId={currentBusinessId}
+                onChange={async (newBizId) => {
+                  await api(`/command-center/life-areas/${a.id}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ businessId: newBizId }),
+                  });
+                  load();
+                }}
+              />
+            ) : undefined
+          }
           onRename={async (name) => {
             await api(`/command-center/life-areas/${a.id}`, {
               method: "PATCH",
@@ -1840,7 +2090,7 @@ const FILTER_LABEL: Record<BrainDumpFilter, string> = {
   processed: "Processed",
 };
 
-function BrainDumpTab() {
+function BrainDumpTab({ businesses = [] }: { businesses?: Business[] }) {
   const [entries, setEntries] = useState<BrainDumpEntry[]>([]);
   const [counts, setCounts] = useState<Record<BrainDumpFilter, number>>({
     inbox: 0,
@@ -2046,6 +2296,8 @@ function BrainDumpTab() {
             editMode={editMode}
             directReports={directReports}
             projects={projects}
+            businesses={businesses}
+            onReload={load}
             onUpdate={async (text) => {
               await api(`/command-center/brain-dump/${e.id}`, {
                 method: "PATCH",
@@ -2090,6 +2342,8 @@ function BrainDumpRow({
   editMode,
   directReports,
   projects,
+  businesses,
+  onReload,
   onUpdate,
   onDelete,
   onProcess,
@@ -2099,6 +2353,8 @@ function BrainDumpRow({
   editMode: boolean;
   directReports: DirectReport[];
   projects: Project[];
+  businesses: Business[];
+  onReload: () => void | Promise<void>;
   onUpdate: (text: string) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
   onProcess: (payload: ProcessPayload) => Promise<void> | void;
@@ -2139,6 +2395,19 @@ function BrainDumpRow({
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 11, color: C.textSecondary, letterSpacing: 0.4 }}>{ts}</span>
+          {businesses.length > 1 && (
+            <BusinessChip
+              businesses={businesses}
+              currentId={entry.businessId}
+              onChange={async (newBizId) => {
+                await api(`/command-center/brain-dump/${entry.id}`, {
+                  method: "PATCH",
+                  body: JSON.stringify({ businessId: newBizId }),
+                });
+                onReload();
+              }}
+            />
+          )}
           {entry.outcome && (
             <span
               style={{

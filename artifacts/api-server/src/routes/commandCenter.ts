@@ -12,7 +12,13 @@ import {
   ccTop3Table,
   futureTodosTable,
 } from "@workspace/db";
+import { getBusinessId } from "../lib/businessScope";
 
+/**
+ * Shared Command Center router. Mounted under both `/command-center`
+ * (with `fromHeader()` middleware) and `/urgent-dental` (with
+ * `fixed(2)` middleware) so the two surfaces share data, scoped by business.
+ */
 const router: IRouter = Router();
 
 /* -------------------------------------------------------------------------- */
@@ -33,7 +39,6 @@ const SEED_LIFE_AREAS = [
 ];
 
 function todayDateString(): string {
-  // YYYY-MM-DD in server local time. Good enough for single-user tool.
   const d = new Date();
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -51,34 +56,101 @@ async function ensureTaskStatusBackfilled(): Promise<void> {
     .where(and(eq(ccTasksTable.done, true), eq(ccTasksTable.status, "not_started")));
 }
 
-async function ensureLifeAreasSeeded(): Promise<void> {
-  const existing = await db.select({ id: ccLifeAreasTable.id }).from(ccLifeAreasTable).limit(1);
-  if (existing.length > 0) return;
-  await db.insert(ccLifeAreasTable).values(SEED_LIFE_AREAS);
+const seededLifeAreasForBusiness = new Set<number>();
+async function ensureLifeAreasSeeded(businessId: number): Promise<void> {
+  if (seededLifeAreasForBusiness.has(businessId)) return;
+  const existing = await db
+    .select({ id: ccLifeAreasTable.id })
+    .from(ccLifeAreasTable)
+    .where(eq(ccLifeAreasTable.businessId, businessId))
+    .limit(1);
+  if (existing.length === 0) {
+    await db
+      .insert(ccLifeAreasTable)
+      .values(SEED_LIFE_AREAS.map((a) => ({ ...a, businessId })));
+  }
+  seededLifeAreasForBusiness.add(businessId);
 }
 
-async function ensureTop3Slots(): Promise<void> {
+async function ensureTop3Slots(businessId: number): Promise<void> {
   const today = todayDateString();
-  // Race-safe seed: rely on the unique index on slot.
   for (const slot of [1, 2, 3]) {
     await db
       .insert(ccTop3Table)
-      .values({ slot, text: "", date: today })
-      .onConflictDoNothing({ target: ccTop3Table.slot });
+      .values({ slot, text: "", date: today, businessId })
+      .onConflictDoNothing({ target: [ccTop3Table.businessId, ccTop3Table.slot] });
   }
+}
+
+/** Verify a parent id belongs to the current business — guards cross-business writes. */
+async function parentInBusiness(
+  parentType: ParentType,
+  parentId: number,
+  businessId: number,
+): Promise<boolean> {
+  const table =
+    parentType === "direct_report"
+      ? ccDirectReportsTable
+      : parentType === "project"
+        ? ccProjectsTable
+        : ccLifeAreasTable;
+  const rows = await db
+    .select({ id: table.id })
+    .from(table)
+    .where(and(eq(table.id, parentId), eq(table.businessId, businessId)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+/** Fetch a task only if its parent belongs to the current business. */
+async function taskInBusiness(taskId: number, businessId: number) {
+  const [row] = await db
+    .select({ task: ccTasksTable })
+    .from(ccTasksTable)
+    .where(eq(ccTasksTable.id, taskId))
+    .limit(1);
+  if (!row) return null;
+  const ok = await parentInBusiness(
+    row.task.parentType as ParentType,
+    row.task.parentId,
+    businessId,
+  );
+  return ok ? row.task : null;
+}
+
+/** Fetch a task section only if its parent belongs to the current business. */
+async function sectionInBusiness(sectionId: number, businessId: number) {
+  const [row] = await db
+    .select({ section: ccTaskSectionsTable })
+    .from(ccTaskSectionsTable)
+    .where(eq(ccTaskSectionsTable.id, sectionId))
+    .limit(1);
+  if (!row) return null;
+  const ok = await parentInBusiness(
+    row.section.parentType as ParentType,
+    row.section.parentId,
+    businessId,
+  );
+  return ok ? row.section : null;
 }
 
 /* -------------------------------------------------------------------------- */
 /* Top 3                                                                      */
 /* -------------------------------------------------------------------------- */
 
-router.get("/command-center/top3", async (_req, res): Promise<void> => {
-  await ensureTop3Slots();
-  const rows = await db.select().from(ccTop3Table).orderBy(asc(ccTop3Table.slot));
+router.get("/top3", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  await ensureTop3Slots(businessId);
+  const rows = await db
+    .select()
+    .from(ccTop3Table)
+    .where(eq(ccTop3Table.businessId, businessId))
+    .orderBy(asc(ccTop3Table.slot));
   res.json(rows);
 });
 
-router.put("/command-center/top3/:slot", async (req, res): Promise<void> => {
+router.put("/top3/:slot", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const slot = z.coerce.number().int().min(1).max(3).safeParse(req.params.slot);
   const body = z
     .object({ text: z.string().optional(), done: z.boolean().optional() })
@@ -87,7 +159,7 @@ router.put("/command-center/top3/:slot", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  await ensureTop3Slots();
+  await ensureTop3Slots(businessId);
   const patch: { text?: string; done?: boolean; date: string } = {
     date: todayDateString(),
   };
@@ -96,7 +168,7 @@ router.put("/command-center/top3/:slot", async (req, res): Promise<void> => {
   const [row] = await db
     .update(ccTop3Table)
     .set(patch)
-    .where(eq(ccTop3Table.slot, slot.data))
+    .where(and(eq(ccTop3Table.slot, slot.data), eq(ccTop3Table.businessId, businessId)))
     .returning();
   res.json(row);
 });
@@ -105,15 +177,18 @@ router.put("/command-center/top3/:slot", async (req, res): Promise<void> => {
 /* Direct Reports                                                             */
 /* -------------------------------------------------------------------------- */
 
-router.get("/command-center/direct-reports", async (_req, res): Promise<void> => {
+router.get("/direct-reports", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const rows = await db
     .select()
     .from(ccDirectReportsTable)
+    .where(eq(ccDirectReportsTable.businessId, businessId))
     .orderBy(asc(ccDirectReportsTable.sortOrder), asc(ccDirectReportsTable.id));
   res.json(rows);
 });
 
-router.post("/command-center/direct-reports", async (req, res): Promise<void> => {
+router.post("/direct-reports", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const body = z.object({ name: z.string().min(1) }).safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: "invalid input" });
@@ -121,15 +196,20 @@ router.post("/command-center/direct-reports", async (req, res): Promise<void> =>
   }
   const [row] = await db
     .insert(ccDirectReportsTable)
-    .values({ name: body.data.name })
+    .values({ name: body.data.name, businessId })
     .returning();
   res.status(201).json(row);
 });
 
-router.patch("/command-center/direct-reports/:id", async (req, res): Promise<void> => {
+router.patch("/direct-reports/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
-    .object({ name: z.string().min(1).optional(), collapsed: z.boolean().optional() })
+    .object({
+      name: z.string().min(1).optional(),
+      collapsed: z.boolean().optional(),
+      businessId: z.number().int().positive().optional(),
+    })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
     res.status(400).json({ error: "invalid input" });
@@ -138,7 +218,9 @@ router.patch("/command-center/direct-reports/:id", async (req, res): Promise<voi
   const [row] = await db
     .update(ccDirectReportsTable)
     .set(body.data)
-    .where(eq(ccDirectReportsTable.id, id.data))
+    .where(
+      and(eq(ccDirectReportsTable.id, id.data), eq(ccDirectReportsTable.businessId, businessId)),
+    )
     .returning();
   if (!row) {
     res.status(404).json({ error: "not found" });
@@ -147,20 +229,39 @@ router.patch("/command-center/direct-reports/:id", async (req, res): Promise<voi
   res.json(row);
 });
 
-router.delete("/command-center/direct-reports/:id", async (req, res): Promise<void> => {
+router.delete("/direct-reports/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  // Guard: only operate if DR belongs to current business
+  const owned = await parentInBusiness("direct_report", id.data, businessId);
+  if (!owned) {
+    res.sendStatus(204);
+    return;
+  }
   await db
     .delete(ccTasksTable)
     .where(and(eq(ccTasksTable.parentType, "direct_report"), eq(ccTasksTable.parentId, id.data)));
-  // Clear ownership references on tasks owned by this DR (e.g. project tasks)
-  await db
-    .update(ccTasksTable)
-    .set({ ownerDirectReportId: null })
-    .where(eq(ccTasksTable.ownerDirectReportId, id.data));
+  // Scope owner-null cleanup to project tasks in this business.
+  const businessProjects = await db
+    .select({ id: ccProjectsTable.id })
+    .from(ccProjectsTable)
+    .where(eq(ccProjectsTable.businessId, businessId));
+  if (businessProjects.length > 0) {
+    await db
+      .update(ccTasksTable)
+      .set({ ownerDirectReportId: null })
+      .where(
+        and(
+          eq(ccTasksTable.ownerDirectReportId, id.data),
+          eq(ccTasksTable.parentType, "project"),
+          inArray(ccTasksTable.parentId, businessProjects.map((p) => p.id)),
+        ),
+      );
+  }
   await db.delete(ccDirectReportsTable).where(eq(ccDirectReportsTable.id, id.data));
   res.sendStatus(204);
 });
@@ -171,15 +272,18 @@ router.delete("/command-center/direct-reports/:id", async (req, res): Promise<vo
 
 const PROJECT_STATUSES = ["active", "on_hold", "complete"] as const;
 
-router.get("/command-center/projects", async (_req, res): Promise<void> => {
+router.get("/projects", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const rows = await db
     .select()
     .from(ccProjectsTable)
+    .where(eq(ccProjectsTable.businessId, businessId))
     .orderBy(asc(ccProjectsTable.sortOrder), asc(ccProjectsTable.id));
   res.json(rows);
 });
 
-router.post("/command-center/projects", async (req, res): Promise<void> => {
+router.post("/projects", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const body = z.object({ name: z.string().min(1) }).safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: "invalid input" });
@@ -187,18 +291,20 @@ router.post("/command-center/projects", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(ccProjectsTable)
-    .values({ name: body.data.name, status: "active" })
+    .values({ name: body.data.name, status: "active", businessId })
     .returning();
   res.status(201).json(row);
 });
 
-router.patch("/command-center/projects/:id", async (req, res): Promise<void> => {
+router.patch("/projects/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
     .object({
       name: z.string().min(1).optional(),
       status: z.enum(PROJECT_STATUSES).optional(),
       collapsed: z.boolean().optional(),
+      businessId: z.number().int().positive().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
@@ -208,7 +314,7 @@ router.patch("/command-center/projects/:id", async (req, res): Promise<void> => 
   const [row] = await db
     .update(ccProjectsTable)
     .set(body.data)
-    .where(eq(ccProjectsTable.id, id.data))
+    .where(and(eq(ccProjectsTable.id, id.data), eq(ccProjectsTable.businessId, businessId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "not found" });
@@ -217,10 +323,16 @@ router.patch("/command-center/projects/:id", async (req, res): Promise<void> => 
   res.json(row);
 });
 
-router.delete("/command-center/projects/:id", async (req, res): Promise<void> => {
+router.delete("/projects/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const owned = await parentInBusiness("project", id.data, businessId);
+  if (!owned) {
+    res.sendStatus(204);
     return;
   }
   await db
@@ -231,22 +343,29 @@ router.delete("/command-center/projects/:id", async (req, res): Promise<void> =>
 });
 
 /* -------------------------------------------------------------------------- */
-/* Life Areas (seeded)                                                        */
+/* Life Areas                                                                 */
 /* -------------------------------------------------------------------------- */
 
-router.get("/command-center/life-areas", async (_req, res): Promise<void> => {
-  await ensureLifeAreasSeeded();
+router.get("/life-areas", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  await ensureLifeAreasSeeded(businessId);
   const rows = await db
     .select()
     .from(ccLifeAreasTable)
+    .where(eq(ccLifeAreasTable.businessId, businessId))
     .orderBy(asc(ccLifeAreasTable.sortOrder), asc(ccLifeAreasTable.id));
   res.json(rows);
 });
 
-router.patch("/command-center/life-areas/:id", async (req, res): Promise<void> => {
+router.patch("/life-areas/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
-    .object({ name: z.string().min(1).optional(), collapsed: z.boolean().optional() })
+    .object({
+      name: z.string().min(1).optional(),
+      collapsed: z.boolean().optional(),
+      businessId: z.number().int().positive().optional(),
+    })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
     res.status(400).json({ error: "invalid input" });
@@ -255,7 +374,7 @@ router.patch("/command-center/life-areas/:id", async (req, res): Promise<void> =
   const [row] = await db
     .update(ccLifeAreasTable)
     .set(body.data)
-    .where(eq(ccLifeAreasTable.id, id.data))
+    .where(and(eq(ccLifeAreasTable.id, id.data), eq(ccLifeAreasTable.businessId, businessId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "not found" });
@@ -265,11 +384,12 @@ router.patch("/command-center/life-areas/:id", async (req, res): Promise<void> =
 });
 
 /* -------------------------------------------------------------------------- */
-/* Tasks                                                                      */
+/* Tasks (business inherited from parent — no business_id column on tasks)    */
 /* -------------------------------------------------------------------------- */
 
-router.get("/command-center/tasks", async (req, res): Promise<void> => {
+router.get("/tasks", async (req, res): Promise<void> => {
   await ensureTaskStatusBackfilled();
+  const businessId = getBusinessId(req);
   const q = z
     .object({
       parentType: z.enum(PARENT_TYPES).optional(),
@@ -280,12 +400,22 @@ router.get("/command-center/tasks", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid query" });
     return;
   }
-  // Special case: a direct report's task list also includes project tasks
-  // they own (ownerDirectReportId === parentId).
-  if (
-    q.data.parentType === "direct_report" &&
-    q.data.parentId !== undefined
-  ) {
+  // If filtering by a specific parent, verify it belongs to this business first.
+  if (q.data.parentType && q.data.parentId !== undefined) {
+    const ok = await parentInBusiness(q.data.parentType, q.data.parentId, businessId);
+    if (!ok) {
+      res.json([]);
+      return;
+    }
+  }
+  // Direct-report tab: tasks owned by parent OR project tasks owned by this person.
+  if (q.data.parentType === "direct_report" && q.data.parentId !== undefined) {
+    // Scope owned project tasks to projects in the current business.
+    const businessProjects = await db
+      .select({ id: ccProjectsTable.id })
+      .from(ccProjectsTable)
+      .where(eq(ccProjectsTable.businessId, businessId));
+    const projectIds = businessProjects.map((p) => p.id);
     const rows = await db
       .select()
       .from(ccTasksTable)
@@ -295,25 +425,54 @@ router.get("/command-center/tasks", async (req, res): Promise<void> => {
             eq(ccTasksTable.parentType, "direct_report"),
             eq(ccTasksTable.parentId, q.data.parentId),
           ),
-          eq(ccTasksTable.ownerDirectReportId, q.data.parentId),
+          projectIds.length
+            ? and(
+                eq(ccTasksTable.ownerDirectReportId, q.data.parentId),
+                eq(ccTasksTable.parentType, "project"),
+                inArray(ccTasksTable.parentId, projectIds),
+              )
+            : sql`false`,
         ),
       )
       .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id));
     res.json(rows);
     return;
   }
+  // General case: business-scope via parent join per parent type.
   const conds = [];
   if (q.data.parentType) conds.push(eq(ccTasksTable.parentType, q.data.parentType));
   if (q.data.parentId !== undefined) conds.push(eq(ccTasksTable.parentId, q.data.parentId));
+  // Restrict to parents in this business across all three parent types.
+  const [drIds, projIds, laIds] = await Promise.all([
+    db.select({ id: ccDirectReportsTable.id }).from(ccDirectReportsTable)
+      .where(eq(ccDirectReportsTable.businessId, businessId)),
+    db.select({ id: ccProjectsTable.id }).from(ccProjectsTable)
+      .where(eq(ccProjectsTable.businessId, businessId)),
+    db.select({ id: ccLifeAreasTable.id }).from(ccLifeAreasTable)
+      .where(eq(ccLifeAreasTable.businessId, businessId)),
+  ]);
+  const businessParentCond = or(
+    drIds.length
+      ? and(eq(ccTasksTable.parentType, "direct_report"), inArray(ccTasksTable.parentId, drIds.map((r) => r.id)))
+      : sql`false`,
+    projIds.length
+      ? and(eq(ccTasksTable.parentType, "project"), inArray(ccTasksTable.parentId, projIds.map((r) => r.id)))
+      : sql`false`,
+    laIds.length
+      ? and(eq(ccTasksTable.parentType, "life_area"), inArray(ccTasksTable.parentId, laIds.map((r) => r.id)))
+      : sql`false`,
+  );
+  conds.push(businessParentCond);
   const rows = await db
     .select()
     .from(ccTasksTable)
-    .where(conds.length ? and(...conds) : undefined)
+    .where(and(...conds))
     .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id));
   res.json(rows);
 });
 
-router.post("/command-center/tasks", async (req, res): Promise<void> => {
+router.post("/tasks", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const body = z
     .object({
       parentType: z.enum(PARENT_TYPES),
@@ -329,6 +488,12 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  // Cross-business guard: only allow attaching tasks to a parent in the current business.
+  const ok = await parentInBusiness(body.data.parentType, body.data.parentId, businessId);
+  if (!ok) {
+    res.status(403).json({ error: "parent not in current business" });
+    return;
+  }
   const insertData = {
     ...body.data,
     done:
@@ -342,7 +507,8 @@ router.post("/command-center/tasks", async (req, res): Promise<void> => {
   res.status(201).json(row);
 });
 
-router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
+router.patch("/tasks/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
     .object({
@@ -358,6 +524,27 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  const existing = await taskInBusiness(id.data, businessId);
+  if (!existing) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  // Guard cross-business owner reassignment.
+  if (body.data.ownerDirectReportId != null) {
+    const ok = await parentInBusiness("direct_report", body.data.ownerDirectReportId, businessId);
+    if (!ok) {
+      res.status(403).json({ error: "owner not in current business" });
+      return;
+    }
+  }
+  // Guard cross-business section reassignment.
+  if (body.data.sectionId != null) {
+    const sec = await sectionInBusiness(body.data.sectionId, businessId);
+    if (!sec) {
+      res.status(403).json({ error: "section not in current business" });
+      return;
+    }
+  }
   const patch: Record<string, unknown> = { ...body.data };
   if (patch.status === "completed") patch.done = true;
   else if (patch.status !== undefined) patch.done = false;
@@ -368,17 +555,19 @@ router.patch("/command-center/tasks/:id", async (req, res): Promise<void> => {
     .set(patch)
     .where(eq(ccTasksTable.id, id.data))
     .returning();
-  if (!row) {
-    res.status(404).json({ error: "not found" });
-    return;
-  }
   res.json(row);
 });
 
-router.delete("/command-center/tasks/:id", async (req, res): Promise<void> => {
+router.delete("/tasks/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const existing = await taskInBusiness(id.data, businessId);
+  if (!existing) {
+    res.sendStatus(204);
     return;
   }
   await db.delete(ccTasksTable).where(eq(ccTasksTable.id, id.data));
@@ -389,7 +578,8 @@ router.delete("/command-center/tasks/:id", async (req, res): Promise<void> => {
 /* Task Sections                                                              */
 /* -------------------------------------------------------------------------- */
 
-router.get("/command-center/task-sections", async (req, res): Promise<void> => {
+router.get("/task-sections", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const q = z
     .object({
       parentType: z.enum(PARENT_TYPES).optional(),
@@ -400,18 +590,48 @@ router.get("/command-center/task-sections", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid query" });
     return;
   }
+  if (q.data.parentType && q.data.parentId !== undefined) {
+    const ok = await parentInBusiness(q.data.parentType, q.data.parentId, businessId);
+    if (!ok) {
+      res.json([]);
+      return;
+    }
+  }
   const conds = [];
   if (q.data.parentType) conds.push(eq(ccTaskSectionsTable.parentType, q.data.parentType));
   if (q.data.parentId !== undefined) conds.push(eq(ccTaskSectionsTable.parentId, q.data.parentId));
+  // Always restrict to parents in this business.
+  const [drIds, projIds, laIds] = await Promise.all([
+    db.select({ id: ccDirectReportsTable.id }).from(ccDirectReportsTable)
+      .where(eq(ccDirectReportsTable.businessId, businessId)),
+    db.select({ id: ccProjectsTable.id }).from(ccProjectsTable)
+      .where(eq(ccProjectsTable.businessId, businessId)),
+    db.select({ id: ccLifeAreasTable.id }).from(ccLifeAreasTable)
+      .where(eq(ccLifeAreasTable.businessId, businessId)),
+  ]);
+  conds.push(
+    or(
+      drIds.length
+        ? and(eq(ccTaskSectionsTable.parentType, "direct_report"), inArray(ccTaskSectionsTable.parentId, drIds.map((r) => r.id)))
+        : sql`false`,
+      projIds.length
+        ? and(eq(ccTaskSectionsTable.parentType, "project"), inArray(ccTaskSectionsTable.parentId, projIds.map((r) => r.id)))
+        : sql`false`,
+      laIds.length
+        ? and(eq(ccTaskSectionsTable.parentType, "life_area"), inArray(ccTaskSectionsTable.parentId, laIds.map((r) => r.id)))
+        : sql`false`,
+    ),
+  );
   const rows = await db
     .select()
     .from(ccTaskSectionsTable)
-    .where(conds.length ? and(...conds) : undefined)
+    .where(and(...conds))
     .orderBy(asc(ccTaskSectionsTable.sortOrder), asc(ccTaskSectionsTable.id));
   res.json(rows);
 });
 
-router.post("/command-center/task-sections", async (req, res): Promise<void> => {
+router.post("/task-sections", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const body = z
     .object({
       parentType: z.enum(PARENT_TYPES),
@@ -423,7 +643,11 @@ router.post("/command-center/task-sections", async (req, res): Promise<void> => 
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  // Place new sections at the end.
+  const ok = await parentInBusiness(body.data.parentType, body.data.parentId, businessId);
+  if (!ok) {
+    res.status(403).json({ error: "parent not in current business" });
+    return;
+  }
   const [{ maxOrder }] = await db
     .select({ maxOrder: sql<number>`coalesce(max(${ccTaskSectionsTable.sortOrder}), -1)` })
     .from(ccTaskSectionsTable)
@@ -440,7 +664,8 @@ router.post("/command-center/task-sections", async (req, res): Promise<void> => 
   res.status(201).json(row);
 });
 
-router.patch("/command-center/task-sections/:id", async (req, res): Promise<void> => {
+router.patch("/task-sections/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
     .object({
@@ -453,25 +678,31 @@ router.patch("/command-center/task-sections/:id", async (req, res): Promise<void
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  const existing = await sectionInBusiness(id.data, businessId);
+  if (!existing) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
   const [row] = await db
     .update(ccTaskSectionsTable)
     .set(body.data)
     .where(eq(ccTaskSectionsTable.id, id.data))
     .returning();
-  if (!row) {
-    res.status(404).json({ error: "not found" });
-    return;
-  }
   res.json(row);
 });
 
-router.delete("/command-center/task-sections/:id", async (req, res): Promise<void> => {
+router.delete("/task-sections/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  // Detach tasks (move to Untitled) rather than deleting them.
+  const existing = await sectionInBusiness(id.data, businessId);
+  if (!existing) {
+    res.sendStatus(204);
+    return;
+  }
   await db
     .update(ccTasksTable)
     .set({ sectionId: null })
@@ -486,14 +717,15 @@ router.delete("/command-center/task-sections/:id", async (req, res): Promise<voi
 
 const BRAIN_DUMP_FILTERS = ["inbox", "reference", "someday", "processed", "all"] as const;
 
-router.get("/command-center/brain-dump", async (req, res): Promise<void> => {
+router.get("/brain-dump", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const filter = z
     .enum(BRAIN_DUMP_FILTERS)
     .catch("inbox")
     .parse(req.query.filter ?? "inbox");
 
-  const base = db.select().from(ccBrainDumpTable);
-  const where =
+  const businessCond = eq(ccBrainDumpTable.businessId, businessId);
+  const filterCond =
     filter === "inbox"
       ? sql`${ccBrainDumpTable.outcome} IS NULL`
       : filter === "reference"
@@ -504,25 +736,30 @@ router.get("/command-center/brain-dump", async (req, res): Promise<void> => {
             ? sql`${ccBrainDumpTable.outcome} IS NOT NULL AND ${ccBrainDumpTable.outcome} NOT IN ('reference','someday')`
             : undefined;
 
-  const rows = await (where ? base.where(where) : base).orderBy(
-    desc(ccBrainDumpTable.createdAt),
-  );
+  const where = filterCond ? and(businessCond, filterCond) : businessCond;
+
+  const rows = await db
+    .select()
+    .from(ccBrainDumpTable)
+    .where(where)
+    .orderBy(desc(ccBrainDumpTable.createdAt));
   res.json(rows);
 });
 
-router.post("/command-center/brain-dump", async (req, res): Promise<void> => {
+router.post("/brain-dump", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const body = z.object({ text: z.string().min(1) }).safeParse(req.body);
   if (!body.success) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  const [row] = await db.insert(ccBrainDumpTable).values({ text: body.data.text }).returning();
+  const [row] = await db
+    .insert(ccBrainDumpTable)
+    .values({ text: body.data.text, businessId })
+    .returning();
   res.status(201).json(row);
 });
 
-/* GTD process: stamp an outcome + optionally create a routed item.
-   Outcomes that don't create anything: trash, reference, someday, done_now.
-   Outcomes that create a task: delegated (DR), project (project), today (top3 slot), backlog (future_todo). */
 const PROCESS_OUTCOMES = [
   "trash",
   "reference",
@@ -534,7 +771,8 @@ const PROCESS_OUTCOMES = [
   "backlog",
 ] as const;
 
-router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<void> => {
+router.post("/brain-dump/:id/process", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
     .object({
@@ -555,7 +793,7 @@ router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<
   const [entry] = await db
     .select()
     .from(ccBrainDumpTable)
-    .where(eq(ccBrainDumpTable.id, id.data));
+    .where(and(eq(ccBrainDumpTable.id, id.data), eq(ccBrainDumpTable.businessId, businessId)));
   if (!entry) {
     res.status(404).json({ error: "not found" });
     return;
@@ -568,6 +806,11 @@ router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<
   if (body.data.outcome === "delegated") {
     if (body.data.directReportId == null) {
       res.status(400).json({ error: "directReportId required for delegated outcome" });
+      return;
+    }
+    const drOk = await parentInBusiness("direct_report", body.data.directReportId, businessId);
+    if (!drOk) {
+      res.status(403).json({ error: "direct report not in current business" });
       return;
     }
     const [t] = await db
@@ -586,6 +829,22 @@ router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<
       res.status(400).json({ error: "projectId required for project outcome" });
       return;
     }
+    const projOk = await parentInBusiness("project", body.data.projectId, businessId);
+    if (!projOk) {
+      res.status(403).json({ error: "project not in current business" });
+      return;
+    }
+    if (body.data.ownerDirectReportId != null) {
+      const ownerOk = await parentInBusiness(
+        "direct_report",
+        body.data.ownerDirectReportId,
+        businessId,
+      );
+      if (!ownerOk) {
+        res.status(403).json({ error: "owner not in current business" });
+        return;
+      }
+    }
     const [t] = await db
       .insert(ccTasksTable)
       .values({
@@ -603,20 +862,20 @@ router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<
       res.status(400).json({ error: "slot required for today outcome" });
       return;
     }
-    // Snapshot the prior slot so undo can restore it
     const [prior] = await db
       .select()
       .from(ccTop3Table)
-      .where(eq(ccTop3Table.slot, body.data.slot));
+      .where(
+        and(eq(ccTop3Table.slot, body.data.slot), eq(ccTop3Table.businessId, businessId)),
+      );
     await db
       .insert(ccTop3Table)
-      .values({ slot: body.data.slot, text: taskText })
+      .values({ slot: body.data.slot, text: taskText, businessId })
       .onConflictDoUpdate({
-        target: ccTop3Table.slot,
+        target: [ccTop3Table.businessId, ccTop3Table.slot],
         set: { text: taskText, done: false },
       });
     routedTaskType = "cc_top3";
-    // Stash the slot + previous text/done as JSON for undo
     await db
       .update(ccBrainDumpTable)
       .set({
@@ -629,7 +888,7 @@ router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<
   } else if (body.data.outcome === "backlog") {
     const [t] = await db
       .insert(futureTodosTable)
-      .values({ title: taskText, sortOrder: 0 })
+      .values({ title: taskText, sortOrder: 0, businessId })
       .returning();
     routedTaskId = t.id;
     routedTaskType = "future_todo";
@@ -648,7 +907,8 @@ router.post("/command-center/brain-dump/:id/process", async (req, res): Promise<
   res.json(updated);
 });
 
-router.post("/command-center/brain-dump/:id/unprocess", async (req, res): Promise<void> => {
+router.post("/brain-dump/:id/unprocess", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ error: "invalid input" });
@@ -657,18 +917,28 @@ router.post("/command-center/brain-dump/:id/unprocess", async (req, res): Promis
   const [entry] = await db
     .select()
     .from(ccBrainDumpTable)
-    .where(eq(ccBrainDumpTable.id, id.data));
+    .where(and(eq(ccBrainDumpTable.id, id.data), eq(ccBrainDumpTable.businessId, businessId)));
   if (!entry) {
     res.status(404).json({ error: "not found" });
     return;
   }
-  // Best-effort: remove the routed item we created
   if (entry.routedTaskType === "cc_task" && entry.routedTaskId != null) {
-    await db.delete(ccTasksTable).where(eq(ccTasksTable.id, entry.routedTaskId));
+    // Only delete the routed task if its parent still belongs to this business
+    // (guards against deleting another business's data after re-tagging).
+    const routed = await taskInBusiness(entry.routedTaskId, businessId);
+    if (routed) {
+      await db.delete(ccTasksTable).where(eq(ccTasksTable.id, entry.routedTaskId));
+    }
   } else if (entry.routedTaskType === "future_todo" && entry.routedTaskId != null) {
-    await db.delete(futureTodosTable).where(eq(futureTodosTable.id, entry.routedTaskId));
+    await db
+      .delete(futureTodosTable)
+      .where(
+        and(
+          eq(futureTodosTable.id, entry.routedTaskId),
+          eq(futureTodosTable.businessId, businessId),
+        ),
+      );
   } else if (entry.routedTaskType === "cc_top3" && entry.routedSlot != null) {
-    // Restore the prior Big-3 slot from snapshot (or clear if there was none)
     let snap: { text: string; done: boolean } = { text: "", done: false };
     if (entry.routedSnapshot) {
       try {
@@ -676,13 +946,15 @@ router.post("/command-center/brain-dump/:id/unprocess", async (req, res): Promis
         if (typeof parsed?.text === "string") snap.text = parsed.text;
         if (typeof parsed?.done === "boolean") snap.done = parsed.done;
       } catch {
-        // fall through to defaults
+        /* keep defaults */
       }
     }
     await db
       .update(ccTop3Table)
       .set({ text: snap.text, done: snap.done })
-      .where(eq(ccTop3Table.slot, entry.routedSlot));
+      .where(
+        and(eq(ccTop3Table.slot, entry.routedSlot), eq(ccTop3Table.businessId, businessId)),
+      );
   }
   const [updated] = await db
     .update(ccBrainDumpTable)
@@ -699,17 +971,23 @@ router.post("/command-center/brain-dump/:id/unprocess", async (req, res): Promis
   res.json(updated);
 });
 
-router.patch("/command-center/brain-dump/:id", async (req, res): Promise<void> => {
+router.patch("/brain-dump/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
-  const body = z.object({ text: z.string().min(1) }).safeParse(req.body);
-  if (!id.success || !body.success) {
+  const body = z
+    .object({
+      text: z.string().min(1).optional(),
+      businessId: z.number().int().positive().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success || Object.keys(body.data).length === 0) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
   const [row] = await db
     .update(ccBrainDumpTable)
     .set(body.data)
-    .where(eq(ccBrainDumpTable.id, id.data))
+    .where(and(eq(ccBrainDumpTable.id, id.data), eq(ccBrainDumpTable.businessId, businessId)))
     .returning();
   if (!row) {
     res.status(404).json({ error: "not found" });
@@ -718,18 +996,21 @@ router.patch("/command-center/brain-dump/:id", async (req, res): Promise<void> =
   res.json(row);
 });
 
-router.delete("/command-center/brain-dump/:id", async (req, res): Promise<void> => {
+router.delete("/brain-dump/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
   if (!id.success) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  await db.delete(ccBrainDumpTable).where(eq(ccBrainDumpTable.id, id.data));
+  await db
+    .delete(ccBrainDumpTable)
+    .where(and(eq(ccBrainDumpTable.id, id.data), eq(ccBrainDumpTable.businessId, businessId)));
   res.sendStatus(204);
 });
 
 /* -------------------------------------------------------------------------- */
-/* Overview (stats + snapshot)                                                */
+/* Overview                                                                   */
 /* -------------------------------------------------------------------------- */
 
 type SnapshotGroup = {
@@ -739,25 +1020,64 @@ type SnapshotGroup = {
   tasks: Array<{ id: number; text: string }>;
 };
 
-router.get("/command-center/overview", async (_req, res): Promise<void> => {
-  await ensureLifeAreasSeeded();
-  await ensureTop3Slots();
+router.get("/overview", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  await ensureLifeAreasSeeded(businessId);
+  await ensureTop3Slots(businessId);
 
-  const [top3, lifeAreas, directReports, projects, brainDumpCountRow, openTasks] =
-    await Promise.all([
-      db.select().from(ccTop3Table).orderBy(asc(ccTop3Table.slot)),
-      db.select().from(ccLifeAreasTable).orderBy(asc(ccLifeAreasTable.sortOrder)),
-      db.select().from(ccDirectReportsTable).orderBy(asc(ccDirectReportsTable.sortOrder)),
-      db.select().from(ccProjectsTable).orderBy(asc(ccProjectsTable.sortOrder)),
-      db
-        .select({ count: sql<number>`count(*)::int` })
-        .from(ccBrainDumpTable),
-      db
-        .select()
-        .from(ccTasksTable)
-        .where(eq(ccTasksTable.done, false))
-        .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id)),
-    ]);
+  const [top3, lifeAreas, directReports, projects, brainDumpCountRow] = await Promise.all([
+    db
+      .select()
+      .from(ccTop3Table)
+      .where(eq(ccTop3Table.businessId, businessId))
+      .orderBy(asc(ccTop3Table.slot)),
+    db
+      .select()
+      .from(ccLifeAreasTable)
+      .where(eq(ccLifeAreasTable.businessId, businessId))
+      .orderBy(asc(ccLifeAreasTable.sortOrder)),
+    db
+      .select()
+      .from(ccDirectReportsTable)
+      .where(eq(ccDirectReportsTable.businessId, businessId))
+      .orderBy(asc(ccDirectReportsTable.sortOrder)),
+    db
+      .select()
+      .from(ccProjectsTable)
+      .where(eq(ccProjectsTable.businessId, businessId))
+      .orderBy(asc(ccProjectsTable.sortOrder)),
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(ccBrainDumpTable)
+      .where(eq(ccBrainDumpTable.businessId, businessId)),
+  ]);
+
+  // Now fetch only tasks belonging to in-business parents.
+  const parentKeys: Array<{ type: ParentType; ids: number[] }> = [
+    { type: "life_area", ids: lifeAreas.map((x) => x.id) },
+    { type: "direct_report", ids: directReports.map((x) => x.id) },
+    { type: "project", ids: projects.map((x) => x.id) },
+  ];
+
+  let openTasks: Array<typeof ccTasksTable.$inferSelect> = [];
+  const orConds = parentKeys
+    .filter((k) => k.ids.length > 0)
+    .map((k) =>
+      and(
+        eq(ccTasksTable.parentType, k.type),
+        sql`${ccTasksTable.parentId} IN (${sql.join(
+          k.ids.map((id) => sql`${id}`),
+          sql`, `,
+        )})`,
+      ),
+    );
+  if (orConds.length > 0) {
+    openTasks = await db
+      .select()
+      .from(ccTasksTable)
+      .where(and(eq(ccTasksTable.done, false), or(...orConds)))
+      .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id));
+  }
 
   const counts = { life_area: 0, direct_report: 0, project: 0 } as Record<ParentType, number>;
   for (const t of openTasks) {
@@ -769,7 +1089,6 @@ router.get("/command-center/overview", async (_req, res): Promise<void> => {
   for (const x of directReports) nameLookup.set(`direct_report:${x.id}`, x.name);
   for (const x of projects) nameLookup.set(`project:${x.id}`, x.name);
 
-  // Snapshot: up to 2 open tasks per (parentType, parentId)
   const grouped = new Map<string, SnapshotGroup>();
   for (const t of openTasks) {
     const key = `${t.parentType}:${t.parentId}`;

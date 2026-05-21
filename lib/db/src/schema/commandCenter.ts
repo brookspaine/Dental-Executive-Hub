@@ -12,6 +12,7 @@ import {
 /* Direct Reports (people) */
 export const ccDirectReportsTable = pgTable("cc_direct_reports", {
   id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   collapsed: boolean("collapsed").notNull().default(false),
@@ -24,6 +25,7 @@ export type CcDirectReport = typeof ccDirectReportsTable.$inferSelect;
 /* Projects */
 export const ccProjectsTable = pgTable("cc_projects", {
   id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
   name: text("name").notNull(),
   status: text("status").notNull().default("active"), // active | on_hold | complete
   sortOrder: integer("sort_order").notNull().default(0),
@@ -37,6 +39,7 @@ export type CcProject = typeof ccProjectsTable.$inferSelect;
 /* Life Areas (seeded) */
 export const ccLifeAreasTable = pgTable("cc_life_areas", {
   id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
   name: text("name").notNull(),
   accentColor: text("accent_color").notNull().default("#8a9a5b"),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -50,7 +53,7 @@ export type CcLifeArea = typeof ccLifeAreasTable.$inferSelect;
 /* Task sections — Asana-style named groups within a parent */
 export const ccTaskSectionsTable = pgTable("cc_task_sections", {
   id: serial("id").primaryKey(),
-  parentType: text("parent_type").notNull(), // life_area | direct_report | project
+  parentType: text("parent_type").notNull(),
   parentId: integer("parent_id").notNull(),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
@@ -61,18 +64,18 @@ export const ccTaskSectionsTable = pgTable("cc_task_sections", {
 });
 export type CcTaskSection = typeof ccTaskSectionsTable.$inferSelect;
 
-/* Tasks (polymorphic parent) */
+/* Tasks (polymorphic parent — business inherited from parent container) */
 export const ccTasksTable = pgTable(
   "cc_tasks",
   {
     id: serial("id").primaryKey(),
-    parentType: text("parent_type").notNull(), // life_area | direct_report | project
+    parentType: text("parent_type").notNull(),
     parentId: integer("parent_id").notNull(),
     sectionId: integer("section_id"),
     ownerDirectReportId: integer("owner_direct_report_id"),
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
-    status: text("status").notNull().default("not_started"), // not_started | in_progress | completed
+    status: text("status").notNull().default("not_started"),
     dueDate: date("due_date", { mode: "string" }),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
@@ -86,18 +89,15 @@ export const ccTasksTable = pgTable(
 );
 export type CcTask = typeof ccTasksTable.$inferSelect;
 
-/* Brain Dump */
-// outcome values: trash | reference | someday | done_now | delegated | project | today | backlog
-// null = unprocessed (inbox)
+/* Brain Dump — each entry tagged with the business in scope when captured */
 export const ccBrainDumpTable = pgTable("cc_brain_dump", {
   id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
   text: text("text").notNull(),
   outcome: text("outcome"),
   processedAt: timestamp("processed_at", { withTimezone: true }),
   routedTaskId: integer("routed_task_id"),
   routedTaskType: text("routed_task_type"),
-  // For Big-3 ("today") routing: snapshot of the prior slot so undo can
-  // restore exactly what was overwritten.
   routedSlot: integer("routed_slot"),
   routedSnapshot: text("routed_snapshot"),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -110,12 +110,13 @@ export const ccBrainDumpTable = pgTable("cc_brain_dump", {
 });
 export type CcBrainDump = typeof ccBrainDumpTable.$inferSelect;
 
-/* Today's Top 3 — 3 fixed slots, reset when date rolls over */
+/* Today's Top 3 — 3 fixed slots per business */
 export const ccTop3Table = pgTable(
   "cc_top3",
   {
     id: serial("id").primaryKey(),
-    slot: integer("slot").notNull(), // 1, 2, or 3
+    businessId: integer("business_id").notNull(),
+    slot: integer("slot").notNull(),
     text: text("text").notNull().default(""),
     done: boolean("done").notNull().default(false),
     date: date("date", { mode: "string" }).notNull().defaultNow(),
@@ -125,7 +126,10 @@ export const ccTop3Table = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => ({
-    slotUnique: uniqueIndex("cc_top3_slot_unique").on(t.slot),
+    businessSlotUnique: uniqueIndex("cc_top3_business_slot_unique").on(
+      t.businessId,
+      t.slot,
+    ),
   }),
 );
 export type CcTop3 = typeof ccTop3Table.$inferSelect;
