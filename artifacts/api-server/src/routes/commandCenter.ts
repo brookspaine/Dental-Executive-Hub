@@ -88,16 +88,19 @@ async function parentInBusiness(
   parentId: number,
   businessId: number,
 ): Promise<boolean> {
-  const table =
-    parentType === "direct_report"
-      ? ccDirectReportsTable
-      : parentType === "project"
-        ? ccProjectsTable
-        : ccLifeAreasTable;
+  if (parentType === "life_area") {
+    const rows = await db
+      .select({ id: ccLifeAreasTable.id })
+      .from(ccLifeAreasTable)
+      .where(and(eq(ccLifeAreasTable.id, parentId), eq(ccLifeAreasTable.businessId, businessId)))
+      .limit(1);
+    return rows.length > 0;
+  }
+  const table = parentType === "direct_report" ? ccDirectReportsTable : ccProjectsTable;
   const rows = await db
     .select({ id: table.id })
     .from(table)
-    .where(and(eq(table.id, parentId), eq(table.businessId, businessId)))
+    .where(and(eq(table.id, parentId), sql`${businessId} = ANY(${table.businessIds})`))
     .limit(1);
   return rows.length > 0;
 }
@@ -182,7 +185,7 @@ router.get("/direct-reports", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(ccDirectReportsTable)
-    .where(eq(ccDirectReportsTable.businessId, businessId))
+    .where(sql`${businessId} = ANY(${ccDirectReportsTable.businessIds})`)
     .orderBy(asc(ccDirectReportsTable.sortOrder), asc(ccDirectReportsTable.id));
   res.json(rows);
 });
@@ -196,7 +199,7 @@ router.post("/direct-reports", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(ccDirectReportsTable)
-    .values({ name: body.data.name, businessId })
+    .values({ name: body.data.name, businessIds: [businessId] })
     .returning();
   res.status(201).json(row);
 });
@@ -208,18 +211,23 @@ router.patch("/direct-reports/:id", async (req, res): Promise<void> => {
     .object({
       name: z.string().min(1).optional(),
       collapsed: z.boolean().optional(),
-      businessId: z.number().int().positive().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  // Note: business membership (business_ids) is intentionally NOT mutable
+  // via this endpoint — allowing arbitrary retagging would let any caller
+  // in one business move a shared entity into another business.
   const [row] = await db
     .update(ccDirectReportsTable)
     .set(body.data)
     .where(
-      and(eq(ccDirectReportsTable.id, id.data), eq(ccDirectReportsTable.businessId, businessId)),
+      and(
+        eq(ccDirectReportsTable.id, id.data),
+        sql`${businessId} = ANY(${ccDirectReportsTable.businessIds})`,
+      ),
     )
     .returning();
   if (!row) {
@@ -237,31 +245,41 @@ router.delete("/direct-reports/:id", async (req, res): Promise<void> => {
     return;
   }
   // Guard: only operate if DR belongs to current business
-  const owned = await parentInBusiness("direct_report", id.data, businessId);
-  if (!owned) {
+  const [dr] = await db
+    .select()
+    .from(ccDirectReportsTable)
+    .where(
+      and(
+        eq(ccDirectReportsTable.id, id.data),
+        sql`${businessId} = ANY(${ccDirectReportsTable.businessIds})`,
+      ),
+    )
+    .limit(1);
+  if (!dr) {
     res.sendStatus(204);
     return;
   }
+  // If this DR is shared with other businesses, only un-tag the current
+  // business — the entity (and its tasks) stays alive for the other(s).
+  if (dr.businessIds.length > 1) {
+    const remaining = dr.businessIds.filter((b) => b !== businessId);
+    await db
+      .update(ccDirectReportsTable)
+      .set({ businessIds: remaining })
+      .where(eq(ccDirectReportsTable.id, id.data));
+    res.sendStatus(204);
+    return;
+  }
+  // Sole-owner business — hard delete DR + its tasks. Also null out any
+  // project tasks (in any business) that named this DR as owner, since
+  // the referent is going away globally.
   await db
     .delete(ccTasksTable)
     .where(and(eq(ccTasksTable.parentType, "direct_report"), eq(ccTasksTable.parentId, id.data)));
-  // Scope owner-null cleanup to project tasks in this business.
-  const businessProjects = await db
-    .select({ id: ccProjectsTable.id })
-    .from(ccProjectsTable)
-    .where(eq(ccProjectsTable.businessId, businessId));
-  if (businessProjects.length > 0) {
-    await db
-      .update(ccTasksTable)
-      .set({ ownerDirectReportId: null })
-      .where(
-        and(
-          eq(ccTasksTable.ownerDirectReportId, id.data),
-          eq(ccTasksTable.parentType, "project"),
-          inArray(ccTasksTable.parentId, businessProjects.map((p) => p.id)),
-        ),
-      );
-  }
+  await db
+    .update(ccTasksTable)
+    .set({ ownerDirectReportId: null })
+    .where(eq(ccTasksTable.ownerDirectReportId, id.data));
   await db.delete(ccDirectReportsTable).where(eq(ccDirectReportsTable.id, id.data));
   res.sendStatus(204);
 });
@@ -277,7 +295,7 @@ router.get("/projects", async (req, res): Promise<void> => {
   const rows = await db
     .select()
     .from(ccProjectsTable)
-    .where(eq(ccProjectsTable.businessId, businessId))
+    .where(sql`${businessId} = ANY(${ccProjectsTable.businessIds})`)
     .orderBy(asc(ccProjectsTable.sortOrder), asc(ccProjectsTable.id));
   res.json(rows);
 });
@@ -291,7 +309,7 @@ router.post("/projects", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(ccProjectsTable)
-    .values({ name: body.data.name, status: "active", businessId })
+    .values({ name: body.data.name, status: "active", businessIds: [businessId] })
     .returning();
   res.status(201).json(row);
 });
@@ -304,17 +322,22 @@ router.patch("/projects/:id", async (req, res): Promise<void> => {
       name: z.string().min(1).optional(),
       status: z.enum(PROJECT_STATUSES).optional(),
       collapsed: z.boolean().optional(),
-      businessId: z.number().int().positive().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  // See PATCH /direct-reports — business membership is not mutable here.
   const [row] = await db
     .update(ccProjectsTable)
     .set(body.data)
-    .where(and(eq(ccProjectsTable.id, id.data), eq(ccProjectsTable.businessId, businessId)))
+    .where(
+      and(
+        eq(ccProjectsTable.id, id.data),
+        sql`${businessId} = ANY(${ccProjectsTable.businessIds})`,
+      ),
+    )
     .returning();
   if (!row) {
     res.status(404).json({ error: "not found" });
@@ -330,8 +353,27 @@ router.delete("/projects/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  const owned = await parentInBusiness("project", id.data, businessId);
-  if (!owned) {
+  const [proj] = await db
+    .select()
+    .from(ccProjectsTable)
+    .where(
+      and(
+        eq(ccProjectsTable.id, id.data),
+        sql`${businessId} = ANY(${ccProjectsTable.businessIds})`,
+      ),
+    )
+    .limit(1);
+  if (!proj) {
+    res.sendStatus(204);
+    return;
+  }
+  // Shared project: un-tag this business, keep entity alive elsewhere.
+  if (proj.businessIds.length > 1) {
+    const remaining = proj.businessIds.filter((b) => b !== businessId);
+    await db
+      .update(ccProjectsTable)
+      .set({ businessIds: remaining })
+      .where(eq(ccProjectsTable.id, id.data));
     res.sendStatus(204);
     return;
   }
@@ -414,7 +456,7 @@ router.get("/tasks", async (req, res): Promise<void> => {
     const businessProjects = await db
       .select({ id: ccProjectsTable.id })
       .from(ccProjectsTable)
-      .where(eq(ccProjectsTable.businessId, businessId));
+      .where(sql`${businessId} = ANY(${ccProjectsTable.businessIds})`);
     const projectIds = businessProjects.map((p) => p.id);
     const rows = await db
       .select()
@@ -445,9 +487,9 @@ router.get("/tasks", async (req, res): Promise<void> => {
   // Restrict to parents in this business across all three parent types.
   const [drIds, projIds, laIds] = await Promise.all([
     db.select({ id: ccDirectReportsTable.id }).from(ccDirectReportsTable)
-      .where(eq(ccDirectReportsTable.businessId, businessId)),
+      .where(sql`${businessId} = ANY(${ccDirectReportsTable.businessIds})`),
     db.select({ id: ccProjectsTable.id }).from(ccProjectsTable)
-      .where(eq(ccProjectsTable.businessId, businessId)),
+      .where(sql`${businessId} = ANY(${ccProjectsTable.businessIds})`),
     db.select({ id: ccLifeAreasTable.id }).from(ccLifeAreasTable)
       .where(eq(ccLifeAreasTable.businessId, businessId)),
   ]);
@@ -493,6 +535,18 @@ router.post("/tasks", async (req, res): Promise<void> => {
   if (!ok) {
     res.status(403).json({ error: "parent not in current business" });
     return;
+  }
+  // Same guard for the optional owner — owners are always direct reports.
+  if (body.data.ownerDirectReportId != null) {
+    const ownerOk = await parentInBusiness(
+      "direct_report",
+      body.data.ownerDirectReportId,
+      businessId,
+    );
+    if (!ownerOk) {
+      res.status(403).json({ error: "owner not in current business" });
+      return;
+    }
   }
   const insertData = {
     ...body.data,
@@ -603,9 +657,9 @@ router.get("/task-sections", async (req, res): Promise<void> => {
   // Always restrict to parents in this business.
   const [drIds, projIds, laIds] = await Promise.all([
     db.select({ id: ccDirectReportsTable.id }).from(ccDirectReportsTable)
-      .where(eq(ccDirectReportsTable.businessId, businessId)),
+      .where(sql`${businessId} = ANY(${ccDirectReportsTable.businessIds})`),
     db.select({ id: ccProjectsTable.id }).from(ccProjectsTable)
-      .where(eq(ccProjectsTable.businessId, businessId)),
+      .where(sql`${businessId} = ANY(${ccProjectsTable.businessIds})`),
     db.select({ id: ccLifeAreasTable.id }).from(ccLifeAreasTable)
       .where(eq(ccLifeAreasTable.businessId, businessId)),
   ]);
@@ -1039,12 +1093,12 @@ router.get("/overview", async (req, res): Promise<void> => {
     db
       .select()
       .from(ccDirectReportsTable)
-      .where(eq(ccDirectReportsTable.businessId, businessId))
+      .where(sql`${businessId} = ANY(${ccDirectReportsTable.businessIds})`)
       .orderBy(asc(ccDirectReportsTable.sortOrder)),
     db
       .select()
       .from(ccProjectsTable)
-      .where(eq(ccProjectsTable.businessId, businessId))
+      .where(sql`${businessId} = ANY(${ccProjectsTable.businessIds})`)
       .orderBy(asc(ccProjectsTable.sortOrder)),
     db
       .select({ count: sql<number>`count(*)::int` })

@@ -805,21 +805,6 @@ function DirectReportsTab({ businesses = [] }: { businesses?: Business[] }) {
           parentId={p.id}
           name={p.name}
           collapsed={p.collapsed}
-          headerRight={
-            businesses.length > 1 ? (
-              <BusinessChip
-                businesses={businesses}
-                currentId={currentBusinessId}
-                onChange={async (newBizId) => {
-                  await api(`/command-center/direct-reports/${p.id}`, {
-                    method: "PATCH",
-                    body: JSON.stringify({ businessId: newBizId }),
-                  });
-                  load();
-                }}
-              />
-            ) : undefined
-          }
           onRename={async (name) => {
             await api(`/command-center/direct-reports/${p.id}`, {
               method: "PATCH",
@@ -905,19 +890,6 @@ function ProjectsTab({ businesses = [] }: { businesses?: Business[] }) {
           collapsed={p.collapsed}
           headerRight={
             <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              {businesses.length > 1 && (
-                <BusinessChip
-                  businesses={businesses}
-                  currentId={currentBusinessId}
-                  onChange={async (newBizId) => {
-                    await api(`/command-center/projects/${p.id}`, {
-                      method: "PATCH",
-                      body: JSON.stringify({ businessId: newBizId }),
-                    });
-                    load();
-                  }}
-                />
-              )}
               <button
                 type="button"
                 onClick={async (e) => {

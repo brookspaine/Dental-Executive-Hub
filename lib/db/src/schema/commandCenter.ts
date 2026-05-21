@@ -9,10 +9,12 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-/* Direct Reports (people) */
+/* Direct Reports (people). business_ids is an array because a DR can be
+   shared/mirrored across multiple businesses (e.g. Carrie works for both
+   EDGE and Urgent Dental — edits in either surface are reflected in both). */
 export const ccDirectReportsTable = pgTable("cc_direct_reports", {
   id: serial("id").primaryKey(),
-  businessId: integer("business_id").notNull(),
+  businessIds: integer("business_ids").array().notNull(),
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   collapsed: boolean("collapsed").notNull().default(false),
@@ -22,10 +24,10 @@ export const ccDirectReportsTable = pgTable("cc_direct_reports", {
 });
 export type CcDirectReport = typeof ccDirectReportsTable.$inferSelect;
 
-/* Projects */
+/* Projects — also multi-business (see ccDirectReportsTable). */
 export const ccProjectsTable = pgTable("cc_projects", {
   id: serial("id").primaryKey(),
-  businessId: integer("business_id").notNull(),
+  businessIds: integer("business_ids").array().notNull(),
   name: text("name").notNull(),
   status: text("status").notNull().default("active"), // active | on_hold | complete
   sortOrder: integer("sort_order").notNull().default(0),
