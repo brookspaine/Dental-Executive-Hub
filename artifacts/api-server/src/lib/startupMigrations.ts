@@ -24,12 +24,80 @@ export async function runStartupMigrations(): Promise<void> {
     try {
       await convertBusinessIdToArray(client, "cc_direct_reports");
       await convertBusinessIdToArray(client, "cc_projects");
+      await restoreOrphanedParents(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
   } finally {
     client.release();
   }
+}
+
+/**
+ * Recover parent rows for tasks/sections orphaned by an earlier prod
+ * schema-push that wiped cc_direct_reports / cc_projects. Idempotent —
+ * each insert is skipped if a row with that id already exists. Safe to
+ * leave in indefinitely; once parents exist this is a no-op.
+ */
+async function restoreOrphanedParents(client: PgClient): Promise<void> {
+  const drSeed: Array<{ id: number; name: string; businessIds: number[]; sortOrder: number }> = [
+    { id: 1, name: "Carrie", businessIds: [1, 2], sortOrder: 0 },
+    { id: 2, name: "Myka", businessIds: [1, 2], sortOrder: 1 },
+  ];
+  const projSeed: Array<{ id: number; name: string; businessIds: number[]; sortOrder: number }> = [
+    { id: 1, name: "EDGE", businessIds: [1], sortOrder: 0 },
+    { id: 3, name: "Urgent Dental", businessIds: [1, 2], sortOrder: 1 },
+  ];
+
+  for (const r of drSeed) {
+    const refs = (await client.query(
+      `SELECT 1 FROM cc_tasks WHERE parent_type='direct_report' AND parent_id=$1
+       UNION ALL
+       SELECT 1 FROM cc_task_sections WHERE parent_type='direct_report' AND parent_id=$1
+       LIMIT 1`,
+      [r.id],
+    )) as { rows: unknown[] };
+    if (refs.rows.length === 0) continue;
+    const ins = await client.query(
+      `INSERT INTO cc_direct_reports (id, business_ids, name, sort_order, collapsed)
+       VALUES ($1, $2::int[], $3, $4, false)
+       ON CONFLICT (id) DO NOTHING`,
+      [r.id, r.businessIds, r.name, r.sortOrder],
+    );
+    if ((ins as { rowCount?: number }).rowCount) {
+      logger.info({ id: r.id, name: r.name }, "startup migration: restored orphaned direct report");
+    }
+  }
+  for (const p of projSeed) {
+    const refs = (await client.query(
+      `SELECT 1 FROM cc_tasks WHERE parent_type='project' AND parent_id=$1
+       UNION ALL
+       SELECT 1 FROM cc_task_sections WHERE parent_type='project' AND parent_id=$1
+       LIMIT 1`,
+      [p.id],
+    )) as { rows: unknown[] };
+    if (refs.rows.length === 0) continue;
+    const ins = await client.query(
+      `INSERT INTO cc_projects (id, business_ids, name, status, sort_order, collapsed)
+       VALUES ($1, $2::int[], $3, 'active', $4, false)
+       ON CONFLICT (id) DO NOTHING`,
+      [p.id, p.businessIds, p.name, p.sortOrder],
+    );
+    if ((ins as { rowCount?: number }).rowCount) {
+      logger.info({ id: p.id, name: p.name }, "startup migration: restored orphaned project");
+    }
+  }
+
+  // Keep auto-increment sequences ahead of any restored ids so new
+  // inserts don't collide.
+  await client.query(
+    `SELECT setval('cc_direct_reports_id_seq',
+       GREATEST((SELECT COALESCE(MAX(id), 1) FROM cc_direct_reports), 1))`,
+  );
+  await client.query(
+    `SELECT setval('cc_projects_id_seq',
+       GREATEST((SELECT COALESCE(MAX(id), 1) FROM cc_projects), 1))`,
+  );
 }
 
 type PgClient = {
