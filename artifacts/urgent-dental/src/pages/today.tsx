@@ -181,35 +181,22 @@ export default function Today() {
             flexWrap: "wrap",
           }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div
-              style={{
-                background: "#ffffff",
-                borderRadius: 8,
-                padding: "6px 10px",
-                display: "flex",
-                alignItems: "center",
-                lineHeight: 0,
-                boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
-              }}
-            >
-              <img
-                src={logoUrl}
-                alt="Urgent Dental"
-                style={{ height: 40, width: "auto", display: "block" }}
-              />
-            </div>
-            <h1
-              style={{
-                fontFamily: SERIF,
-                fontWeight: 600,
-                fontSize: 24,
-                margin: 0,
-                letterSpacing: 0.2,
-              }}
-            >
-              Today
-            </h1>
+          <div
+            style={{
+              background: "#ffffff",
+              borderRadius: 10,
+              padding: "10px 18px",
+              display: "flex",
+              alignItems: "center",
+              lineHeight: 0,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+            }}
+          >
+            <img
+              src={logoUrl}
+              alt="Urgent Dental"
+              style={{ height: 72, width: "auto", display: "block" }}
+            />
           </div>
           <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
         </div>
