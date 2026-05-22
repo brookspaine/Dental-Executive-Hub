@@ -68,6 +68,19 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
       logger.info({ id: r.id, name: r.name }, "startup migration: restored orphaned direct report");
     }
   }
+
+  // Seed Brooks shared across both businesses so they appear as an owner
+  // option on every task (direct-report + project) in both the CEO Dashboard
+  // and Urgent Dental. Idempotent on name match.
+  const brooksIns = await client.query(
+    `INSERT INTO cc_direct_reports (business_ids, name, sort_order, collapsed)
+     SELECT ARRAY[1,2]::int[], 'Brooks', 2, false
+     WHERE NOT EXISTS (SELECT 1 FROM cc_direct_reports WHERE name='Brooks')`,
+  );
+  if ((brooksIns as { rowCount?: number }).rowCount) {
+    logger.info("startup migration: seeded Brooks direct report");
+  }
+
   for (const p of projSeed) {
     const refs = (await client.query(
       `SELECT 1 FROM cc_tasks WHERE parent_type='project' AND parent_id=$1
