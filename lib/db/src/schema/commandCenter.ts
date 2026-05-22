@@ -18,6 +18,10 @@ export const ccDirectReportsTable = pgTable("cc_direct_reports", {
   name: text("name").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   collapsed: boolean("collapsed").notNull().default(false),
+  /* When true, the person is NOT rendered as a section in the Direct
+     Reports list but IS still returned by GET /direct-reports so they
+     remain selectable as an owner in task pickers (project + DR tasks). */
+  hidden: boolean("hidden").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

@@ -69,17 +69,34 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
     }
   }
 
-  // Seed Brooks shared across both businesses so they appear as an owner
-  // option on every task (direct-report + project) in both the CEO Dashboard
-  // and Urgent Dental. Idempotent on name match.
-  const brooksIns = await client.query(
-    `INSERT INTO cc_direct_reports (business_ids, name, sort_order, collapsed)
-     SELECT ARRAY[1,2]::int[], 'Brooks', 2, false
-     WHERE NOT EXISTS (SELECT 1 FROM cc_direct_reports WHERE name='Brooks')`,
+  // Ensure the `hidden` column exists. Idempotent. A "hidden" direct
+  // report is selectable as an owner in task pickers but not rendered
+  // as a section in the Direct Reports list.
+  await client.query(
+    `ALTER TABLE cc_direct_reports
+       ADD COLUMN IF NOT EXISTS hidden boolean NOT NULL DEFAULT false`,
   );
-  if ((brooksIns as { rowCount?: number }).rowCount) {
-    logger.info("startup migration: seeded Brooks direct report");
+
+  // Seed Brooks + Chad shared across both businesses so they appear as
+  // owner options on every task (direct-report + project) in both apps.
+  // Both are marked hidden so they don't render as sections in the list.
+  // Idempotent on name match.
+  for (const name of ["Brooks", "Chad"] as const) {
+    const ins = await client.query(
+      `INSERT INTO cc_direct_reports (business_ids, name, sort_order, collapsed, hidden)
+       SELECT ARRAY[1,2]::int[], $1, 99, false, true
+       WHERE NOT EXISTS (SELECT 1 FROM cc_direct_reports WHERE name=$1)`,
+      [name],
+    );
+    if ((ins as { rowCount?: number }).rowCount) {
+      logger.info({ name }, "startup migration: seeded hidden owner direct report");
+    }
   }
+  // Force Brooks + Chad to hidden=true even if they pre-existed without
+  // the flag (e.g. inserted by an earlier deploy before the flag landed).
+  await client.query(
+    `UPDATE cc_direct_reports SET hidden=true WHERE name IN ('Brooks','Chad') AND hidden=false`,
+  );
 
   for (const p of projSeed) {
     const refs = (await client.query(

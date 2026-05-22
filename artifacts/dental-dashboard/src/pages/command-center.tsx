@@ -8,7 +8,13 @@ type ParentType = "life_area" | "direct_report" | "project";
 type ProjectStatus = "active" | "on_hold" | "complete";
 
 type Top3Row = { id: number; slot: number; text: string; done: boolean; date: string };
-type DirectReport = { id: number; name: string; sortOrder: number; collapsed: boolean };
+type DirectReport = {
+  id: number;
+  name: string;
+  sortOrder: number;
+  collapsed: boolean;
+  hidden?: boolean;
+};
 type Project = {
   id: number;
   name: string;
@@ -796,9 +802,13 @@ function DirectReportsTab({ businesses = [] }: { businesses?: Business[] }) {
 
   if (error) return <ErrorBlock message={error} />;
 
+  // Hidden DRs (e.g. Brooks, Chad) remain selectable as task owners
+  // elsewhere but are not rendered as sections in this list.
+  const visiblePeople = people.filter((p) => !p.hidden);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {people.map((p) => (
+      {visiblePeople.map((p) => (
         <SectionAccordion
           key={p.id}
           parentType="direct_report"
