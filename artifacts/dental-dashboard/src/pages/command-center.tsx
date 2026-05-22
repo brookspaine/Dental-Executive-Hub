@@ -283,20 +283,7 @@ export function CommandCenter() {
         style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 80px" }}
       >
         {tab === "overview" && <OverviewTab />}
-        {tab === "direct-reports" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-            <OverviewSection title="Brooks">
-              <DirectReportsTab
-                businesses={businesses}
-                filter="brooks"
-                showAddButton={false}
-              />
-            </OverviewSection>
-            <OverviewSection title="Direct Reports">
-              <DirectReportsTab businesses={businesses} filter="others" />
-            </OverviewSection>
-          </div>
-        )}
+        {tab === "direct-reports" && <DirectReportsTab businesses={businesses} />}
         {tab === "projects" && <ProjectsTab businesses={businesses} />}
         {tab === "life-areas" && <LifeAreasTab businesses={businesses} />}
         {tab === "brain-dump" && <BrainDumpTab businesses={businesses} />}
@@ -484,11 +471,8 @@ function OverviewTab() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
       <Top3Card top3={data.top3} onChange={reload} />
-      <OverviewSection title="Brooks">
-        <DirectReportsTab filter="brooks" showAddButton={false} />
-      </OverviewSection>
       <OverviewSection title="Direct Reports">
-        <DirectReportsTab filter="others" />
+        <DirectReportsTab />
       </OverviewSection>
       <OverviewSection title="Projects">
         <ProjectsTab />
@@ -784,16 +768,7 @@ function labelForParentType(t: ParentType): string {
 /* Direct Reports tab                                                         */
 /* ========================================================================== */
 
-function DirectReportsTab({
-  businesses = [],
-  filter = "others",
-  showAddButton = true,
-}: {
-  businesses?: Business[];
-  /** "brooks" = only Brooks; "others" = everyone except Brooks; "all" = unfiltered */
-  filter?: "brooks" | "others" | "all";
-  showAddButton?: boolean;
-}) {
+function DirectReportsTab({ businesses = [] }: { businesses?: Business[] }) {
   const [people, setPeople] = useState<DirectReport[]>([]);
   const [error, setError] = useState<string | null>(null);
 
@@ -821,15 +796,9 @@ function DirectReportsTab({
 
   if (error) return <ErrorBlock message={error} />;
 
-  const visiblePeople = people.filter((p) => {
-    if (filter === "all") return true;
-    const isBrooks = p.name.trim().toLowerCase() === "brooks";
-    return filter === "brooks" ? isBrooks : !isBrooks;
-  });
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {visiblePeople.map((p) => (
+      {people.map((p) => (
         <SectionAccordion
           key={p.id}
           parentType="direct_report"
@@ -857,7 +826,7 @@ function DirectReportsTab({
           }}
         />
       ))}
-      {showAddButton && <AddButton onClick={addPerson} label="+ Add Person" />}
+      <AddButton onClick={addPerson} label="+ Add Person" />
     </div>
   );
 }

@@ -68,17 +68,6 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
       logger.info({ id: r.id, name: r.name }, "startup migration: restored orphaned direct report");
     }
   }
-
-  // Seed Brooks (CEO Dashboard only — business 1; pinned above others via sort_order=-1).
-  // Idempotent: only inserts if no direct report named 'Brooks' exists.
-  const brooksIns = await client.query(
-    `INSERT INTO cc_direct_reports (business_ids, name, sort_order, collapsed)
-     SELECT ARRAY[1]::int[], 'Brooks', -1, false
-     WHERE NOT EXISTS (SELECT 1 FROM cc_direct_reports WHERE name='Brooks')`,
-  );
-  if ((brooksIns as { rowCount?: number }).rowCount) {
-    logger.info("startup migration: seeded Brooks direct report");
-  }
   for (const p of projSeed) {
     const refs = (await client.query(
       `SELECT 1 FROM cc_tasks WHERE parent_type='project' AND parent_id=$1
