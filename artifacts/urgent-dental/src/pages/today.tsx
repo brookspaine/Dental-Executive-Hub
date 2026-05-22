@@ -198,10 +198,10 @@ export default function Today() {
               src={logoUrl}
               alt="Urgent Dental"
               style={{
-                height: 112,
+                height: 160,
                 width: "auto",
                 display: "block",
-                margin: "-18px -10px",
+                margin: "-34px -22px",
               }}
             />
           </div>
