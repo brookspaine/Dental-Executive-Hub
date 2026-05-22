@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import logoUrl from "@assets/IMG_2816_1779410759350.jpeg";
 
 /* ========================================================================== */
 /* Types                                                                      */
@@ -79,20 +80,20 @@ type TabId = "overview" | "direct-reports" | "projects" | "brain-dump";
 /* ========================================================================== */
 
 const C = {
-  bg: "#f4f1ec",
+  bg: "#f4f6f8",
   card: "#ffffff",
-  cardBorder: "#e6dfd4",
-  header: "#2a2520",
-  headerText: "#f4f1ec",
-  textPrimary: "#2a2520",
-  textSecondary: "#6b6258",
-  accent: "#6b1d2a",
-  accentSoft: "#f0e6e8",
-  divider: "#e6dfd4",
-  statusActive: "#5b8a5a",
+  cardBorder: "#dde3ea",
+  header: "#2d3e50",
+  headerText: "#ffffff",
+  textPrimary: "#2d3e50",
+  textSecondary: "#6f7a86",
+  accent: "#c9242f",
+  accentSoft: "#fbe7e9",
+  divider: "#dde3ea",
+  statusActive: "#2d3e50",
   statusHold: "#c8a14a",
-  statusComplete: "#9a948c",
-  inputFocus: "#cbb98a",
+  statusComplete: "#9aa3ad",
+  inputFocus: "#c9242f",
 };
 
 const SERIF = 'Inter, -apple-system, system-ui, sans-serif';
@@ -174,23 +175,42 @@ export default function Today() {
         <div
           style={{
             display: "flex",
-            alignItems: "baseline",
+            alignItems: "center",
             justifyContent: "space-between",
             gap: 16,
             flexWrap: "wrap",
           }}
         >
-          <h1
-            style={{
-              fontFamily: SERIF,
-              fontWeight: 600,
-              fontSize: 28,
-              margin: 0,
-              letterSpacing: 0.2,
-            }}
-          >
-            Today
-          </h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div
+              style={{
+                background: "#ffffff",
+                borderRadius: 8,
+                padding: "6px 10px",
+                display: "flex",
+                alignItems: "center",
+                lineHeight: 0,
+                boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
+              }}
+            >
+              <img
+                src={logoUrl}
+                alt="Urgent Dental"
+                style={{ height: 40, width: "auto", display: "block" }}
+              />
+            </div>
+            <h1
+              style={{
+                fontFamily: SERIF,
+                fontWeight: 600,
+                fontSize: 24,
+                margin: 0,
+                letterSpacing: 0.2,
+              }}
+            >
+              Today
+            </h1>
+          </div>
           <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
         </div>
 
