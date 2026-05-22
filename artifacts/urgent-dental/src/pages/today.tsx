@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import logoUrl from "@assets/IMG_2816_1779410759350.jpeg";
+import logoUrl from "@assets/urgent-dental-logo.png";
 
 /* ========================================================================== */
 /* Types                                                                      */
@@ -184,18 +184,25 @@ export default function Today() {
           <div
             style={{
               background: "#ffffff",
-              borderRadius: 10,
-              padding: "10px 18px",
-              display: "flex",
+              borderRadius: 8,
+              padding: "4px 8px",
+              display: "inline-flex",
               alignItems: "center",
+              justifyContent: "center",
               lineHeight: 0,
+              overflow: "hidden",
               boxShadow: "0 1px 2px rgba(0,0,0,0.08)",
             }}
           >
             <img
               src={logoUrl}
               alt="Urgent Dental"
-              style={{ height: 72, width: "auto", display: "block" }}
+              style={{
+                height: 112,
+                width: "auto",
+                display: "block",
+                margin: "-18px -10px",
+              }}
             />
           </div>
           <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
