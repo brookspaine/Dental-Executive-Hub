@@ -6,6 +6,7 @@ import {
   ccDirectReportsTable,
   ccProjectsTable,
   ccLifeAreasTable,
+  ccLifeAreaGoalsTable,
   ccTaskSectionsTable,
   ccTasksTable,
   ccBrainDumpTable,
@@ -30,13 +31,29 @@ type ParentType = (typeof PARENT_TYPES)[number];
 
 const TASK_STATUSES = ["not_started", "in_progress", "completed"] as const;
 
+/* The 8 canonical life areas from the "Living Your Best Year Ever" planner.
+   The startup migration enriches each row with Identity/Why/HowIPreserve/
+   FeelsLike + structured goals from yearly_planning_sections — see
+   `migrateLifeAreasToYearlyPlanning` in lib/startupMigrations.ts. */
 const SEED_LIFE_AREAS = [
-  { name: "Health & Fitness", accentColor: "#7fb069", sortOrder: 0 },
-  { name: "Finance", accentColor: "#3a7d5e", sortOrder: 1 },
-  { name: "Relationships", accentColor: "#c97064", sortOrder: 2 },
-  { name: "Personal Growth", accentColor: "#d6a45b", sortOrder: 3 },
-  { name: "Home & Environment", accentColor: "#6a8caf", sortOrder: 4 },
+  { name: "Health / Fitness",     accentColor: "#7fb069", sortOrder: 0 },
+  { name: "Business",             accentColor: "#4a6fa5", sortOrder: 1 },
+  { name: "Mindset",              accentColor: "#b08968", sortOrder: 2 },
+  { name: "Family",               accentColor: "#c97064", sortOrder: 3 },
+  { name: "Legacy Wealth",        accentColor: "#3a7d5e", sortOrder: 4 },
+  { name: "Faith",                accentColor: "#8a7a9a", sortOrder: 5 },
+  { name: "Lifestyle and Travel", accentColor: "#d6a45b", sortOrder: 6 },
+  { name: "Relationships",        accentColor: "#c97064", sortOrder: 7 },
 ];
+
+const GOAL_TYPES = [
+  "outcome",
+  "performance",
+  "process_continue",
+  "process_more_consistent",
+  "process_begin",
+] as const;
+const GOAL_STATUSES = ["not_started", "in_progress", "launched", "achieved"] as const;
 
 function todayDateString(): string {
   const d = new Date();
@@ -407,6 +424,10 @@ router.patch("/life-areas/:id", async (req, res): Promise<void> => {
       name: z.string().min(1).optional(),
       collapsed: z.boolean().optional(),
       businessId: z.number().int().positive().optional(),
+      identity: z.array(z.string()).optional(),
+      why: z.array(z.string()).optional(),
+      howIPreserve: z.array(z.string()).optional(),
+      feelsLike: z.array(z.string()).optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
@@ -423,6 +444,135 @@ router.patch("/life-areas/:id", async (req, res): Promise<void> => {
     return;
   }
   res.json(row);
+});
+
+/* -------------------------------------------------------------------------- */
+/* Life Area Goals (Outcome / Performance / Process Goals)                    */
+/* -------------------------------------------------------------------------- */
+
+/** Verify a life area belongs to the current business — guards goal CRUD. */
+async function lifeAreaInBusiness(lifeAreaId: number, businessId: number): Promise<boolean> {
+  const rows = await db
+    .select({ id: ccLifeAreasTable.id })
+    .from(ccLifeAreasTable)
+    .where(and(eq(ccLifeAreasTable.id, lifeAreaId), eq(ccLifeAreasTable.businessId, businessId)))
+    .limit(1);
+  return rows.length > 0;
+}
+
+router.get("/life-areas/:id/goals", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  if (!(await lifeAreaInBusiness(id.data, businessId))) {
+    res.json([]);
+    return;
+  }
+  const rows = await db
+    .select()
+    .from(ccLifeAreaGoalsTable)
+    .where(eq(ccLifeAreaGoalsTable.lifeAreaId, id.data))
+    .orderBy(asc(ccLifeAreaGoalsTable.goalType), asc(ccLifeAreaGoalsTable.sortOrder), asc(ccLifeAreaGoalsTable.id));
+  res.json(rows);
+});
+
+router.post("/life-areas/:id/goals", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      goalType: z.enum(GOAL_TYPES),
+      text: z.string().min(1),
+      status: z.enum(GOAL_STATUSES).optional(),
+      nextSteps: z.string().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  if (!(await lifeAreaInBusiness(id.data, businessId))) {
+    res.status(404).json({ error: "life area not found" });
+    return;
+  }
+  // Place at the end of the bucket for its goal type.
+  const [last] = await db
+    .select({ max: sql<number>`COALESCE(MAX(${ccLifeAreaGoalsTable.sortOrder}), -1)` })
+    .from(ccLifeAreaGoalsTable)
+    .where(and(
+      eq(ccLifeAreaGoalsTable.lifeAreaId, id.data),
+      eq(ccLifeAreaGoalsTable.goalType, body.data.goalType),
+    ));
+  const [row] = await db
+    .insert(ccLifeAreaGoalsTable)
+    .values({
+      lifeAreaId: id.data,
+      goalType: body.data.goalType,
+      text: body.data.text,
+      status: body.data.status ?? "not_started",
+      nextSteps: body.data.nextSteps ?? "",
+      sortOrder: (last?.max ?? -1) + 1,
+    })
+    .returning();
+  res.json(row);
+});
+
+/** Lookup a goal scoped to the current business via its parent life area. */
+async function goalInBusiness(goalId: number, businessId: number) {
+  const [row] = await db
+    .select({ goal: ccLifeAreaGoalsTable, areaBusiness: ccLifeAreasTable.businessId })
+    .from(ccLifeAreaGoalsTable)
+    .innerJoin(ccLifeAreasTable, eq(ccLifeAreasTable.id, ccLifeAreaGoalsTable.lifeAreaId))
+    .where(eq(ccLifeAreaGoalsTable.id, goalId))
+    .limit(1);
+  if (!row || row.areaBusiness !== businessId) return null;
+  return row.goal;
+}
+
+router.patch("/life-area-goals/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      goalType: z.enum(GOAL_TYPES).optional(),
+      text: z.string().min(1).optional(),
+      status: z.enum(GOAL_STATUSES).optional(),
+      nextSteps: z.string().optional(),
+      sortOrder: z.number().int().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success || Object.keys(body.data).length === 0) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  if (!(await goalInBusiness(id.data, businessId))) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  const [row] = await db
+    .update(ccLifeAreaGoalsTable)
+    .set(body.data)
+    .where(eq(ccLifeAreaGoalsTable.id, id.data))
+    .returning();
+  res.json(row);
+});
+
+router.delete("/life-area-goals/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  if (!(await goalInBusiness(id.data, businessId))) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  await db.delete(ccLifeAreaGoalsTable).where(eq(ccLifeAreaGoalsTable.id, id.data));
+  res.sendStatus(204);
 });
 
 /* -------------------------------------------------------------------------- */

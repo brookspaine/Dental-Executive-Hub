@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   text,
@@ -42,7 +43,10 @@ export const ccProjectsTable = pgTable("cc_projects", {
 });
 export type CcProject = typeof ccProjectsTable.$inferSelect;
 
-/* Life Areas (seeded) */
+/* Life Areas (seeded). Each life area carries the rich "yearly planning"
+   context fields surfaced under each accordion: Identity, Why, How I Preserve,
+   Feels Like — all free-form bullet lists. Outcome/Performance/Process goals
+   live in `cc_life_area_goals`. */
 export const ccLifeAreasTable = pgTable("cc_life_areas", {
   id: serial("id").primaryKey(),
   businessId: integer("business_id").notNull(),
@@ -50,11 +54,37 @@ export const ccLifeAreasTable = pgTable("cc_life_areas", {
   accentColor: text("accent_color").notNull().default("#8a9a5b"),
   sortOrder: integer("sort_order").notNull().default(0),
   collapsed: boolean("collapsed").notNull().default(false),
+  identity: text("identity").array().notNull().default(sql`'{}'::text[]`),
+  why: text("why").array().notNull().default(sql`'{}'::text[]`),
+  howIPreserve: text("how_i_preserve").array().notNull().default(sql`'{}'::text[]`),
+  feelsLike: text("feels_like").array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),
 });
 export type CcLifeArea = typeof ccLifeAreasTable.$inferSelect;
+
+/* Per-Life-Area structured goals (Outcome / Performance / Process Goals).
+   Status uses the 4-state vocabulary from the legacy Best Year Ever planner:
+   not_started | in_progress | launched | achieved. */
+export const ccLifeAreaGoalsTable = pgTable("cc_life_area_goals", {
+  id: serial("id").primaryKey(),
+  lifeAreaId: integer("life_area_id").notNull(),
+  goalType: text("goal_type").notNull(),
+  // outcome | performance | process_continue | process_more_consistent | process_begin
+  text: text("text").notNull(),
+  status: text("status").notNull().default("not_started"),
+  nextSteps: text("next_steps").notNull().default(""),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+export type CcLifeAreaGoal = typeof ccLifeAreaGoalsTable.$inferSelect;
 
 /* Task sections — Asana-style named groups within a parent */
 export const ccTaskSectionsTable = pgTable("cc_task_sections", {

@@ -28,6 +28,19 @@ type LifeArea = {
   accentColor: string;
   sortOrder: number;
   collapsed: boolean;
+  identity: string[];
+  why: string[];
+  howIPreserve: string[];
+  feelsLike: string[];
+};
+type LifeAreaGoal = {
+  id: number;
+  lifeAreaId: number;
+  goalType: string;
+  text: string;
+  status: string;
+  nextSteps: string;
+  sortOrder: number;
 };
 type TaskStatus = "not_started" | "in_progress" | "completed";
 type Task = {
@@ -1003,6 +1016,13 @@ function LifeAreasTab({ businesses = [] }: { businesses?: Business[] }) {
               />
             ) : undefined
           }
+          bodyPrefix={
+            <LifeAreaPanels
+              area={a}
+              apiPrefix="/command-center"
+              onAreaChange={load}
+            />
+          }
           onRename={async (name) => {
             await api(`/command-center/life-areas/${a.id}`, {
               method: "PATCH",
@@ -1019,6 +1039,528 @@ function LifeAreasTab({ businesses = [] }: { businesses?: Business[] }) {
           }}
         />
       ))}
+    </div>
+  );
+}
+
+/* ========================================================================== */
+/* Life Area Panels — Identity/Why/HowIPreserve/FeelsLike + structured Goals  */
+/* (imported from the legacy "Living Your Best Year Ever" planner, now first- */
+/* class on each Life Area accordion in Command Center).                      */
+/* ========================================================================== */
+
+const LIFE_AREA_GOAL_TYPES = [
+  { key: "outcome",                 title: "Outcome Goals" },
+  { key: "performance",             title: "Performance Goals" },
+  { key: "process_continue",        title: "Process — Continue" },
+  { key: "process_more_consistent", title: "Process — More Consistent" },
+  { key: "process_begin",           title: "Process — Begin" },
+] as const;
+
+const LIFE_AREA_GOAL_STATUSES = [
+  { key: "not_started", label: "Not started", color: "#9a948c" },
+  { key: "in_progress", label: "In progress", color: "#c8a14a" },
+  { key: "launched",    label: "Launched",    color: "#4a6fa5" },
+  { key: "achieved",    label: "Achieved",    color: "#5b8a5a" },
+] as const;
+
+function LifeAreaPanels({
+  area,
+  apiPrefix,
+  onAreaChange,
+}: {
+  area: LifeArea;
+  apiPrefix: string;
+  onAreaChange: () => void | Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [goals, setGoals] = useState<LifeAreaGoal[]>([]);
+  const [goalsLoaded, setGoalsLoaded] = useState(false);
+
+  const loadGoals = async () => {
+    try {
+      setGoals(await api<LifeAreaGoal[]>(`${apiPrefix}/life-areas/${area.id}/goals`));
+      setGoalsLoaded(true);
+    } catch {
+      /* surfacing errors here would clobber the rest of the panel — fail soft */
+    }
+  };
+  useEffect(() => {
+    loadGoals();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [area.id]);
+
+  const saveAbout = async (
+    patch: Partial<Pick<LifeArea, "identity" | "why" | "howIPreserve" | "feelsLike">>,
+  ) => {
+    await api(`${apiPrefix}/life-areas/${area.id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+    onAreaChange();
+  };
+  const addGoal = async (goalType: string) => {
+    await api(`${apiPrefix}/life-areas/${area.id}/goals`, {
+      method: "POST",
+      body: JSON.stringify({ goalType, text: "New goal" }),
+    });
+    loadGoals();
+  };
+  const updateGoal = async (id: number, patch: Partial<LifeAreaGoal>) => {
+    await api(`${apiPrefix}/life-area-goals/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(patch),
+    });
+    loadGoals();
+  };
+  const deleteGoal = async (id: number) => {
+    await api(`${apiPrefix}/life-area-goals/${id}`, { method: "DELETE" });
+    loadGoals();
+  };
+
+  const aboutFields = [
+    { key: "identity"     as const, title: "Identity",          items: area.identity     ?? [] },
+    { key: "why"          as const, title: "Why",               items: area.why          ?? [] },
+    { key: "howIPreserve" as const, title: "How I Preserve It", items: area.howIPreserve ?? [] },
+    { key: "feelsLike"    as const, title: "What It Feels Like",items: area.feelsLike    ?? [] },
+  ];
+  // In view-mode, hide empty About panels so the card stays clean.
+  const visibleAbout = editing
+    ? aboutFields
+    : aboutFields.filter((f) => f.items.some((it) => it.trim().length > 0));
+
+  const goalsByType = new Map<string, LifeAreaGoal[]>();
+  for (const g of goals) {
+    const arr = goalsByType.get(g.goalType) ?? [];
+    arr.push(g);
+    goalsByType.set(g.goalType, arr);
+  }
+  const visibleGoalTypes = editing
+    ? LIFE_AREA_GOAL_TYPES
+    : LIFE_AREA_GOAL_TYPES.filter((gt) => (goalsByType.get(gt.key)?.length ?? 0) > 0);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+        <button
+          type="button"
+          onClick={() => setEditing((v) => !v)}
+          style={{
+            background: editing ? C.accent : "transparent",
+            color: editing ? C.headerText : C.textSecondary,
+            border: `1px solid ${editing ? C.accent : C.cardBorder}`,
+            borderRadius: 4,
+            fontFamily: SANS,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            padding: "3px 10px",
+            cursor: "pointer",
+            textTransform: "uppercase",
+          }}
+        >
+          {editing ? "Done" : "Edit"}
+        </button>
+      </div>
+
+      {visibleAbout.length > 0 && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {visibleAbout.map((f) => (
+            <LifeAreaAboutList
+              key={f.key}
+              title={f.title}
+              items={f.items}
+              editing={editing}
+              onChange={(next) => saveAbout({ [f.key]: next } as Partial<LifeArea>)}
+            />
+          ))}
+        </div>
+      )}
+
+      {goalsLoaded && visibleGoalTypes.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {visibleGoalTypes.map((gt) => (
+            <LifeAreaGoalsBlock
+              key={gt.key}
+              title={gt.title}
+              goals={goalsByType.get(gt.key) ?? []}
+              editing={editing}
+              onAdd={() => addGoal(gt.key)}
+              onUpdate={updateGoal}
+              onDelete={deleteGoal}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LifeAreaAboutList({
+  title,
+  items,
+  editing,
+  onChange,
+}: {
+  title: string;
+  items: string[];
+  editing: boolean;
+  onChange: (next: string[]) => void | Promise<void>;
+}) {
+  const [draft, setDraft] = useState<string[]>(items);
+  // Re-sync local draft when the parent's array changes (post-save reload).
+  useEffect(() => setDraft(items), [items.join("\u0001")]);
+  const commit = (next: string[]) => {
+    setDraft(next);
+    if (JSON.stringify(next) !== JSON.stringify(items)) onChange(next);
+  };
+  const showItems = editing ? draft : draft.filter((it) => it.trim().length > 0);
+  return (
+    <div
+      style={{
+        background: C.bg,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 6,
+        padding: "10px 12px",
+      }}
+    >
+      <div
+        style={{
+          fontFamily: SANS,
+          fontSize: 10,
+          fontWeight: 700,
+          letterSpacing: 0.6,
+          color: C.textSecondary,
+          textTransform: "uppercase",
+          marginBottom: 6,
+        }}
+      >
+        {title}
+      </div>
+      {showItems.length === 0 && !editing ? (
+        <div style={{ fontFamily: SANS, fontSize: 12, color: C.textSecondary, fontStyle: "italic" }}>
+          —
+        </div>
+      ) : (
+        <ul
+          style={{
+            margin: 0,
+            padding: 0,
+            listStyle: "none",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          {(editing ? draft : showItems).map((it, idx) => (
+            <li key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
+              <span style={{ color: C.textSecondary, lineHeight: 1.3, marginTop: 1 }}>•</span>
+              {editing ? (
+                <input
+                  type="text"
+                  value={draft[idx] ?? ""}
+                  onChange={(e) => {
+                    const next = [...draft];
+                    next[idx] = e.target.value;
+                    setDraft(next);
+                  }}
+                  onBlur={() => commit(draft)}
+                  style={{
+                    ...inputStyle,
+                    fontSize: 13,
+                    padding: "2px 6px",
+                    background: C.card,
+                    border: `1px solid ${C.cardBorder}`,
+                    borderRadius: 4,
+                  }}
+                />
+              ) : (
+                <span
+                  style={{
+                    fontFamily: SANS,
+                    fontSize: 13,
+                    color: C.textPrimary,
+                    lineHeight: 1.4,
+                    flex: 1,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {it}
+                </span>
+              )}
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => commit(draft.filter((_, i) => i !== idx))}
+                  aria-label="Remove"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: C.textSecondary,
+                    cursor: "pointer",
+                    fontSize: 16,
+                    lineHeight: 1,
+                    padding: 0,
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {editing && (
+        <button
+          type="button"
+          onClick={() => commit([...draft, ""])}
+          style={{
+            marginTop: 6,
+            background: "transparent",
+            border: "none",
+            color: C.accent,
+            fontFamily: SANS,
+            fontSize: 11,
+            fontWeight: 600,
+            cursor: "pointer",
+            padding: "2px 0",
+          }}
+        >
+          + Add
+        </button>
+      )}
+    </div>
+  );
+}
+
+function LifeAreaGoalsBlock({
+  title,
+  goals,
+  editing,
+  onAdd,
+  onUpdate,
+  onDelete,
+}: {
+  title: string;
+  goals: LifeAreaGoal[];
+  editing: boolean;
+  onAdd: () => void | Promise<void>;
+  onUpdate: (id: number, patch: Partial<LifeAreaGoal>) => void | Promise<void>;
+  onDelete: (id: number) => void | Promise<void>;
+}) {
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 11,
+            fontWeight: 700,
+            letterSpacing: 0.6,
+            color: C.textPrimary,
+            textTransform: "uppercase",
+          }}
+        >
+          {title}
+        </div>
+        <span style={{ flex: 1 }} />
+        {editing && (
+          <button
+            type="button"
+            onClick={onAdd}
+            style={{
+              background: "transparent",
+              border: `1px dashed ${C.cardBorder}`,
+              borderRadius: 4,
+              color: C.accent,
+              fontFamily: SANS,
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "2px 8px",
+              cursor: "pointer",
+            }}
+          >
+            + Add goal
+          </button>
+        )}
+      </div>
+      {goals.length === 0 ? (
+        editing ? (
+          <div style={{ fontFamily: SANS, fontSize: 12, color: C.textSecondary, fontStyle: "italic" }}>
+            No goals yet.
+          </div>
+        ) : null
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {goals.map((g) => (
+            <LifeAreaGoalRow
+              key={g.id}
+              goal={g}
+              editing={editing}
+              onUpdate={onUpdate}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LifeAreaGoalRow({
+  goal,
+  editing,
+  onUpdate,
+  onDelete,
+}: {
+  goal: LifeAreaGoal;
+  editing: boolean;
+  onUpdate: (id: number, patch: Partial<LifeAreaGoal>) => void | Promise<void>;
+  onDelete: (id: number) => void | Promise<void>;
+}) {
+  const [text, setText] = useState(goal.text);
+  const [nextSteps, setNextSteps] = useState(goal.nextSteps);
+  useEffect(() => setText(goal.text), [goal.text]);
+  useEffect(() => setNextSteps(goal.nextSteps), [goal.nextSteps]);
+  const statusOpt =
+    LIFE_AREA_GOAL_STATUSES.find((o) => o.key === goal.status) ?? LIFE_AREA_GOAL_STATUSES[0];
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: editing ? "1fr 140px 1fr 22px" : "1fr 130px 1fr",
+        gap: 8,
+        alignItems: "start",
+        padding: "6px 8px",
+        background: C.card,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 4,
+      }}
+    >
+      {editing ? (
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== goal.text && onUpdate(goal.id, { text })}
+          style={{
+            ...inputStyle,
+            fontSize: 13,
+            padding: "2px 6px",
+            border: `1px solid ${C.cardBorder}`,
+            borderRadius: 4,
+            background: C.bg,
+          }}
+        />
+      ) : (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 13,
+            color: C.textPrimary,
+            lineHeight: 1.4,
+            whiteSpace: "pre-wrap",
+          }}
+        >
+          {goal.text}
+        </div>
+      )}
+      {editing ? (
+        <select
+          value={goal.status}
+          onChange={(e) => onUpdate(goal.id, { status: e.target.value })}
+          style={{
+            fontFamily: SANS,
+            fontSize: 12,
+            padding: "3px 6px",
+            border: `1px solid ${C.cardBorder}`,
+            borderRadius: 4,
+            background: C.card,
+            color: C.textPrimary,
+          }}
+        >
+          {LIFE_AREA_GOAL_STATUSES.map((o) => (
+            <option key={o.key} value={o.key}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      ) : (
+        <span
+          style={{
+            justifySelf: "start",
+            background: statusOpt.color,
+            color: "#fff",
+            fontFamily: SANS,
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            padding: "2px 8px",
+            borderRadius: 10,
+            textTransform: "uppercase",
+            whiteSpace: "nowrap",
+          }}
+        >
+          {statusOpt.label}
+        </span>
+      )}
+      {editing ? (
+        <textarea
+          value={nextSteps}
+          onChange={(e) => setNextSteps(e.target.value)}
+          onBlur={() => nextSteps !== goal.nextSteps && onUpdate(goal.id, { nextSteps })}
+          placeholder="Next steps…"
+          rows={Math.max(1, nextSteps.split("\n").length)}
+          style={{
+            ...inputStyle,
+            fontSize: 12,
+            padding: "2px 6px",
+            border: `1px solid ${C.cardBorder}`,
+            borderRadius: 4,
+            background: C.bg,
+            resize: "none",
+          }}
+        />
+      ) : nextSteps ? (
+        <div
+          style={{
+            fontFamily: SANS,
+            fontSize: 12,
+            color: C.textSecondary,
+            whiteSpace: "pre-wrap",
+            lineHeight: 1.4,
+          }}
+        >
+          {nextSteps}
+        </div>
+      ) : (
+        <div />
+      )}
+      {editing && (
+        <button
+          type="button"
+          onClick={() => onDelete(goal.id)}
+          aria-label="Delete goal"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 16,
+            lineHeight: 1,
+            padding: 0,
+          }}
+        >
+          ×
+        </button>
+      )}
     </div>
   );
 }
@@ -1043,6 +1585,7 @@ function SectionAccordion({
   collapsed,
   accentColor,
   headerRight,
+  bodyPrefix,
   onRename,
   onToggle,
   onDelete,
@@ -1053,6 +1596,9 @@ function SectionAccordion({
   collapsed: boolean;
   accentColor?: string;
   headerRight?: React.ReactNode;
+  /* Optional content rendered inside the expanded body, above the task
+     list. Used by Life Areas to surface Identity/Why/Goals panels. */
+  bodyPrefix?: React.ReactNode;
   onRename: (name: string) => Promise<void> | void;
   onToggle: (collapsed: boolean) => Promise<void> | void;
   onDelete?: () => Promise<void> | void;
@@ -1245,6 +1791,9 @@ function SectionAccordion({
       {/* Body */}
       {!collapsed && (
         <div style={{ borderTop: `1px solid ${C.divider}`, padding: "10px 16px 14px" }}>
+          {bodyPrefix && (
+            <div style={{ marginBottom: loaded ? 18 : 12 }}>{bodyPrefix}</div>
+          )}
           {!loaded && <div style={{ fontSize: 13, color: C.textSecondary }}>Loading…</div>}
 
           {loaded && (
