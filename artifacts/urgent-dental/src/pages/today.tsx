@@ -41,6 +41,7 @@ type LifeAreaGoal = {
   text: string;
   status: string;
   nextSteps: string;
+  dueDate: string | null;
   sortOrder: number;
 };
 type TaskStatus = "not_started" | "in_progress" | "completed";
@@ -1185,6 +1186,28 @@ function LifeAreaGoalsBlock({
         ) : null
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: editing
+                ? "1fr 130px 130px 1fr 22px"
+                : "1fr 120px 100px 1fr",
+              gap: 8,
+              padding: "0 8px",
+              fontFamily: SANS,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.6,
+              color: C.textSecondary,
+              textTransform: "uppercase",
+            }}
+          >
+            <span>Task Name</span>
+            <span>Status</span>
+            <span>Due Date</span>
+            <span>Next Steps</span>
+            {editing && <span />}
+          </div>
           {goals.map((g) => (
             <LifeAreaGoalRow
               key={g.id}
@@ -1222,7 +1245,7 @@ function LifeAreaGoalRow({
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: editing ? "1fr 140px 1fr 22px" : "1fr 130px 1fr",
+        gridTemplateColumns: editing ? "1fr 130px 130px 1fr 22px" : "1fr 120px 100px 1fr",
         gap: 8,
         alignItems: "start",
         padding: "6px 8px",
@@ -1296,6 +1319,37 @@ function LifeAreaGoalRow({
           }}
         >
           {statusOpt.label}
+        </span>
+      )}
+      {editing ? (
+        <input
+          type="date"
+          value={goal.dueDate ?? ""}
+          onChange={(e) => onUpdate(goal.id, { dueDate: e.target.value || null })}
+          style={{
+            fontFamily: SANS,
+            fontSize: 12,
+            padding: "3px 6px",
+            border: `1px solid ${C.cardBorder}`,
+            borderRadius: 4,
+            background: C.bg,
+            color: C.textPrimary,
+          }}
+        />
+      ) : goal.dueDate ? (
+        <span
+          style={{
+            fontFamily: SANS,
+            fontSize: 12,
+            color: C.textSecondary,
+            whiteSpace: "nowrap",
+          }}
+        >
+          {goal.dueDate}
+        </span>
+      ) : (
+        <span style={{ fontFamily: SANS, fontSize: 12, color: C.textSecondary, fontStyle: "italic" }}>
+          —
         </span>
       )}
       {editing ? (
