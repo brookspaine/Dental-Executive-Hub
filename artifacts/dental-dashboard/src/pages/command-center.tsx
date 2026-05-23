@@ -1328,7 +1328,10 @@ function AboutListRow({
         gridTemplateColumns: cols,
         gap: 8,
         alignItems: "start",
-        padding: "2px 0",
+        padding: "6px 8px",
+        background: "transparent",
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 4,
       }}
     >
       {children}
@@ -1390,7 +1393,53 @@ function LifeAreaGoalsBlock({
       >
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column" }}>
+      <div
+        style={{
+          background: "transparent",
+          border: `1px solid ${C.cardBorder}`,
+          borderRadius: 6,
+          overflow: "hidden",
+        }}
+      >
+        {/* Column header */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: GOAL_GRID_COLS,
+            background: "transparent",
+            borderBottom: `1px solid ${C.divider}`,
+            fontFamily: SANS,
+            fontSize: 11,
+            fontWeight: 600,
+            color: C.textSecondary,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
+            Task name
+          </div>
+          <div
+            style={{
+              padding: "7px 12px",
+              textAlign: "center",
+              borderRight: `1px solid ${C.divider}`,
+            }}
+          >
+            Due date
+          </div>
+          <div
+            style={{
+              padding: "7px 12px",
+              textAlign: "center",
+              borderRight: `1px solid ${C.divider}`,
+            }}
+          >
+            Status
+          </div>
+          <div style={{ padding: "7px 12px" }}>Next steps</div>
+        </div>
+
         {goals.map((g) => (
           <LifeAreaGoalRow
             key={g.id}
@@ -1409,10 +1458,11 @@ function LifeAreaGoalsBlock({
             textAlign: "left",
             background: "transparent",
             border: "none",
+            borderTop: goals.length > 0 ? `1px solid ${C.divider}` : "none",
             color: C.textSecondary,
             fontFamily: SANS,
             fontSize: 13,
-            padding: "6px 8px 6px 32px",
+            padding: "8px 12px 8px 36px",
             cursor: "pointer",
           }}
         >
@@ -1448,9 +1498,8 @@ function LifeAreaGoalRow({
       style={{
         display: "grid",
         gridTemplateColumns: GOAL_GRID_COLS,
-        alignItems: "center",
-        gap: 8,
-        padding: "2px 0",
+        alignItems: "stretch",
+        borderBottom: `1px solid ${C.divider}`,
       }}
     >
       <div
@@ -1458,6 +1507,8 @@ function LifeAreaGoalRow({
           display: "flex",
           alignItems: "center",
           gap: 10,
+          padding: "8px 12px",
+          borderRight: `1px solid ${C.divider}`,
           minWidth: 0,
         }}
       >
@@ -1478,7 +1529,7 @@ function LifeAreaGoalRow({
           style={{
             ...inputStyle,
             fontSize: 14,
-            padding: "4px 6px",
+            padding: "2px 6px",
             border: "none",
             background: "transparent",
             textDecoration: done ? "line-through" : "none",
@@ -1488,7 +1539,15 @@ function LifeAreaGoalRow({
           }}
         />
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
+        }}
+      >
         <DueDateField
           value={goal.dueDate}
           tone={dueInfo.tone}
@@ -1496,13 +1555,21 @@ function LifeAreaGoalRow({
           onChange={(next) => onUpdate(goal.id, { dueDate: next })}
         />
       </div>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
+        }}
+      >
         <GoalStatusPill
           status={goal.status}
           onChange={(next) => onUpdate(goal.id, { status: next })}
         />
       </div>
-      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 8px" }}>
         <textarea
           value={nextSteps}
           onChange={(e) => setNextSteps(e.target.value)}
