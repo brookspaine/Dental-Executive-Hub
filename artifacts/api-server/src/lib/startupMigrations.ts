@@ -161,10 +161,14 @@ async function migrateLifeAreasToYearlyPlanning(client: PgClient): Promise<void>
   // 1. Add new columns + table if missing.
   await client.query(`
     ALTER TABLE cc_life_areas
-      ADD COLUMN IF NOT EXISTS identity        text[] NOT NULL DEFAULT '{}'::text[],
-      ADD COLUMN IF NOT EXISTS why             text[] NOT NULL DEFAULT '{}'::text[],
-      ADD COLUMN IF NOT EXISTS how_i_preserve  text[] NOT NULL DEFAULT '{}'::text[],
-      ADD COLUMN IF NOT EXISTS feels_like      text[] NOT NULL DEFAULT '{}'::text[]
+      ADD COLUMN IF NOT EXISTS identity                  text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS identity_next_steps       text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS why                       text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS why_next_steps            text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS how_i_preserve            text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS how_i_preserve_next_steps text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS feels_like                text[] NOT NULL DEFAULT '{}'::text[],
+      ADD COLUMN IF NOT EXISTS feels_like_next_steps     text[] NOT NULL DEFAULT '{}'::text[]
   `);
   await client.query(`
     CREATE TABLE IF NOT EXISTS cc_life_area_goals (

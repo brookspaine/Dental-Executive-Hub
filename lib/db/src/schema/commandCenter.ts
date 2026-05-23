@@ -55,9 +55,13 @@ export const ccLifeAreasTable = pgTable("cc_life_areas", {
   sortOrder: integer("sort_order").notNull().default(0),
   collapsed: boolean("collapsed").notNull().default(false),
   identity: text("identity").array().notNull().default(sql`'{}'::text[]`),
+  identityNextSteps: text("identity_next_steps").array().notNull().default(sql`'{}'::text[]`),
   why: text("why").array().notNull().default(sql`'{}'::text[]`),
+  whyNextSteps: text("why_next_steps").array().notNull().default(sql`'{}'::text[]`),
   howIPreserve: text("how_i_preserve").array().notNull().default(sql`'{}'::text[]`),
+  howIPreserveNextSteps: text("how_i_preserve_next_steps").array().notNull().default(sql`'{}'::text[]`),
   feelsLike: text("feels_like").array().notNull().default(sql`'{}'::text[]`),
+  feelsLikeNextSteps: text("feels_like_next_steps").array().notNull().default(sql`'{}'::text[]`),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()
     .defaultNow(),

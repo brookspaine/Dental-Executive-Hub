@@ -425,9 +425,13 @@ router.patch("/life-areas/:id", async (req, res): Promise<void> => {
       collapsed: z.boolean().optional(),
       businessId: z.number().int().positive().optional(),
       identity: z.array(z.string()).optional(),
+      identityNextSteps: z.array(z.string()).optional(),
       why: z.array(z.string()).optional(),
+      whyNextSteps: z.array(z.string()).optional(),
       howIPreserve: z.array(z.string()).optional(),
+      howIPreserveNextSteps: z.array(z.string()).optional(),
       feelsLike: z.array(z.string()).optional(),
+      feelsLikeNextSteps: z.array(z.string()).optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {

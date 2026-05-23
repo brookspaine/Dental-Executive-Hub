@@ -29,9 +29,13 @@ type LifeArea = {
   sortOrder: number;
   collapsed: boolean;
   identity: string[];
+  identityNextSteps: string[];
   why: string[];
+  whyNextSteps: string[];
   howIPreserve: string[];
+  howIPreserveNextSteps: string[];
   feelsLike: string[];
+  feelsLikeNextSteps: string[];
 };
 type LifeAreaGoal = {
   id: number;
@@ -1091,7 +1095,19 @@ function LifeAreaPanels({
   }, [area.id]);
 
   const saveAbout = async (
-    patch: Partial<Pick<LifeArea, "identity" | "why" | "howIPreserve" | "feelsLike">>,
+    patch: Partial<
+      Pick<
+        LifeArea,
+        | "identity"
+        | "identityNextSteps"
+        | "why"
+        | "whyNextSteps"
+        | "howIPreserve"
+        | "howIPreserveNextSteps"
+        | "feelsLike"
+        | "feelsLikeNextSteps"
+      >
+    >,
   ) => {
     await api(`${apiPrefix}/life-areas/${area.id}`, {
       method: "PATCH",
@@ -1119,10 +1135,10 @@ function LifeAreaPanels({
   };
 
   const aboutFields = [
-    { key: "identity"     as const, title: "Identity",          items: area.identity     ?? [] },
-    { key: "why"          as const, title: "Why",               items: area.why          ?? [] },
-    { key: "howIPreserve" as const, title: "How I Preserve It", items: area.howIPreserve ?? [] },
-    { key: "feelsLike"    as const, title: "What It Feels Like",items: area.feelsLike    ?? [] },
+    { key: "identity"     as const, nextKey: "identityNextSteps"     as const, title: "Identity",           items: area.identity              ?? [], nextSteps: area.identityNextSteps          ?? [] },
+    { key: "why"          as const, nextKey: "whyNextSteps"          as const, title: "Why",                items: area.why                   ?? [], nextSteps: area.whyNextSteps               ?? [] },
+    { key: "howIPreserve" as const, nextKey: "howIPreserveNextSteps" as const, title: "How I Preserve It",  items: area.howIPreserve          ?? [], nextSteps: area.howIPreserveNextSteps      ?? [] },
+    { key: "feelsLike"    as const, nextKey: "feelsLikeNextSteps"    as const, title: "What It Feels Like", items: area.feelsLike             ?? [], nextSteps: area.feelsLikeNextSteps         ?? [] },
   ];
   // Always-on inline editing (Asana-style), matching Direct Reports/Projects.
   const goalsByType = new Map<string, LifeAreaGoal[]>();
@@ -1140,7 +1156,10 @@ function LifeAreaPanels({
             key={f.key}
             title={f.title}
             items={f.items}
-            onChange={(next) => saveAbout({ [f.key]: next } as Partial<LifeArea>)}
+            nextSteps={f.nextSteps}
+            onChange={(items, nextSteps) =>
+              saveAbout({ [f.key]: items, [f.nextKey]: nextSteps } as Partial<LifeArea>)
+            }
           />
         ))}
       </div>
@@ -1166,75 +1185,138 @@ function LifeAreaPanels({
 function LifeAreaAboutList({
   title,
   items,
+  nextSteps,
   onChange,
 }: {
   title: string;
   items: string[];
-  onChange: (next: string[]) => void | Promise<void>;
+  nextSteps: string[];
+  onChange: (items: string[], nextSteps: string[]) => void | Promise<void>;
 }) {
-  const [draft, setDraft] = useState<string[]>(items);
-  // Re-sync local draft when the parent's array changes (post-save reload).
-  useEffect(() => setDraft(items), [items.join("\u0001")]);
-  const commit = (next: string[]) => {
-    setDraft(next);
-    if (JSON.stringify(next) !== JSON.stringify(items)) onChange(next);
+  // Parallel arrays — index N of items pairs with index N of nextSteps.
+  // Pad nextSteps so the two arrays stay aligned even when migration hasn't
+  // populated it yet.
+  const padNextSteps = (n: string[], len: number) => {
+    if (n.length >= len) return n.slice(0, len);
+    return [...n, ...Array.from({ length: len - n.length }, () => "")];
   };
+  const [draftItems, setDraftItems] = useState<string[]>(items);
+  const [draftNext, setDraftNext] = useState<string[]>(padNextSteps(nextSteps, items.length));
+  useEffect(() => setDraftItems(items), [items.join("\u0001")]);
+  useEffect(
+    () => setDraftNext(padNextSteps(nextSteps, items.length)),
+    [nextSteps.join("\u0001"), items.length],
+  );
+
+  const commit = (nextItems: string[], nextNextSteps: string[]) => {
+    const aligned = padNextSteps(nextNextSteps, nextItems.length);
+    setDraftItems(nextItems);
+    setDraftNext(aligned);
+    if (
+      JSON.stringify(nextItems) !== JSON.stringify(items) ||
+      JSON.stringify(aligned) !== JSON.stringify(padNextSteps(nextSteps, items.length))
+    ) {
+      onChange(nextItems, aligned);
+    }
+  };
+
+  const COLS = "1fr 1fr 22px";
   return (
-    <div
-      style={{
-        background: C.bg,
-        border: `1px solid ${C.cardBorder}`,
-        borderRadius: 6,
-        padding: "10px 12px",
-      }}
-    >
+    <div>
       <div
         style={{
           fontFamily: SANS,
-          fontSize: 10,
+          fontSize: 11,
           fontWeight: 700,
           letterSpacing: 0.6,
-          color: C.textSecondary,
+          color: C.textPrimary,
           textTransform: "uppercase",
           marginBottom: 6,
         }}
       >
         {title}
       </div>
-      <ul
-        style={{
-          margin: 0,
-          padding: 0,
-          listStyle: "none",
-          display: "flex",
-          flexDirection: "column",
-          gap: 4,
-        }}
-      >
-        {draft.map((it, idx) => (
-          <li key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 6 }}>
-            <span style={{ color: C.textSecondary, lineHeight: 1.3, marginTop: 1 }}>•</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {draftItems.length > 0 && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: COLS,
+              gap: 8,
+              padding: "0 8px",
+              fontFamily: SANS,
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: 0.6,
+              color: C.textSecondary,
+              textTransform: "uppercase",
+            }}
+          >
+            <span>Task Name</span>
+            <span>Next Steps</span>
+            <span />
+          </div>
+        )}
+        {draftItems.map((it, idx) => (
+          <div
+            key={idx}
+            style={{
+              display: "grid",
+              gridTemplateColumns: COLS,
+              gap: 8,
+              alignItems: "start",
+              padding: "6px 8px",
+              background: C.card,
+              border: `1px solid ${C.cardBorder}`,
+              borderRadius: 4,
+            }}
+          >
             <input
               type="text"
-              value={draft[idx] ?? ""}
+              value={it}
               onChange={(e) => {
-                const next = [...draft];
+                const next = [...draftItems];
                 next[idx] = e.target.value;
-                setDraft(next);
+                setDraftItems(next);
               }}
-              onBlur={() => commit(draft)}
+              onBlur={() => commit(draftItems, draftNext)}
               style={{
                 ...inputStyle,
                 fontSize: 13,
                 padding: "2px 6px",
-                background: C.card,
                 border: `1px solid ${C.cardBorder}`,
                 borderRadius: 4,
+                background: C.bg,
+              }}
+            />
+            <textarea
+              value={draftNext[idx] ?? ""}
+              onChange={(e) => {
+                const next = [...draftNext];
+                next[idx] = e.target.value;
+                setDraftNext(next);
+              }}
+              onBlur={() => commit(draftItems, draftNext)}
+              placeholder="Next steps…"
+              rows={Math.max(1, (draftNext[idx] ?? "").split("\n").length)}
+              style={{
+                ...inputStyle,
+                fontSize: 12,
+                padding: "2px 6px",
+                border: `1px solid ${C.cardBorder}`,
+                borderRadius: 4,
+                background: C.bg,
+                resize: "none",
               }}
             />
             <button
               type="button"
-              onClick={() => commit(draft.filter((_, i) => i !== idx))}
+              onClick={() =>
+                commit(
+                  draftItems.filter((_, i) => i !== idx),
+                  draftNext.filter((_, i) => i !== idx),
+                )
+              }
               aria-label="Remove"
               style={{
                 background: "transparent",
@@ -1248,26 +1330,25 @@ function LifeAreaAboutList({
             >
               ×
             </button>
-          </li>
+          </div>
         ))}
-      </ul>
-      <button
-        type="button"
-        onClick={() => commit([...draft, ""])}
-        style={{
-          marginTop: 6,
-          background: "transparent",
-          border: "none",
-          color: C.accent,
-          fontFamily: SANS,
-          fontSize: 11,
-          fontWeight: 600,
-          cursor: "pointer",
-          padding: "2px 0",
-        }}
-      >
-        + Add
-      </button>
+        <button
+          type="button"
+          onClick={() => commit([...draftItems, ""], [...draftNext, ""])}
+          style={{
+            alignSelf: "flex-start",
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            fontFamily: SANS,
+            fontSize: 12,
+            padding: "4px 8px",
+            cursor: "pointer",
+          }}
+        >
+          + Add task
+        </button>
+      </div>
     </div>
   );
 }
