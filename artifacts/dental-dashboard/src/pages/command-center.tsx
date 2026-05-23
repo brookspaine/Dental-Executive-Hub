@@ -1221,7 +1221,7 @@ function LifeAreaAboutList({
     }
   };
 
-  const COLS = "1fr 1fr 22px";
+  const COLS = "1fr 1fr 56px";
   return (
     <div>
       <div
@@ -1238,39 +1238,16 @@ function LifeAreaAboutList({
         {title}
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {draftItems.length > 0 && (
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: COLS,
-              gap: 8,
-              padding: "0 8px",
-              fontFamily: SANS,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 0.6,
-              color: C.textSecondary,
-              textTransform: "uppercase",
-            }}
-          >
-            <span>Task Name</span>
-            <span>Next Steps</span>
-            <span />
-          </div>
-        )}
         {draftItems.map((it, idx) => (
-          <div
+          <AboutListRow
             key={idx}
-            style={{
-              display: "grid",
-              gridTemplateColumns: COLS,
-              gap: 8,
-              alignItems: "start",
-              padding: "6px 8px",
-              background: C.card,
-              border: `1px solid ${C.cardBorder}`,
-              borderRadius: 4,
-            }}
+            cols={COLS}
+            onRemove={() =>
+              commit(
+                draftItems.filter((_, i) => i !== idx),
+                draftNext.filter((_, i) => i !== idx),
+              )
+            }
           >
             <input
               type="text"
@@ -1284,10 +1261,9 @@ function LifeAreaAboutList({
               style={{
                 ...inputStyle,
                 fontSize: 13,
-                padding: "2px 6px",
-                border: `1px solid ${C.cardBorder}`,
-                borderRadius: 4,
-                background: C.bg,
+                padding: "4px 6px",
+                border: "none",
+                background: "transparent",
               }}
             />
             <textarea
@@ -1303,35 +1279,14 @@ function LifeAreaAboutList({
               style={{
                 ...inputStyle,
                 fontSize: 12,
-                padding: "2px 6px",
-                border: `1px solid ${C.cardBorder}`,
-                borderRadius: 4,
-                background: C.bg,
+                padding: "4px 6px",
+                border: "none",
+                background: "transparent",
+                color: C.textSecondary,
                 resize: "none",
               }}
             />
-            <button
-              type="button"
-              onClick={() =>
-                commit(
-                  draftItems.filter((_, i) => i !== idx),
-                  draftNext.filter((_, i) => i !== idx),
-                )
-              }
-              aria-label="Remove"
-              style={{
-                background: "transparent",
-                border: "none",
-                color: C.textSecondary,
-                cursor: "pointer",
-                fontSize: 16,
-                lineHeight: 1,
-                padding: 0,
-              }}
-            >
-              ×
-            </button>
-          </div>
+          </AboutListRow>
         ))}
         <button
           type="button"
@@ -1350,6 +1305,50 @@ function LifeAreaAboutList({
           + Add task
         </button>
       </div>
+    </div>
+  );
+}
+
+function AboutListRow({
+  cols,
+  onRemove,
+  children,
+}: {
+  cols: string;
+  onRemove: () => void;
+  children: React.ReactNode;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: cols,
+        gap: 8,
+        alignItems: "start",
+        padding: "2px 0",
+      }}
+    >
+      {children}
+      <button
+        type="button"
+        onClick={onRemove}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: C.textSecondary,
+          cursor: "pointer",
+          fontFamily: SANS,
+          fontSize: 12,
+          padding: "4px 6px",
+          justifySelf: "end",
+          visibility: hover ? "visible" : "hidden",
+        }}
+      >
+        Delete
+      </button>
     </div>
   );
 }
@@ -1391,53 +1390,7 @@ function LifeAreaGoalsBlock({
       >
         {title}
       </div>
-      <div
-        style={{
-          background: C.card,
-          border: `1px solid ${C.cardBorder}`,
-          borderRadius: 6,
-          overflow: "hidden",
-        }}
-      >
-        {/* Column header */}
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: GOAL_GRID_COLS,
-            background: "#faf7f1",
-            borderBottom: `1px solid ${C.divider}`,
-            fontFamily: SANS,
-            fontSize: 11,
-            fontWeight: 600,
-            color: C.textSecondary,
-            textTransform: "uppercase",
-            letterSpacing: 0.5,
-          }}
-        >
-          <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
-            Task name
-          </div>
-          <div
-            style={{
-              padding: "7px 12px",
-              textAlign: "center",
-              borderRight: `1px solid ${C.divider}`,
-            }}
-          >
-            Due date
-          </div>
-          <div
-            style={{
-              padding: "7px 12px",
-              textAlign: "center",
-              borderRight: `1px solid ${C.divider}`,
-            }}
-          >
-            Status
-          </div>
-          <div style={{ padding: "7px 12px" }}>Next steps</div>
-        </div>
-
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {goals.map((g) => (
           <LifeAreaGoalRow
             key={g.id}
@@ -1456,11 +1409,10 @@ function LifeAreaGoalsBlock({
             textAlign: "left",
             background: "transparent",
             border: "none",
-            borderTop: goals.length > 0 ? `1px solid ${C.divider}` : "none",
             color: C.textSecondary,
             fontFamily: SANS,
             fontSize: 13,
-            padding: "8px 12px 8px 36px",
+            padding: "6px 8px 6px 32px",
             cursor: "pointer",
           }}
         >
@@ -1496,8 +1448,9 @@ function LifeAreaGoalRow({
       style={{
         display: "grid",
         gridTemplateColumns: GOAL_GRID_COLS,
-        alignItems: "stretch",
-        borderBottom: `1px solid ${C.divider}`,
+        alignItems: "center",
+        gap: 8,
+        padding: "2px 0",
       }}
     >
       <div
@@ -1505,8 +1458,6 @@ function LifeAreaGoalRow({
           display: "flex",
           alignItems: "center",
           gap: 10,
-          padding: "8px 12px",
-          borderRight: `1px solid ${C.divider}`,
           minWidth: 0,
         }}
       >
@@ -1527,10 +1478,48 @@ function LifeAreaGoalRow({
           style={{
             ...inputStyle,
             fontSize: 14,
+            padding: "4px 6px",
+            border: "none",
+            background: "transparent",
             textDecoration: done ? "line-through" : "none",
             color: done ? C.textSecondary : C.textPrimary,
             flex: 1,
             minWidth: 0,
+          }}
+        />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <DueDateField
+          value={goal.dueDate}
+          tone={dueInfo.tone}
+          label={dueInfo.label}
+          onChange={(next) => onUpdate(goal.id, { dueDate: next })}
+        />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <GoalStatusPill
+          status={goal.status}
+          onChange={(next) => onUpdate(goal.id, { status: next })}
+        />
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <textarea
+          value={nextSteps}
+          onChange={(e) => setNextSteps(e.target.value)}
+          onBlur={() => nextSteps !== goal.nextSteps && onUpdate(goal.id, { nextSteps })}
+          placeholder="Next steps…"
+          rows={Math.max(1, nextSteps.split("\n").length)}
+          style={{
+            ...inputStyle,
+            fontSize: 13,
+            padding: "4px 6px",
+            border: "none",
+            background: "transparent",
+            color: C.textSecondary,
+            resize: "none",
+            flex: 1,
+            minWidth: 0,
+            lineHeight: 1.4,
           }}
         />
         <button
@@ -1542,71 +1531,15 @@ function LifeAreaGoalRow({
             border: "none",
             color: C.textSecondary,
             cursor: "pointer",
-            fontSize: 16,
-            lineHeight: 1,
-            padding: "2px 6px",
+            fontFamily: SANS,
+            fontSize: 12,
+            padding: "4px 6px",
             visibility: hover ? "visible" : "hidden",
             flexShrink: 0,
           }}
         >
-          ×
+          Delete
         </button>
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "6px 8px",
-          borderRight: `1px solid ${C.divider}`,
-        }}
-      >
-        <DueDateField
-          value={goal.dueDate}
-          tone={dueInfo.tone}
-          label={dueInfo.label}
-          onChange={(next) => onUpdate(goal.id, { dueDate: next })}
-        />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "6px 8px",
-          borderRight: `1px solid ${C.divider}`,
-        }}
-      >
-        <GoalStatusPill
-          status={goal.status}
-          onChange={(next) => onUpdate(goal.id, { status: next })}
-        />
-      </div>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "stretch",
-          padding: "6px 8px",
-        }}
-      >
-        <textarea
-          value={nextSteps}
-          onChange={(e) => setNextSteps(e.target.value)}
-          onBlur={() => nextSteps !== goal.nextSteps && onUpdate(goal.id, { nextSteps })}
-          placeholder="Next steps…"
-          rows={Math.max(1, nextSteps.split("\n").length)}
-          style={{
-            ...inputStyle,
-            fontSize: 13,
-            padding: "2px 6px",
-            border: "none",
-            background: "transparent",
-            color: C.textSecondary,
-            resize: "none",
-            width: "100%",
-            lineHeight: 1.4,
-          }}
-        />
       </div>
     </div>
   );
