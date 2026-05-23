@@ -4,7 +4,7 @@
 
 A focused dental practice CEO dashboard with three surfaces: **Today** (daily planning + ideal-week scheduling), **Command Center** (personal planner — Top 3, direct reports, projects, life areas, brain dump), and **EDGE** (lease tracking across every EDGE and Urgent Dental location). The earlier modules — Action Items, Team / Org Chart / Roles, Meetings (Leadership + 1-on-1s), and the Playbook Library — were removed in May 2026 to keep the app lean.
 
-A second standalone artifact, **Urgent Dental** (`/urgent-dental/`), mirrors the Command Center as its own root-route page and is fully isolated: its tables use the `ud_` prefix (`ud_top3`, `ud_direct_reports`, `ud_projects`, `ud_life_areas`, `ud_task_sections`, `ud_tasks`, `ud_brain_dump`, `ud_future_todos`) and its API is mounted at `/api/urgent-dental/*`. No data is shared with the Dental CEO Dashboard.
+A second standalone artifact, **Urgent Dental** (`/urgent-dental/`), mirrors the Command Center as its own root-route page and is fully isolated: its tables use the `ud_` prefix (`ud_top3`, `ud_direct_reports`, `ud_projects`, `ud_task_sections`, `ud_tasks`, `ud_brain_dump`, `ud_future_todos`) and Life Areas is intentionally not exposed there — that surface is personal to the CEO Dashboard only and its API is mounted at `/api/urgent-dental/*`. No data is shared with the Dental CEO Dashboard.
 
 ## User Preferences
 
