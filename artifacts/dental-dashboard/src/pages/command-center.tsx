@@ -58,6 +58,7 @@ type Task = {
   done: boolean;
   status: TaskStatus;
   dueDate: string | null;
+  nextSteps: string;
   sortOrder: number;
 };
 type BrainDumpOutcome =
@@ -1844,7 +1845,12 @@ function TaskSectionGroup({
   onChange: () => void | Promise<void>;
 }) {
   const showOwnerColumn = parentType === "project";
-  const gridCols = showOwnerColumn ? "1fr 140px 132px 132px" : GRID_COLS;
+  const showNextStepsColumn = parentType === "life_area";
+  const gridCols = showOwnerColumn
+    ? "1fr 140px 132px 132px"
+    : showNextStepsColumn
+      ? "1fr 132px 132px 1.2fr"
+      : GRID_COLS;
   const projectsById = new Map(projects.map((p) => [p.id, p]));
   const collapsed = section?.collapsed ?? false;
   const [editingName, setEditingName] = useState(false);
@@ -2058,7 +2064,18 @@ function TaskSectionGroup({
             >
               Due date
             </div>
-            <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
+            <div
+              style={{
+                padding: "7px 12px",
+                textAlign: "center",
+                borderRight: showNextStepsColumn ? `1px solid ${C.divider}` : "none",
+              }}
+            >
+              Status
+            </div>
+            {showNextStepsColumn && (
+              <div style={{ padding: "7px 12px" }}>Next steps</div>
+            )}
           </div>
 
           {tasks.map((task) => (
@@ -2067,6 +2084,7 @@ function TaskSectionGroup({
               task={task}
               gridCols={gridCols}
               showOwnerColumn={showOwnerColumn}
+              showNextStepsColumn={showNextStepsColumn}
               directReports={directReports}
               originLabel={
                 parentType === "direct_report" && task.parentType === "project"
@@ -2236,6 +2254,7 @@ function TaskRow({
   task,
   gridCols,
   showOwnerColumn,
+  showNextStepsColumn,
   directReports,
   originLabel,
   onUpdate,
@@ -2244,14 +2263,17 @@ function TaskRow({
   task: Task;
   gridCols: string;
   showOwnerColumn: boolean;
+  showNextStepsColumn: boolean;
   directReports: DirectReport[];
   originLabel: string | null;
   onUpdate: (patch: Partial<Task>) => Promise<void> | void;
   onDelete: () => Promise<void> | void;
 }) {
   const [text, setText] = useState(task.text);
+  const [nextSteps, setNextSteps] = useState(task.nextSteps ?? "");
   const [hover, setHover] = useState(false);
   useEffect(() => setText(task.text), [task.text]);
+  useEffect(() => setNextSteps(task.nextSteps ?? ""), [task.nextSteps]);
 
   const due = task.dueDate;
   const dueInfo = formatDueDate(due, task.done);
@@ -2371,6 +2393,7 @@ function TaskRow({
           alignItems: "center",
           justifyContent: "center",
           padding: "6px 8px",
+          borderRight: showNextStepsColumn ? `1px solid ${C.divider}` : "none",
         }}
       >
         <StatusPill
@@ -2378,6 +2401,36 @@ function TaskRow({
           onChange={(next) => onUpdate({ status: next })}
         />
       </div>
+      {showNextStepsColumn && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "stretch",
+            padding: "6px 8px",
+          }}
+        >
+          <textarea
+            value={nextSteps}
+            onChange={(e) => setNextSteps(e.target.value)}
+            onBlur={() => {
+              if (nextSteps !== (task.nextSteps ?? "")) onUpdate({ nextSteps });
+            }}
+            placeholder="Next steps…"
+            rows={Math.max(1, nextSteps.split("\n").length)}
+            style={{
+              ...inputStyle,
+              fontSize: 13,
+              padding: "2px 6px",
+              border: "none",
+              background: "transparent",
+              color: C.textSecondary,
+              resize: "none",
+              width: "100%",
+              lineHeight: 1.4,
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

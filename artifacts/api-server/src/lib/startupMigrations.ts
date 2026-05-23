@@ -78,6 +78,13 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
        ADD COLUMN IF NOT EXISTS hidden boolean NOT NULL DEFAULT false`,
   );
 
+  // Per-task Next Steps free-text field. Currently surfaced as a column on
+  // the Life Areas task tables only; harmless empty default for other parents.
+  await client.query(
+    `ALTER TABLE cc_tasks
+       ADD COLUMN IF NOT EXISTS next_steps text NOT NULL DEFAULT ''`,
+  );
+
   // Seed Brooks + Chad shared across both businesses so they appear as
   // owner options on every task (direct-report + project) in both apps.
   // Both are marked hidden so they don't render as sections in the list.

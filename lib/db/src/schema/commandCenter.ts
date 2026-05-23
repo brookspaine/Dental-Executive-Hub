@@ -117,6 +117,7 @@ export const ccTasksTable = pgTable(
     done: boolean("done").notNull().default(false),
     status: text("status").notNull().default("not_started"),
     dueDate: date("due_date", { mode: "string" }),
+    nextSteps: text("next_steps").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()

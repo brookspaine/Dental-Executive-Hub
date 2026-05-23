@@ -678,6 +678,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
       text: z.string().min(1),
       status: z.enum(TASK_STATUSES).optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      nextSteps: z.string().optional(),
     })
     .safeParse(req.body);
   if (!body.success) {
@@ -726,6 +727,7 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       sectionId: z.number().int().nullable().optional(),
       ownerDirectReportId: z.number().int().nullable().optional(),
+      nextSteps: z.string().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success || Object.keys(body.data).length === 0) {
