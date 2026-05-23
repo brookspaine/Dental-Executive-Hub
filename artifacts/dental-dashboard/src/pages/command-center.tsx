@@ -1164,13 +1164,7 @@ function LifeAreaPanels({
       </div>
 
       {visibleAbout.length > 0 && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-            gap: 12,
-          }}
-        >
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
           {visibleAbout.map((f) => (
             <LifeAreaAboutList
               key={f.key}
