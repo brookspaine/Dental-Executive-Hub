@@ -1354,6 +1354,15 @@ function LifeAreaAboutList({
   );
 }
 
+const GOAL_PILL_OPTIONS: { value: string; label: string; bg: string; fg: string }[] = [
+  { value: "not_started", label: "Not started", bg: "#ece8df", fg: "#5a544a" },
+  { value: "in_progress", label: "In progress", bg: "#fdf4d3", fg: "#7a5b00" },
+  { value: "launched",    label: "Launched",    bg: "#dde6f3", fg: "#2b4a78" },
+  { value: "achieved",    label: "Achieved",    bg: "#cfead8", fg: "#1f6a3f" },
+];
+
+const GOAL_GRID_COLS = "1fr 132px 132px 1.2fr";
+
 function LifeAreaGoalsBlock({
   title,
   goals,
@@ -1367,7 +1376,6 @@ function LifeAreaGoalsBlock({
   onUpdate: (id: number, patch: Partial<LifeAreaGoal>) => void | Promise<void>;
   onDelete: (id: number) => void | Promise<void>;
 }) {
-  const COLS = "1fr 130px 130px 1fr 22px";
   return (
     <div>
       <div
@@ -1383,29 +1391,53 @@ function LifeAreaGoalsBlock({
       >
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {goals.length > 0 && (
+      <div
+        style={{
+          background: C.card,
+          border: `1px solid ${C.cardBorder}`,
+          borderRadius: 6,
+          overflow: "hidden",
+        }}
+      >
+        {/* Column header */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: GOAL_GRID_COLS,
+            background: "#faf7f1",
+            borderBottom: `1px solid ${C.divider}`,
+            fontFamily: SANS,
+            fontSize: 11,
+            fontWeight: 600,
+            color: C.textSecondary,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
+            Task name
+          </div>
           <div
             style={{
-              display: "grid",
-              gridTemplateColumns: COLS,
-              gap: 8,
-              padding: "0 8px",
-              fontFamily: SANS,
-              fontSize: 10,
-              fontWeight: 700,
-              letterSpacing: 0.6,
-              color: C.textSecondary,
-              textTransform: "uppercase",
+              padding: "7px 12px",
+              textAlign: "center",
+              borderRight: `1px solid ${C.divider}`,
             }}
           >
-            <span>Task Name</span>
-            <span>Status</span>
-            <span>Due Date</span>
-            <span>Next Steps</span>
-            <span />
+            Due date
           </div>
-        )}
+          <div
+            style={{
+              padding: "7px 12px",
+              textAlign: "center",
+              borderRight: `1px solid ${C.divider}`,
+            }}
+          >
+            Status
+          </div>
+          <div style={{ padding: "7px 12px" }}>Next steps</div>
+        </div>
+
         {goals.map((g) => (
           <LifeAreaGoalRow
             key={g.id}
@@ -1414,21 +1446,25 @@ function LifeAreaGoalsBlock({
             onDelete={onDelete}
           />
         ))}
+
         <button
           type="button"
           onClick={onAdd}
           style={{
-            alignSelf: "flex-start",
+            display: "block",
+            width: "100%",
+            textAlign: "left",
             background: "transparent",
             border: "none",
+            borderTop: goals.length > 0 ? `1px solid ${C.divider}` : "none",
             color: C.textSecondary,
             fontFamily: SANS,
-            fontSize: 12,
-            padding: "4px 8px",
+            fontSize: 13,
+            padding: "8px 12px 8px 36px",
             cursor: "pointer",
           }}
         >
-          + Add task
+          <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
         </button>
       </div>
     </div>
@@ -1446,101 +1482,172 @@ function LifeAreaGoalRow({
 }) {
   const [text, setText] = useState(goal.text);
   const [nextSteps, setNextSteps] = useState(goal.nextSteps);
+  const [hover, setHover] = useState(false);
   useEffect(() => setText(goal.text), [goal.text]);
   useEffect(() => setNextSteps(goal.nextSteps), [goal.nextSteps]);
 
+  const done = goal.status === "achieved";
+  const dueInfo = formatDueDate(goal.dueDate, done);
+
   return (
     <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: "1fr 130px 130px 1fr 22px",
-        gap: 8,
-        alignItems: "start",
-        padding: "6px 8px",
-        background: C.card,
-        border: `1px solid ${C.cardBorder}`,
-        borderRadius: 4,
+        gridTemplateColumns: GOAL_GRID_COLS,
+        alignItems: "stretch",
+        borderBottom: `1px solid ${C.divider}`,
       }}
     >
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text !== goal.text && onUpdate(goal.id, { text })}
+      <div
         style={{
-          ...inputStyle,
-          fontSize: 13,
-          padding: "2px 6px",
-          border: `1px solid ${C.cardBorder}`,
-          borderRadius: 4,
-          background: C.bg,
-        }}
-      />
-      <select
-        value={goal.status}
-        onChange={(e) => onUpdate(goal.id, { status: e.target.value })}
-        style={{
-          fontFamily: SANS,
-          fontSize: 12,
-          padding: "3px 6px",
-          border: `1px solid ${C.cardBorder}`,
-          borderRadius: 4,
-          background: C.card,
-          color: C.textPrimary,
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 12px",
+          borderRight: `1px solid ${C.divider}`,
+          minWidth: 0,
         }}
       >
-        {LIFE_AREA_GOAL_STATUSES.map((o) => (
-          <option key={o.key} value={o.key}>
+        <AsanaCheck
+          done={done}
+          onToggle={() =>
+            onUpdate(goal.id, { status: done ? "not_started" : "achieved" })
+          }
+        />
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== goal.text && text.trim() && onUpdate(goal.id, { text: text.trim() })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          style={{
+            ...inputStyle,
+            fontSize: 14,
+            textDecoration: done ? "line-through" : "none",
+            color: done ? C.textSecondary : C.textPrimary,
+            flex: 1,
+            minWidth: 0,
+          }}
+        />
+        <button
+          type="button"
+          onClick={() => onDelete(goal.id)}
+          aria-label="Delete goal"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 16,
+            lineHeight: 1,
+            padding: "2px 6px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
+        }}
+      >
+        <DueDateField
+          value={goal.dueDate}
+          tone={dueInfo.tone}
+          label={dueInfo.label}
+          onChange={(next) => onUpdate(goal.id, { dueDate: next })}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
+        }}
+      >
+        <GoalStatusPill
+          status={goal.status}
+          onChange={(next) => onUpdate(goal.id, { status: next })}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "stretch",
+          padding: "6px 8px",
+        }}
+      >
+        <textarea
+          value={nextSteps}
+          onChange={(e) => setNextSteps(e.target.value)}
+          onBlur={() => nextSteps !== goal.nextSteps && onUpdate(goal.id, { nextSteps })}
+          placeholder="Next steps…"
+          rows={Math.max(1, nextSteps.split("\n").length)}
+          style={{
+            ...inputStyle,
+            fontSize: 13,
+            padding: "2px 6px",
+            border: "none",
+            background: "transparent",
+            color: C.textSecondary,
+            resize: "none",
+            width: "100%",
+            lineHeight: 1.4,
+          }}
+        />
+      </div>
+    </div>
+  );
+}
+
+function GoalStatusPill({
+  status,
+  onChange,
+}: {
+  status: string;
+  onChange: (next: string) => void;
+}) {
+  const opt =
+    GOAL_PILL_OPTIONS.find((o) => o.value === status) ?? GOAL_PILL_OPTIONS[0];
+  return (
+    <div style={{ position: "relative", display: "inline-block" }}>
+      <select
+        value={status}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          appearance: "none",
+          WebkitAppearance: "none",
+          MozAppearance: "none",
+          background: opt.bg,
+          color: opt.fg,
+          border: "none",
+          borderRadius: 999,
+          padding: "3px 14px",
+          fontSize: 11,
+          fontFamily: SANS,
+          fontWeight: 600,
+          cursor: "pointer",
+          textAlign: "center",
+        }}
+      >
+        {GOAL_PILL_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-      <input
-        type="date"
-        value={goal.dueDate ?? ""}
-        onChange={(e) => onUpdate(goal.id, { dueDate: e.target.value || null })}
-        style={{
-          fontFamily: SANS,
-          fontSize: 12,
-          padding: "3px 6px",
-          border: `1px solid ${C.cardBorder}`,
-          borderRadius: 4,
-          background: C.bg,
-          color: C.textPrimary,
-        }}
-      />
-      <textarea
-        value={nextSteps}
-        onChange={(e) => setNextSteps(e.target.value)}
-        onBlur={() => nextSteps !== goal.nextSteps && onUpdate(goal.id, { nextSteps })}
-        placeholder="Next steps…"
-        rows={Math.max(1, nextSteps.split("\n").length)}
-        style={{
-          ...inputStyle,
-          fontSize: 12,
-          padding: "2px 6px",
-          border: `1px solid ${C.cardBorder}`,
-          borderRadius: 4,
-          background: C.bg,
-          resize: "none",
-        }}
-      />
-      <button
-        type="button"
-        onClick={() => onDelete(goal.id)}
-        aria-label="Delete goal"
-        style={{
-          background: "transparent",
-          border: "none",
-          color: C.textSecondary,
-          cursor: "pointer",
-          fontSize: 16,
-          lineHeight: 1,
-          padding: 0,
-        }}
-      >
-        ×
-      </button>
     </div>
   );
 }

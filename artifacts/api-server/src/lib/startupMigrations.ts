@@ -185,11 +185,16 @@ async function migrateLifeAreasToYearlyPlanning(client: PgClient): Promise<void>
       text          TEXT NOT NULL,
       status        TEXT NOT NULL DEFAULT 'not_started',
       next_steps    TEXT NOT NULL DEFAULT '',
+      due_date      DATE,
       sort_order    INTEGER NOT NULL DEFAULT 0,
       created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
     )
   `);
+  // Idempotent upgrade for existing deployments that pre-date due_date.
+  await client.query(
+    `ALTER TABLE cc_life_area_goals ADD COLUMN IF NOT EXISTS due_date date`,
+  );
   await client.query(`
     CREATE INDEX IF NOT EXISTS cc_life_area_goals_area_idx
       ON cc_life_area_goals (life_area_id, goal_type, sort_order)

@@ -79,6 +79,7 @@ export const ccLifeAreaGoalsTable = pgTable("cc_life_area_goals", {
   text: text("text").notNull(),
   status: text("status").notNull().default("not_started"),
   nextSteps: text("next_steps").notNull().default(""),
+  dueDate: date("due_date", { mode: "string" }),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

@@ -492,6 +492,7 @@ router.post("/life-areas/:id/goals", async (req, res): Promise<void> => {
       text: z.string().min(1),
       status: z.enum(GOAL_STATUSES).optional(),
       nextSteps: z.string().optional(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
     })
     .safeParse(req.body);
   if (!id.success || !body.success) {
@@ -518,6 +519,7 @@ router.post("/life-areas/:id/goals", async (req, res): Promise<void> => {
       text: body.data.text,
       status: body.data.status ?? "not_started",
       nextSteps: body.data.nextSteps ?? "",
+      dueDate: body.data.dueDate ?? null,
       sortOrder: (last?.max ?? -1) + 1,
     })
     .returning();
@@ -545,6 +547,7 @@ router.patch("/life-area-goals/:id", async (req, res): Promise<void> => {
       text: z.string().min(1).optional(),
       status: z.enum(GOAL_STATUSES).optional(),
       nextSteps: z.string().optional(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       sortOrder: z.number().int().optional(),
     })
     .safeParse(req.body);
