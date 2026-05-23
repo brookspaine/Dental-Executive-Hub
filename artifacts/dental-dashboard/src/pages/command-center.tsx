@@ -992,7 +992,14 @@ function LifeAreasTab({ businesses = [] }: { businesses?: Business[] }) {
   if (error) return <ErrorBlock message={error} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(440px, 1fr))",
+        gap: 12,
+        alignItems: "start",
+      }}
+    >
       {areas.map((a) => (
         <SectionAccordion
           key={a.id}

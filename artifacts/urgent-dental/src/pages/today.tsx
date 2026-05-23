@@ -803,7 +803,14 @@ function LifeAreasTab() {
   if (error) return <ErrorBlock message={error} />;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(420px, 1fr))",
+        gap: 12,
+        alignItems: "start",
+      }}
+    >
       {areas.map((a) => (
         <SectionAccordion
           key={a.id}
