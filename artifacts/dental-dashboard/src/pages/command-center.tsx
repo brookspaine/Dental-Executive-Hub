@@ -1194,34 +1194,20 @@ function LifeAreaAboutList({
   nextSteps: string[];
   onChange: (items: string[], nextSteps: string[]) => void | Promise<void>;
 }) {
-  // Parallel arrays — index N of items pairs with index N of nextSteps.
-  // Pad nextSteps so the two arrays stay aligned even when migration hasn't
-  // populated it yet.
-  const padNextSteps = (n: string[], len: number) => {
-    if (n.length >= len) return n.slice(0, len);
-    return [...n, ...Array.from({ length: len - n.length }, () => "")];
-  };
+  // Next-steps column removed from the About panels; we still preserve any
+  // existing nextSteps payload on the server (pass-through unchanged) so the
+  // data isn't destroyed if the column ever comes back.
   const [draftItems, setDraftItems] = useState<string[]>(items);
-  const [draftNext, setDraftNext] = useState<string[]>(padNextSteps(nextSteps, items.length));
   useEffect(() => setDraftItems(items), [items.join("\u0001")]);
-  useEffect(
-    () => setDraftNext(padNextSteps(nextSteps, items.length)),
-    [nextSteps.join("\u0001"), items.length],
-  );
 
-  const commit = (nextItems: string[], nextNextSteps: string[]) => {
-    const aligned = padNextSteps(nextNextSteps, nextItems.length);
+  const commit = (nextItems: string[]) => {
     setDraftItems(nextItems);
-    setDraftNext(aligned);
-    if (
-      JSON.stringify(nextItems) !== JSON.stringify(items) ||
-      JSON.stringify(aligned) !== JSON.stringify(padNextSteps(nextSteps, items.length))
-    ) {
-      onChange(nextItems, aligned);
+    if (JSON.stringify(nextItems) !== JSON.stringify(items)) {
+      onChange(nextItems, nextSteps);
     }
   };
 
-  const COLS = "1fr 1fr 56px";
+  const COLS = "1fr 56px";
   return (
     <div>
       <div
@@ -1242,12 +1228,7 @@ function LifeAreaAboutList({
           <AboutListRow
             key={idx}
             cols={COLS}
-            onRemove={() =>
-              commit(
-                draftItems.filter((_, i) => i !== idx),
-                draftNext.filter((_, i) => i !== idx),
-              )
-            }
+            onRemove={() => commit(draftItems.filter((_, i) => i !== idx))}
           >
             <input
               type="text"
@@ -1257,7 +1238,7 @@ function LifeAreaAboutList({
                 next[idx] = e.target.value;
                 setDraftItems(next);
               }}
-              onBlur={() => commit(draftItems, draftNext)}
+              onBlur={() => commit(draftItems)}
               style={{
                 ...inputStyle,
                 fontSize: 13,
@@ -1266,31 +1247,11 @@ function LifeAreaAboutList({
                 background: "transparent",
               }}
             />
-            <textarea
-              value={draftNext[idx] ?? ""}
-              onChange={(e) => {
-                const next = [...draftNext];
-                next[idx] = e.target.value;
-                setDraftNext(next);
-              }}
-              onBlur={() => commit(draftItems, draftNext)}
-              placeholder="Next steps…"
-              rows={Math.max(1, (draftNext[idx] ?? "").split("\n").length)}
-              style={{
-                ...inputStyle,
-                fontSize: 12,
-                padding: "4px 6px",
-                border: "none",
-                background: "transparent",
-                color: C.textSecondary,
-                resize: "none",
-              }}
-            />
           </AboutListRow>
         ))}
         <button
           type="button"
-          onClick={() => commit([...draftItems, ""], [...draftNext, ""])}
+          onClick={() => commit([...draftItems, ""])}
           style={{
             alignSelf: "flex-start",
             background: "transparent",
