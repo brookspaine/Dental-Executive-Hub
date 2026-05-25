@@ -8,7 +8,14 @@ import logoUrl from "@assets/urgent-dental-logo.png";
 type ParentType = "direct_report" | "project";
 type ProjectStatus = "active" | "on_hold" | "complete";
 
-type Top3Row = { id: number; slot: number; text: string; done: boolean; date: string };
+type Top3Row = {
+  id: number;
+  slot: number;
+  period: "day" | "week";
+  text: string;
+  done: boolean;
+  date: string;
+};
 type DirectReport = {
   id: number;
   name: string;
@@ -276,6 +283,9 @@ function OverviewTab() {
 
   useEffect(() => {
     reload();
+    const onChanged = () => reload();
+    window.addEventListener("ud:top3-changed", onChanged);
+    return () => window.removeEventListener("ud:top3-changed", onChanged);
   }, []);
 
   if (error) return <ErrorBlock message={error} />;
@@ -1501,6 +1511,7 @@ function TaskRow({
             {originLabel}
           </span>
         )}
+        <PinStar taskText={task.text} visible={hover} />
         <button
           type="button"
           onClick={onDelete}
@@ -1627,6 +1638,195 @@ function OwnerPicker({
         ))}
       </select>
     </label>
+  );
+}
+
+function PinStar({
+  taskText,
+  visible,
+}: {
+  taskText: string;
+  visible: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const [slots, setSlots] = useState<Top3Row[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  const openPicker = async () => {
+    setOpen(true);
+    try {
+      const rows = await api<Top3Row[]>(`/urgent-dental/top3`);
+      setSlots(rows);
+    } catch {
+      if (slots === null) setSlots([]);
+    }
+  };
+
+  const pin = async (period: "day" | "week", slot: number) => {
+    const text = taskText.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try {
+      await api(`/urgent-dental/top3/${period}/${slot}`, {
+        method: "PUT",
+        body: JSON.stringify({ text, done: false }),
+      });
+      setSlots((cur) =>
+        (cur ?? []).map((r) =>
+          r.period === period && r.slot === slot ? { ...r, text, done: false } : r,
+        ),
+      );
+      window.dispatchEvent(new CustomEvent("ud:top3-changed"));
+      setOpen(false);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const getSlot = (period: "day" | "week", slot: number) =>
+    slots?.find((r) => r.period === period && r.slot === slot) ?? null;
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative", flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          if (open) setOpen(false);
+          else void openPicker();
+        }}
+        aria-label="Pin to Top 3"
+        title="Pin to Top 3"
+        style={{
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "2px 4px",
+          fontSize: 15,
+          lineHeight: 1,
+          color: open ? C.accent : C.textSecondary,
+          visibility: visible || open ? "visible" : "hidden",
+        }}
+      >
+        {open ? "★" : "☆"}
+      </button>
+      {open && (
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 50,
+            background: "#fff",
+            border: `1px solid ${C.cardBorder}`,
+            borderRadius: 8,
+            boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+            padding: 10,
+            width: 320,
+            fontFamily: SANS,
+          }}
+        >
+          <div style={{ display: "flex", gap: 10 }}>
+            {(["day", "week"] as const).map((period) => (
+              <div
+                key={period}
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 4,
+                  minWidth: 0,
+                  flex: 1,
+                }}
+              >
+                <div
+                  style={{
+                    fontFamily: SANS,
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: C.textSecondary,
+                    textTransform: "uppercase",
+                    letterSpacing: 0.6,
+                    marginBottom: 2,
+                  }}
+                >
+                  {period === "day" ? "Today" : "This Week"}
+                </div>
+                {[1, 2, 3].map((slot) => {
+                  const row = getSlot(period, slot);
+                  const preview = row?.text?.trim() ?? "";
+                  return (
+                    <button
+                      key={slot}
+                      type="button"
+                      disabled={busy || slots === null}
+                      onClick={() => pin(period, slot)}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 6,
+                        background: "#faf7f1",
+                        border: `1px solid ${C.divider}`,
+                        borderRadius: 6,
+                        padding: "6px 8px",
+                        cursor: busy ? "default" : "pointer",
+                        textAlign: "left",
+                        minWidth: 0,
+                        fontFamily: SANS,
+                      }}
+                    >
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          width: 18,
+                          height: 18,
+                          borderRadius: "50%",
+                          background: C.accent,
+                          color: "#fff",
+                          fontSize: 10,
+                          fontWeight: 700,
+                          flexShrink: 0,
+                        }}
+                      >
+                        {slot}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: 12,
+                          color: preview ? C.textPrimary : C.textSecondary,
+                          fontStyle: preview ? "normal" : "italic",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
+                        {preview || "empty"}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
