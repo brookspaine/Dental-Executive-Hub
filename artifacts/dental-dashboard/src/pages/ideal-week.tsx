@@ -5,16 +5,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   useListIdealWeekRituals,
   useToggleIdealWeekCompletion,
-  useListDailyTop3,
-  useCreateDailyTop3,
-  useUpdateDailyTop3,
-  useDeleteDailyTop3,
   useListFutureTodos,
   useCreateFutureTodo,
   useUpdateFutureTodo,
   useDeleteFutureTodo,
   getListFutureTodosQueryKey,
-  getListDailyTop3QueryKey,
   useListScheduleBlocks,
   useCreateScheduleBlock,
   useUpdateScheduleBlock,
@@ -171,14 +166,21 @@ type WeeklyItem = {
   createdAt: string;
 };
 
-function useWeeklyTop3(weekStart: string) {
-  return useQuery<WeeklyItem[]>({
-    queryKey: ["weekly-top3", weekStart],
+type CcTop3Row = {
+  id: number;
+  slot: number;
+  period: "day" | "week";
+  text: string;
+  done: boolean;
+  date: string;
+};
+
+function useCcTop3() {
+  return useQuery<CcTop3Row[]>({
+    queryKey: ["cc-top3"],
     queryFn: async () => {
       const base = import.meta.env.BASE_URL || "/";
-      const res = await fetch(
-        `${base}api/ideal-week/weekly-top3?weekStart=${weekStart}`
-      );
+      const res = await fetch(`${base}api/command-center/top3`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -713,39 +715,35 @@ function WordsOfWisdom() {
   );
 }
 
-function Big3Section({
+function CcTop3Card({
   title,
   icon: Icon,
-  items,
-  completedCount,
-  totalCount,
-  onAdd,
-  onToggle,
-  onDelete,
-  onRename,
-  canAdd,
-  addPlaceholder,
+  period,
+  rows,
+  onChanged,
 }: {
   title: string;
-  icon: React.ElementType;
-  items: { id: number; title: string; completed: boolean }[];
-  completedCount: number;
-  totalCount: number;
-  onAdd: (title: string) => void;
-  onToggle: (id: number, completed: boolean) => void;
-  onDelete: (id: number) => void;
-  onRename: (id: number, title: string) => void;
-  canAdd: boolean;
-  addPlaceholder: string;
+  icon: LucideIcon;
+  period: "day" | "week";
+  rows: CcTop3Row[];
+  onChanged: () => void;
 }) {
-  const [newTitle, setNewTitle] = useState("");
-  const inputRef = useRef<HTMLInputElement>(null);
+  const base = import.meta.env.BASE_URL || "/";
+  const slots = [1, 2, 3].map(
+    (slot) => rows.find((r) => r.slot === slot) ?? null,
+  );
+  const filled = slots.filter((r) => r && r.text.trim().length > 0);
+  const completedCount = filled.filter((r) => r!.done).length;
+  const totalCount = filled.length;
 
-  const handleAdd = () => {
-    if (!newTitle.trim()) return;
-    onAdd(newTitle.trim());
-    setNewTitle("");
-    inputRef.current?.focus();
+  const save = async (slot: number, body: { text?: string; done?: boolean }) => {
+    await fetch(`${base}api/command-center/top3/${period}/${slot}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    onChanged();
+    window.dispatchEvent(new CustomEvent("cc:top3-changed"));
   };
 
   return (
@@ -764,44 +762,71 @@ function Big3Section({
           </Badge>
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
-        {items.map((item) => (
-          <EditableItem
-            key={item.id}
-            item={item}
-            onToggle={onToggle}
-            onDelete={onDelete}
-            onRename={onRename}
+      <CardContent className="space-y-2.5">
+        {slots.map((row, idx) => (
+          <CcTop3Slot
+            key={idx}
+            slot={idx + 1}
+            text={row?.text ?? ""}
+            done={row?.done ?? false}
+            onSaveText={(text) => save(idx + 1, { text })}
+            onToggleDone={(done) => save(idx + 1, { done })}
           />
         ))}
-        {canAdd && (
-          <div className="flex items-center gap-2 pt-1">
-            <Input
-              ref={inputRef}
-              value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-              placeholder={addPlaceholder}
-              className="h-8 text-sm"
-            />
-            <Button
-              variant="outline"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={handleAdd}
-              disabled={!newTitle.trim()}
-            >
-              <Plus className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        )}
-        {items.length === 0 && !canAdd && (
-          <p className="text-sm text-muted-foreground text-center py-2">
-            No items yet
-          </p>
-        )}
       </CardContent>
     </Card>
+  );
+}
+
+function CcTop3Slot({
+  slot,
+  text,
+  done,
+  onSaveText,
+  onToggleDone,
+}: {
+  slot: number;
+  text: string;
+  done: boolean;
+  onSaveText: (text: string) => void | Promise<void>;
+  onToggleDone: (done: boolean) => void | Promise<void>;
+}) {
+  const [value, setValue] = useState(text);
+  useEffect(() => setValue(text), [text]);
+  const hasText = value.trim().length > 0;
+
+  return (
+    <div className="flex items-center gap-2.5">
+      <button
+        type="button"
+        onClick={() => hasText && onToggleDone(!done)}
+        disabled={!hasText}
+        title={done ? "Mark as not done" : "Mark as done"}
+        className={[
+          "h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-xs font-semibold text-white border-none",
+          done ? "bg-emerald-700" : "bg-primary",
+          hasText ? "cursor-pointer" : "cursor-default opacity-90",
+        ].join(" ")}
+      >
+        {done ? "✓" : slot}
+      </button>
+      <Input
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={() => {
+          const next = value.trim();
+          if (next !== text.trim()) onSaveText(next);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        }}
+        placeholder="What's the one thing…"
+        className={[
+          "h-8 text-sm",
+          done ? "line-through text-muted-foreground" : "",
+        ].join(" ")}
+      />
+    </div>
   );
 }
 
@@ -2406,20 +2431,23 @@ export function IdealWeek() {
     useWeekCompletions(startStr, endStr);
   const toggleCompletion = useToggleIdealWeekCompletion();
 
-  const { data: dailyTop3 = [] } = useListDailyTop3();
-  const invalidateDaily = () =>
-    queryClient.invalidateQueries({ queryKey: getListDailyTop3QueryKey() });
-  const createDaily = useCreateDailyTop3({
-    mutation: { onSuccess: invalidateDaily },
-  });
-  const updateDaily = useUpdateDailyTop3({
-    mutation: { onSuccess: invalidateDaily },
-  });
-  const deleteDaily = useDeleteDailyTop3({
-    mutation: { onSuccess: invalidateDaily },
-  });
+  const { data: ccTop3 = [] } = useCcTop3();
+  const invalidateCcTop3 = () =>
+    queryClient.invalidateQueries({ queryKey: ["cc-top3"] });
+  const ccDailyRows = useMemo(
+    () => ccTop3.filter((r) => r.period === "day"),
+    [ccTop3],
+  );
+  const ccWeeklyRows = useMemo(
+    () => ccTop3.filter((r) => r.period === "week"),
+    [ccTop3],
+  );
 
-  const { data: weeklyTop3 = [] } = useWeeklyTop3(startStr);
+  useEffect(() => {
+    const onChanged = () => invalidateCcTop3();
+    window.addEventListener("cc:top3-changed", onChanged);
+    return () => window.removeEventListener("cc:top3-changed", onChanged);
+  }, []);
 
   const { data: futureTodos = [] } = useListFutureTodos();
   const invalidateFuture = () =>
@@ -2435,42 +2463,6 @@ export function IdealWeek() {
   });
 
   const base = import.meta.env.BASE_URL || "/";
-
-  const createWeekly = useMutation({
-    mutationFn: async (data: { title: string; priority: number; weekStart: string }) => {
-      const res = await fetch(`${base}api/ideal-week/weekly-top3`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["weekly-top3", startStr] }),
-  });
-
-  const updateWeekly = useMutation({
-    mutationFn: async ({ id, ...data }: { id: number; completed?: boolean; title?: string }) => {
-      const res = await fetch(`${base}api/ideal-week/weekly-top3/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-      return res.json();
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["weekly-top3", startStr] }),
-  });
-
-  const deleteWeekly = useMutation({
-    mutationFn: async (id: number) => {
-      await fetch(`${base}api/ideal-week/weekly-top3/${id}`, {
-        method: "DELETE",
-      });
-    },
-    onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: ["weekly-top3", startStr] }),
-  });
 
   const isLoading = ritualsLoading || completionsLoading;
 
@@ -2525,9 +2517,6 @@ export function IdealWeek() {
 
   const weekLabel = `${weekDates[0].toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${weekDates[6].toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
 
-  const dailyCompleted = dailyTop3.filter((i) => i.completed).length;
-  const weeklyCompleted = weeklyTop3.filter((i) => i.completed).length;
-
   return (
     <div className="space-y-3">
       {document.getElementById("header-actions") && createPortal(
@@ -2561,45 +2550,19 @@ export function IdealWeek() {
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Big3Section
-              title="Today's Big 3"
+            <CcTop3Card
+              title="Today's Top 3"
               icon={Star}
-              items={dailyTop3}
-              completedCount={dailyCompleted}
-              totalCount={dailyTop3.length}
-              canAdd={dailyTop3.length < 3}
-              addPlaceholder="Add today's priority..."
-              onAdd={(title) =>
-                createDaily.mutate({
-                  data: { title, priority: dailyTop3.length + 1 },
-                })
-              }
-              onToggle={(id, completed) =>
-                updateDaily.mutate({ id, data: { completed } })
-              }
-              onDelete={(id) => deleteDaily.mutate({ id })}
-              onRename={(id, title) =>
-                updateDaily.mutate({ id, data: { title } })
-              }
+              period="day"
+              rows={ccDailyRows}
+              onChanged={invalidateCcTop3}
             />
-            <Big3Section
-              title="This Week's Big 3"
+            <CcTop3Card
+              title="This Week's Top 3"
               icon={Target}
-              items={weeklyTop3}
-              completedCount={weeklyCompleted}
-              totalCount={weeklyTop3.length}
-              canAdd={weeklyTop3.length < 3}
-              addPlaceholder="Add weekly priority..."
-              onAdd={(title) =>
-                createWeekly.mutate({
-                  title,
-                  priority: weeklyTop3.length + 1,
-                  weekStart: startStr,
-                })
-              }
-              onToggle={(id, completed) => updateWeekly.mutate({ id, completed })}
-              onDelete={(id) => deleteWeekly.mutate(id)}
-              onRename={(id, title) => updateWeekly.mutate({ id, title })}
+              period="week"
+              rows={ccWeeklyRows}
+              onChanged={invalidateCcTop3}
             />
           </div>
 
