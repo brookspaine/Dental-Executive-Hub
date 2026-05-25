@@ -305,7 +305,7 @@ export function CommandCenter() {
       {/* Body — keyed by business so all tabs remount & refetch on switch */}
       <div
         key={businessId}
-        style={{ maxWidth: 980, margin: "0 auto", padding: "28px 24px 80px" }}
+        style={{ maxWidth: 980, margin: "0 auto", padding: "20px 14px 80px" }}
       >
         {tab === "overview" && <OverviewTab />}
         {tab === "direct-reports" && <DirectReportsTab businesses={businesses} />}
@@ -1359,9 +1359,10 @@ function LifeAreaGoalsBlock({
           background: "transparent",
           border: `1px solid ${C.cardBorder}`,
           borderRadius: 6,
-          overflow: "hidden",
+          overflowX: "auto",
         }}
       >
+       <div style={{ minWidth: 640 }}>
         {/* Column header */}
         <div
           style={{
@@ -1429,6 +1430,7 @@ function LifeAreaGoalsBlock({
         >
           <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
         </button>
+       </div>
       </div>
     </div>
   );
@@ -1838,7 +1840,7 @@ function SectionAccordion({
 
       {/* Body */}
       {!collapsed && (
-        <div style={{ borderTop: `1px solid ${C.divider}`, padding: "10px 16px 14px" }}>
+        <div style={{ borderTop: `1px solid ${C.divider}`, padding: "10px 10px 14px" }}>
           {bodyPrefix && (
             <div style={{ marginBottom: loaded ? 18 : 12 }}>{bodyPrefix}</div>
           )}
@@ -2091,10 +2093,11 @@ function TaskSectionGroup({
           style={{
             border: `1px solid ${C.divider}`,
             borderRadius: 6,
-            overflow: "hidden",
+            overflowX: "auto",
             background: C.card,
           }}
         >
+        <div style={{ minWidth: showNextStepsColumn ? 640 : showOwnerColumn ? 560 : 480 }}>
           {/* Column header */}
           <div
             style={{
@@ -2265,6 +2268,7 @@ function TaskSectionGroup({
               <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
             </button>
           )}
+        </div>
         </div>
       )}
     </div>
