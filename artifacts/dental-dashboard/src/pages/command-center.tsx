@@ -85,6 +85,7 @@ type Business = { id: number; name: string; slug: string; sortOrder: number };
 type BrainDumpFilter = "inbox" | "reference" | "someday" | "processed";
 type Overview = {
   top3: Top3Row[];
+  weekTop3: Top3Row[];
   stats: {
     openLifeTasks: number;
     openTeamItems: number;
@@ -495,7 +496,27 @@ function OverviewTab() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
-      <Top3Card top3={data.top3} onChange={reload} />
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 16,
+          alignItems: "start",
+        }}
+      >
+        <Top3Card
+          title="Today's Top 3"
+          period="day"
+          top3={data.top3}
+          onChange={reload}
+        />
+        <Top3Card
+          title="This Week's Top 3"
+          period="week"
+          top3={data.weekTop3 ?? []}
+          onChange={reload}
+        />
+      </div>
       <OverviewSection title="Direct Reports">
         <DirectReportsTab />
       </OverviewSection>
@@ -587,12 +608,22 @@ function OverviewSection({
   );
 }
 
-function Top3Card({ top3, onChange }: { top3: Top3Row[]; onChange: () => void }) {
+function Top3Card({
+  title,
+  period,
+  top3,
+  onChange,
+}: {
+  title: string;
+  period: "day" | "week";
+  top3: Top3Row[];
+  onChange: () => void;
+}) {
   const slots = [1, 2, 3].map((slot) => top3.find((r) => r.slot === slot) ?? null);
 
   return (
     <Card>
-      <CardHeading title="Today's Top 3" />
+      <CardHeading title={title} />
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {slots.map((row, idx) => (
           <Top3Row
@@ -601,14 +632,14 @@ function Top3Card({ top3, onChange }: { top3: Top3Row[]; onChange: () => void })
             initial={row?.text ?? ""}
             done={row?.done ?? false}
             onSave={async (text) => {
-              await api(`/command-center/top3/${idx + 1}`, {
+              await api(`/command-center/top3/${period}/${idx + 1}`, {
                 method: "PUT",
                 body: JSON.stringify({ text }),
               });
               onChange();
             }}
             onToggleDone={async (done) => {
-              await api(`/command-center/top3/${idx + 1}`, {
+              await api(`/command-center/top3/${period}/${idx + 1}`, {
                 method: "PUT",
                 body: JSON.stringify({ done }),
               });

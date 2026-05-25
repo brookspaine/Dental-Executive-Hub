@@ -89,13 +89,20 @@ async function ensureLifeAreasSeeded(businessId: number): Promise<void> {
   seededLifeAreasForBusiness.add(businessId);
 }
 
+const TOP3_PERIODS = ["day", "week"] as const;
+type Top3Period = (typeof TOP3_PERIODS)[number];
+
 async function ensureTop3Slots(businessId: number): Promise<void> {
   const today = todayDateString();
-  for (const slot of [1, 2, 3]) {
-    await db
-      .insert(ccTop3Table)
-      .values({ slot, text: "", date: today, businessId })
-      .onConflictDoNothing({ target: [ccTop3Table.businessId, ccTop3Table.slot] });
+  for (const period of TOP3_PERIODS) {
+    for (const slot of [1, 2, 3]) {
+      await db
+        .insert(ccTop3Table)
+        .values({ slot, period, text: "", date: today, businessId })
+        .onConflictDoNothing({
+          target: [ccTop3Table.businessId, ccTop3Table.period, ccTop3Table.slot],
+        });
+    }
   }
 }
 
@@ -158,17 +165,56 @@ async function sectionInBusiness(sectionId: number, businessId: number) {
 /* Top 3                                                                      */
 /* -------------------------------------------------------------------------- */
 
+const periodSchema = z.enum(TOP3_PERIODS);
+
 router.get("/top3", async (req, res): Promise<void> => {
   const businessId = getBusinessId(req);
   await ensureTop3Slots(businessId);
+  const queryPeriod = periodSchema.safeParse(req.query.period);
   const rows = await db
     .select()
     .from(ccTop3Table)
-    .where(eq(ccTop3Table.businessId, businessId))
-    .orderBy(asc(ccTop3Table.slot));
+    .where(
+      queryPeriod.success
+        ? and(eq(ccTop3Table.businessId, businessId), eq(ccTop3Table.period, queryPeriod.data))
+        : eq(ccTop3Table.businessId, businessId),
+    )
+    .orderBy(asc(ccTop3Table.period), asc(ccTop3Table.slot));
   res.json(rows);
 });
 
+router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const period = periodSchema.safeParse(req.params.period);
+  const slot = z.coerce.number().int().min(1).max(3).safeParse(req.params.slot);
+  const body = z
+    .object({ text: z.string().optional(), done: z.boolean().optional() })
+    .safeParse(req.body);
+  if (!period.success || !slot.success || !body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  await ensureTop3Slots(businessId);
+  const patch: { text?: string; done?: boolean; date: string } = {
+    date: todayDateString(),
+  };
+  if (body.data.text !== undefined) patch.text = body.data.text;
+  if (body.data.done !== undefined) patch.done = body.data.done;
+  const [row] = await db
+    .update(ccTop3Table)
+    .set(patch)
+    .where(
+      and(
+        eq(ccTop3Table.businessId, businessId),
+        eq(ccTop3Table.period, period.data),
+        eq(ccTop3Table.slot, slot.data),
+      ),
+    )
+    .returning();
+  res.json(row);
+});
+
+/* Legacy single-slot route — defaults to period="day" for backward compatibility. */
 router.put("/top3/:slot", async (req, res): Promise<void> => {
   const businessId = getBusinessId(req);
   const slot = z.coerce.number().int().min(1).max(3).safeParse(req.params.slot);
@@ -188,7 +234,13 @@ router.put("/top3/:slot", async (req, res): Promise<void> => {
   const [row] = await db
     .update(ccTop3Table)
     .set(patch)
-    .where(and(eq(ccTop3Table.slot, slot.data), eq(ccTop3Table.businessId, businessId)))
+    .where(
+      and(
+        eq(ccTop3Table.businessId, businessId),
+        eq(ccTop3Table.period, "day"),
+        eq(ccTop3Table.slot, slot.data),
+      ),
+    )
     .returning();
   res.json(row);
 });
@@ -1079,13 +1131,17 @@ router.post("/brain-dump/:id/process", async (req, res): Promise<void> => {
       .select()
       .from(ccTop3Table)
       .where(
-        and(eq(ccTop3Table.slot, body.data.slot), eq(ccTop3Table.businessId, businessId)),
+        and(
+          eq(ccTop3Table.businessId, businessId),
+          eq(ccTop3Table.period, "day"),
+          eq(ccTop3Table.slot, body.data.slot),
+        ),
       );
     await db
       .insert(ccTop3Table)
-      .values({ slot: body.data.slot, text: taskText, businessId })
+      .values({ slot: body.data.slot, period: "day", text: taskText, businessId })
       .onConflictDoUpdate({
-        target: [ccTop3Table.businessId, ccTop3Table.slot],
+        target: [ccTop3Table.businessId, ccTop3Table.period, ccTop3Table.slot],
         set: { text: taskText, done: false },
       });
     routedTaskType = "cc_top3";
@@ -1166,7 +1222,11 @@ router.post("/brain-dump/:id/unprocess", async (req, res): Promise<void> => {
       .update(ccTop3Table)
       .set({ text: snap.text, done: snap.done })
       .where(
-        and(eq(ccTop3Table.slot, entry.routedSlot), eq(ccTop3Table.businessId, businessId)),
+        and(
+          eq(ccTop3Table.businessId, businessId),
+          eq(ccTop3Table.period, "day"),
+          eq(ccTop3Table.slot, entry.routedSlot),
+        ),
       );
   }
   const [updated] = await db
@@ -1238,12 +1298,12 @@ router.get("/overview", async (req, res): Promise<void> => {
   await ensureLifeAreasSeeded(businessId);
   await ensureTop3Slots(businessId);
 
-  const [top3, lifeAreas, directReports, projects, brainDumpCountRow] = await Promise.all([
+  const [top3All, lifeAreas, directReports, projects, brainDumpCountRow] = await Promise.all([
     db
       .select()
       .from(ccTop3Table)
       .where(eq(ccTop3Table.businessId, businessId))
-      .orderBy(asc(ccTop3Table.slot)),
+      .orderBy(asc(ccTop3Table.period), asc(ccTop3Table.slot)),
     db
       .select()
       .from(ccLifeAreasTable)
@@ -1321,7 +1381,8 @@ router.get("/overview", async (req, res): Promise<void> => {
   }
 
   res.json({
-    top3,
+    top3: top3All.filter((r) => r.period === "day"),
+    weekTop3: top3All.filter((r) => r.period === "week"),
     stats: {
       openLifeTasks: counts.life_area,
       openTeamItems: counts.direct_report,

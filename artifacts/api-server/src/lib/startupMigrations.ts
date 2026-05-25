@@ -26,6 +26,7 @@ export async function runStartupMigrations(): Promise<void> {
       await convertBusinessIdToArray(client, "cc_projects");
       await restoreOrphanedParents(client);
       await migrateLifeAreasToYearlyPlanning(client);
+      await addCcTop3PeriodColumn(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -476,4 +477,36 @@ async function convertBusinessIdToArray(
     await client.query("ROLLBACK");
     throw err;
   }
+}
+
+/**
+ * Add `period` column to cc_top3 so we can store both "day" and "week"
+ * Top 3 lists per business. Replaces the old (business_id, slot) unique
+ * index with (business_id, period, slot). Idempotent.
+ */
+async function addCcTop3PeriodColumn(client: PgClient): Promise<void> {
+  const tableExists = (await client.query(
+    `SELECT 1 FROM information_schema.tables
+     WHERE table_schema = 'public' AND table_name = 'cc_top3'`,
+  )) as { rows: unknown[] };
+  if (tableExists.rows.length === 0) return;
+
+  const colsRes = (await client.query(
+    `SELECT column_name FROM information_schema.columns
+     WHERE table_schema = 'public' AND table_name = 'cc_top3'`,
+  )) as { rows: Array<{ column_name: string }> };
+  const cols = new Set(colsRes.rows.map((r) => r.column_name));
+
+  if (!cols.has("period")) {
+    logger.info("startup migration: adding cc_top3.period column");
+    await client.query(
+      `ALTER TABLE cc_top3 ADD COLUMN period text NOT NULL DEFAULT 'day'`,
+    );
+  }
+
+  await client.query(`DROP INDEX IF EXISTS cc_top3_business_slot_unique`);
+  await client.query(
+    `CREATE UNIQUE INDEX IF NOT EXISTS cc_top3_business_period_slot_unique
+       ON cc_top3 (business_id, period, slot)`,
+  );
 }

@@ -152,12 +152,13 @@ export const ccBrainDumpTable = pgTable("cc_brain_dump", {
 });
 export type CcBrainDump = typeof ccBrainDumpTable.$inferSelect;
 
-/* Today's Top 3 — 3 fixed slots per business */
+/* Top 3 — 3 fixed slots per business per period ("day" | "week") */
 export const ccTop3Table = pgTable(
   "cc_top3",
   {
     id: serial("id").primaryKey(),
     businessId: integer("business_id").notNull(),
+    period: text("period").notNull().default("day"),
     slot: integer("slot").notNull(),
     text: text("text").notNull().default(""),
     done: boolean("done").notNull().default(false),
@@ -168,8 +169,9 @@ export const ccTop3Table = pgTable(
       .$onUpdate(() => new Date()),
   },
   (t) => ({
-    businessSlotUnique: uniqueIndex("cc_top3_business_slot_unique").on(
+    businessPeriodSlotUnique: uniqueIndex("cc_top3_business_period_slot_unique").on(
       t.businessId,
+      t.period,
       t.slot,
     ),
   }),
