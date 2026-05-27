@@ -2718,7 +2718,7 @@ export function IdealWeek() {
           />
           <EditableRitualSection
             category="startup"
-            title="Startup Ritual"
+            title="Daily Planning Ritual"
             icon={Rocket}
             bannerColor="bg-[#9cc5cc]"
             textColor="text-slate-900"

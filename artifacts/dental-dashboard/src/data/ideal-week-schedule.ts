@@ -22,7 +22,7 @@ export const categoryColors: Record<string, { bg: string; text: string; border: 
 
 export const categoryLabels: Record<string, string> = {
   morning: "Morning Ritual",
-  startup: "Startup Ritual",
+  startup: "Daily Planning Ritual",
   deepwork: "Deepwork",
   patient: "Patient Care",
   executive: "Execution Block",
@@ -39,7 +39,7 @@ export const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"] as const;
 export const schedule: Record<string, ScheduleBlock[]> = {
   Mon: [
     { start: 6, duration: 1.5, label: "Morning Ritual", category: "morning" },
-    { start: 7.5, duration: 1, label: "Startup Ritual", category: "startup" },
+    { start: 7.5, duration: 1, label: "Daily Planning Ritual", category: "startup" },
     { start: 8.5, duration: 0.5, label: "Morning Huddle", category: "meeting" },
     { start: 9, duration: 3, label: "Patient Care", category: "patient" },
     { start: 12, duration: 4, label: "Patient Care", category: "patient" },
@@ -49,7 +49,7 @@ export const schedule: Record<string, ScheduleBlock[]> = {
   ],
   Tue: [
     { start: 6, duration: 1.5, label: "Morning Ritual", category: "morning" },
-    { start: 7.5, duration: 1, label: "Startup Ritual", category: "startup" },
+    { start: 7.5, duration: 1, label: "Daily Planning Ritual", category: "startup" },
     { start: 8.5, duration: 1.5, label: "Weekly Review", category: "review" },
     { start: 10, duration: 2, label: "Deepwork", category: "deepwork" },
     { start: 12, duration: 3.5, label: "Deepwork", category: "deepwork" },
@@ -60,7 +60,7 @@ export const schedule: Record<string, ScheduleBlock[]> = {
   ],
   Wed: [
     { start: 6, duration: 1.5, label: "Morning Ritual", category: "morning" },
-    { start: 7.5, duration: 1, label: "Startup Ritual", category: "startup" },
+    { start: 7.5, duration: 1, label: "Daily Planning Ritual", category: "startup" },
     { start: 8.5, duration: 1.5, label: "Deepwork", category: "deepwork" },
     { start: 10, duration: 0.5, label: "UC Meeting", category: "meeting" },
     { start: 10.5, duration: 1.5, label: "Deepwork", category: "deepwork" },
@@ -73,7 +73,7 @@ export const schedule: Record<string, ScheduleBlock[]> = {
   ],
   Thu: [
     { start: 6, duration: 1.5, label: "Morning Ritual", category: "morning" },
-    { start: 7.5, duration: 1, label: "Startup Ritual", category: "startup" },
+    { start: 7.5, duration: 1, label: "Daily Planning Ritual", category: "startup" },
     { start: 8.5, duration: 0.5, label: "Morning Huddle", category: "meeting" },
     { start: 9, duration: 3, label: "Patient Care", category: "patient" },
     { start: 12, duration: 1, label: "Deepwork", category: "deepwork" },
@@ -85,7 +85,7 @@ export const schedule: Record<string, ScheduleBlock[]> = {
   ],
   Fri: [
     { start: 6, duration: 1.5, label: "Morning Ritual", category: "morning" },
-    { start: 7.5, duration: 1, label: "Startup Ritual", category: "startup" },
+    { start: 7.5, duration: 1, label: "Daily Planning Ritual", category: "startup" },
     { start: 8.5, duration: 0.5, label: "Morning Huddle", category: "meeting" },
     { start: 9, duration: 3, label: "Patient Care", category: "patient" },
     { start: 12, duration: 3, label: "Patient Care", category: "patient" },
@@ -96,7 +96,7 @@ export const schedule: Record<string, ScheduleBlock[]> = {
   ],
   Sat: [
     { start: 6, duration: 1, label: "Morning Ritual", category: "morning" },
-    { start: 7, duration: 0.5, label: "Startup Ritual", category: "startup" },
+    { start: 7, duration: 0.5, label: "Daily Planning Ritual", category: "startup" },
     { start: 7.5, duration: 1, label: "Workout", category: "workout" },
     { start: 8.5, duration: 3.5, label: "Patient Care", category: "patient" },
     { start: 12, duration: 3, label: "Patient Care", category: "patient" },
@@ -106,7 +106,7 @@ export const schedule: Record<string, ScheduleBlock[]> = {
   ],
   Sun: [
     { start: 6, duration: 1.5, label: "Morning Ritual", category: "morning" },
-    { start: 7.5, duration: 1, label: "Startup Ritual", category: "startup" },
+    { start: 7.5, duration: 1, label: "Daily Planning Ritual", category: "startup" },
     { start: 8.5, duration: 3.5, label: "Patient Care", category: "patient" },
     { start: 12, duration: 2, label: "Deepwork", category: "deepwork" },
     { start: 14, duration: 2, label: "Shutdown Ritual", category: "shutdown" },

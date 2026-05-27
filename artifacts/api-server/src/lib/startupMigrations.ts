@@ -27,6 +27,7 @@ export async function runStartupMigrations(): Promise<void> {
       await restoreOrphanedParents(client);
       await migrateLifeAreasToYearlyPlanning(client);
       await addCcTop3PeriodColumn(client);
+      await renameStartupRitualLabel(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -509,4 +510,20 @@ async function addCcTop3PeriodColumn(client: PgClient): Promise<void> {
     `CREATE UNIQUE INDEX IF NOT EXISTS cc_top3_business_period_slot_unique
        ON cc_top3 (business_id, period, slot)`,
   );
+}
+
+/**
+ * Rename existing "Startup Ritual" rows to "Daily Planning Ritual" so
+ * already-seeded businesses pick up the new label. Idempotent.
+ */
+async function renameStartupRitualLabel(client: PgClient): Promise<void> {
+  const res = await client.query(
+    `UPDATE schedule_blocks
+       SET label = 'Daily Planning Ritual'
+       WHERE label = 'Startup Ritual'`,
+  );
+  const rowCount = (res as unknown as { rowCount: number | null }).rowCount;
+  if (rowCount && rowCount > 0) {
+    logger.info({ rows: rowCount }, "startup migration: renamed Startup Ritual → Daily Planning Ritual");
+  }
 }
