@@ -325,6 +325,7 @@ function DailyBrainwashing() {
   const { data: items = [] } = useRitualItems(category);
   const [adding, setAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const [editMode, setEditMode] = useState(false);
 
   const createItem = useMutation({
     mutationFn: async (label: string) => {
@@ -373,10 +374,18 @@ function DailyBrainwashing() {
           variant="ghost"
           size="sm"
           className="h-7 px-2 text-xs"
-          onClick={() => setAdding(true)}
+          onClick={() => {
+            setEditMode((v) => {
+              const next = !v;
+              if (!next) {
+                setAdding(false);
+                setNewLabel("");
+              }
+              return next;
+            });
+          }}
         >
-          <Plus className="h-3.5 w-3.5 mr-1" />
-          Add
+          {editMode ? "Done" : "Edit"}
         </Button>
       </CardHeader>
       <CardContent className="pt-0 space-y-1">
@@ -385,9 +394,22 @@ function DailyBrainwashing() {
             key={item.id}
             item={item}
             category={category}
+            editMode={editMode}
             onDelete={() => deleteItem.mutate(item.id)}
           />
         ))}
+
+        {editMode && !adding && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs mt-1"
+            onClick={() => setAdding(true)}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add
+          </Button>
+        )}
 
         {adding && (
           <div className="flex items-center gap-2 pt-1">
@@ -425,10 +447,12 @@ function DailyBrainwashing() {
 function BrainwashingItemRow({
   item,
   category,
+  editMode,
   onDelete,
 }: {
   item: { id: number; label: string };
   category: string;
+  editMode: boolean;
   onDelete: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -494,7 +518,7 @@ function BrainwashingItemRow({
   }, [value]);
 
   return (
-    <div className="group flex items-start gap-2 py-0.5 rounded hover:bg-muted/40">
+    <div className="flex items-start gap-2 py-0.5 rounded">
       <span className="text-primary select-none leading-relaxed">•</span>
       <textarea
         ref={textareaRef}
@@ -502,17 +526,20 @@ function BrainwashingItemRow({
         value={value}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={handleBlur}
+        readOnly={!editMode}
         className="text-sm leading-relaxed flex-1 outline-none focus:bg-muted/50 rounded px-1 -mx-1 cursor-text bg-transparent border-0 w-full resize-none overflow-hidden"
       />
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0"
-        onClick={onDelete}
-        aria-label="Delete item"
-      >
-        <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-      </Button>
+      {editMode && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6 flex-shrink-0"
+          onClick={onDelete}
+          aria-label="Delete item"
+        >
+          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+        </Button>
+      )}
     </div>
   );
 }
