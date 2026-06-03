@@ -1,0 +1,1 @@
+- [Prod/dev DB data drift](prod-data-drift.md) — dev DB fixes reach prod only via idempotent startupMigrations + republish; prod is read-only to the agent.

@@ -116,6 +116,38 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
   // Seed Brooks + Chad shared across both businesses so they appear as
   // owner options on every task (direct-report + project) in both apps.
   // Both are marked hidden so they don't render as sections in the list.
+  //
+  // De-duplicate first: earlier deploys seeded these owners per-business
+  // (one row per business id) before the name-based dedup landed, leaving
+  // multiple "Brooks"/"Chad" rows that all show up in the owner picker.
+  // Collapse each name to a single canonical row (lowest id), repointing any
+  // tasks owned by the duplicates to the survivor so no owner is lost, then
+  // delete the extras. Idempotent — a no-op once only one row per name exists.
+  await client.query(
+    `DO $$
+     DECLARE
+       dup_name text;
+       survivor_id int;
+     BEGIN
+       FOREACH dup_name IN ARRAY ARRAY['Brooks','Chad'] LOOP
+         SELECT min(id) INTO survivor_id
+           FROM cc_direct_reports WHERE name = dup_name;
+         IF survivor_id IS NOT NULL THEN
+           UPDATE cc_tasks SET owner_direct_report_id = survivor_id
+             WHERE owner_direct_report_id IN (
+               SELECT id FROM cc_direct_reports
+                 WHERE name = dup_name AND id <> survivor_id
+             );
+           DELETE FROM cc_direct_reports
+             WHERE name = dup_name AND id <> survivor_id;
+           UPDATE cc_direct_reports
+             SET business_ids = ARRAY[1,2]::int[]
+             WHERE id = survivor_id;
+         END IF;
+       END LOOP;
+     END $$`,
+  );
+
   // Idempotent on name match.
   for (const name of ["Brooks", "Chad"] as const) {
     const ins = await client.query(
