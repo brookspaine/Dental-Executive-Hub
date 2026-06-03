@@ -181,12 +181,12 @@ const MORNING_RITUAL_ITEMS = [
 const JOURNAL_PROMPTS = [
   { key: "grateful", label: "Something I am Grateful for this morning:" },
   { key: "stressors", label: "Current Stressors or Frogs:" },
-  { key: "easy", label: "What would this fix look like if it were easy?:" },
+  { key: "easy", label: "What would my personal board of directors do if this were their problem?" },
 ];
 
 const EVENING_PROMPTS = [
-  { key: "evening_handled_well", label: "A situation or task I handled well today:" },
-  { key: "evening_coach", label: "If I was my own high performance coach, I'd tell myself today:" },
+  { key: "evening_handled_well", label: "What would my personal board of directors tell me I did well today?" },
+  { key: "evening_coach", label: "What would my personal board of directors critique me on today?" },
   { key: "evening_mice_antelopes", label: "Did I spend today chasing field mice or hunting antelopes?" },
   { key: "evening_time_energy", label: "How could I have managed my time and energy better today?" },
   { key: "evening_learned", label: "Something I realized or learned today is..." },
