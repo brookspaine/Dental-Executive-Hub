@@ -120,9 +120,12 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
   // De-duplicate first: earlier deploys seeded these owners per-business
   // (one row per business id) before the name-based dedup landed, leaving
   // multiple "Brooks"/"Chad" rows that all show up in the owner picker.
-  // Collapse each name to a single canonical row (lowest id), repointing any
-  // tasks owned by the duplicates to the survivor so no owner is lost, then
-  // delete the extras. Idempotent — a no-op once only one row per name exists.
+  // Collapse each name to a single canonical row, repointing any tasks owned
+  // by the duplicates to the survivor so no owner is lost, then delete the
+  // extras. The survivor is the real, *visible* direct report (hidden=false)
+  // when one exists — that is the entry the CEO manages under Direct Reports
+  // and wants to keep — otherwise the lowest id among hidden owner-only seeds.
+  // Idempotent — a no-op once only one row per name exists.
   await client.query(
     `DO $$
      DECLARE
@@ -130,8 +133,11 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
        survivor_id int;
      BEGIN
        FOREACH dup_name IN ARRAY ARRAY['Brooks','Chad'] LOOP
-         SELECT min(id) INTO survivor_id
-           FROM cc_direct_reports WHERE name = dup_name;
+         SELECT id INTO survivor_id
+           FROM cc_direct_reports
+           WHERE name = dup_name
+           ORDER BY (hidden = false) DESC, id ASC
+           LIMIT 1;
          IF survivor_id IS NOT NULL THEN
            UPDATE cc_tasks SET owner_direct_report_id = survivor_id
              WHERE owner_direct_report_id IN (
@@ -140,13 +146,25 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
              );
            DELETE FROM cc_direct_reports
              WHERE name = dup_name AND id <> survivor_id;
+           -- Only normalize business scope for hidden owner-only seed
+           -- survivors; never widen a real direct report the CEO scoped
+           -- to a single business.
            UPDATE cc_direct_reports
              SET business_ids = ARRAY[1,2]::int[]
-             WHERE id = survivor_id;
+             WHERE id = survivor_id AND hidden = true;
          END IF;
        END LOOP;
      END $$`,
   );
+  // Surface the post-dedup owner counts in logs so a deploy can be verified
+  // (expect exactly one row per seeded owner name).
+  const ownerCounts = (await client.query(
+    `SELECT name, count(*)::int AS n
+       FROM cc_direct_reports
+       WHERE name IN ('Brooks','Chad')
+       GROUP BY name ORDER BY name`,
+  )) as { rows: Array<{ name: string; n: number }> };
+  logger.info({ ownerCounts: ownerCounts.rows }, "startup migration: owner dedup complete");
 
   // Idempotent on name match.
   for (const name of ["Brooks", "Chad"] as const) {
@@ -160,12 +178,6 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
       logger.info({ name }, "startup migration: seeded hidden owner direct report");
     }
   }
-  // Force Brooks + Chad to hidden=true even if they pre-existed without
-  // the flag (e.g. inserted by an earlier deploy before the flag landed).
-  await client.query(
-    `UPDATE cc_direct_reports SET hidden=true WHERE name IN ('Brooks','Chad') AND hidden=false`,
-  );
-
   for (const p of projSeed) {
     const refs = (await client.query(
       `SELECT 1 FROM cc_tasks WHERE parent_type='project' AND parent_id=$1

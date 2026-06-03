@@ -1,1 +1,1 @@
-- [Prod/dev DB data drift](prod-data-drift.md) — dev DB fixes reach prod only via idempotent startupMigrations + republish; prod is read-only to the agent.
+- [Prod/dev DB data drift](prod-data-drift.md) — dev fixes reach prod only via idempotent startupMigrations + republish; dedup seeded owners by keeping the VISIBLE row, never force-rehide real reports.
