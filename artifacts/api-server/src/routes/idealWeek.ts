@@ -1,7 +1,7 @@
 import { Router, type IRouter } from "express";
 import { ReplitConnectors } from "@replit/connectors-sdk";
 import { eq, and, gte, lte, desc } from "drizzle-orm";
-import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable, readingListTable } from "@workspace/db";
+import { db, idealWeekRitualsTable, idealWeekCompletionsTable, weeklyTop3Table, morningRitualCompletionsTable, journalResponsesTable, ritualItemsTable, scheduleBlocksTable, readingListTable, boardMembersTable } from "@workspace/db";
 import type { ScheduleBlock } from "@workspace/db";
 import { asc } from "drizzle-orm";
 import {
@@ -597,6 +597,106 @@ router.delete("/ideal-week/ritual-items/:id", async (req, res): Promise<void> =>
     return;
   }
   await db.delete(ritualItemsTable).where(eq(ritualItemsTable.id, id));
+  res.json({ success: true });
+});
+
+// ---------------------------------------------------------------------------
+// Personal Board of Directors — collage of board-member photos
+// ---------------------------------------------------------------------------
+
+const clamp = (n: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, n));
+
+const clampBoardField = (key: string, value: number): number => {
+  switch (key) {
+    case "x":
+    case "y":
+      return Math.round(clamp(value, 0, 5000));
+    case "size":
+      return Math.round(clamp(value, 24, 400));
+    case "focalX":
+    case "focalY":
+      return clamp(value, 0, 100);
+    case "zoom":
+      return clamp(value, 0.5, 5);
+    default:
+      return value;
+  }
+};
+
+router.get("/ideal-week/board-members", async (_req, res): Promise<void> => {
+  const members = await db
+    .select()
+    .from(boardMembersTable)
+    .orderBy(asc(boardMembersTable.sortOrder), asc(boardMembersTable.id));
+  res.json(members);
+});
+
+router.post("/ideal-week/board-members", async (req, res): Promise<void> => {
+  const { objectPath, name, x, y, size, focalX, focalY, zoom, sortOrder } =
+    req.body ?? {};
+  if (!objectPath || typeof objectPath !== "string") {
+    res.status(400).json({ error: "objectPath required" });
+    return;
+  }
+  const [member] = await db
+    .insert(boardMembersTable)
+    .values({
+      objectPath,
+      name: typeof name === "string" ? name : null,
+      ...(typeof x === "number" ? { x: clampBoardField("x", x) } : {}),
+      ...(typeof y === "number" ? { y: clampBoardField("y", y) } : {}),
+      ...(typeof size === "number" ? { size: clampBoardField("size", size) } : {}),
+      ...(typeof focalX === "number" ? { focalX: clampBoardField("focalX", focalX) } : {}),
+      ...(typeof focalY === "number" ? { focalY: clampBoardField("focalY", focalY) } : {}),
+      ...(typeof zoom === "number" ? { zoom: clampBoardField("zoom", zoom) } : {}),
+      ...(typeof sortOrder === "number" ? { sortOrder: Math.round(sortOrder) } : {}),
+    })
+    .returning();
+  res.json(member);
+});
+
+router.patch("/ideal-week/board-members/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  const updates: Record<string, unknown> = {};
+  const b = req.body ?? {};
+  if (typeof b.name === "string" || b.name === null) updates.name = b.name;
+  if (typeof b.x === "number") updates.x = clampBoardField("x", b.x);
+  if (typeof b.y === "number") updates.y = clampBoardField("y", b.y);
+  if (typeof b.size === "number") updates.size = clampBoardField("size", b.size);
+  if (typeof b.focalX === "number") updates.focalX = clampBoardField("focalX", b.focalX);
+  if (typeof b.focalY === "number") updates.focalY = clampBoardField("focalY", b.focalY);
+  if (typeof b.zoom === "number") updates.zoom = clampBoardField("zoom", b.zoom);
+  if (typeof b.sortOrder === "number") updates.sortOrder = Math.round(b.sortOrder);
+
+  if (Object.keys(updates).length === 0) {
+    res.status(400).json({ error: "no valid fields to update" });
+    return;
+  }
+
+  const [member] = await db
+    .update(boardMembersTable)
+    .set(updates)
+    .where(eq(boardMembersTable.id, id))
+    .returning();
+  if (!member) {
+    res.status(404).json({ error: "board member not found" });
+    return;
+  }
+  res.json(member);
+});
+
+router.delete("/ideal-week/board-members/:id", async (req, res): Promise<void> => {
+  const id = parseInt(req.params.id);
+  if (isNaN(id)) {
+    res.status(400).json({ error: "invalid id" });
+    return;
+  }
+  await db.delete(boardMembersTable).where(eq(boardMembersTable.id, id));
   res.json({ success: true });
 });
 

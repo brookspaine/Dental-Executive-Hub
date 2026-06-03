@@ -32,6 +32,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
@@ -73,7 +74,14 @@ import {
   Square,
   Loader2,
   ListTodo,
+  Users,
+  Crop,
+  ZoomIn,
+  ImagePlus,
 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { useUpload } from "@workspace/object-storage-web";
+import { useToast } from "@/hooks/use-toast";
 import {
   categoryColors,
   categoryLabels,
@@ -298,6 +306,499 @@ function EditableItem({
         <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
       </Button>
     </div>
+  );
+}
+
+interface BoardMember {
+  id: number;
+  objectPath: string;
+  name: string | null;
+  x: number;
+  y: number;
+  size: number;
+  focalX: number;
+  focalY: number;
+  zoom: number;
+  sortOrder: number;
+  createdAt: string;
+}
+
+const COLLAGE_HEIGHT = 240;
+
+function boardImgSrc(base: string, objectPath: string): string {
+  if (objectPath.startsWith("/objects/")) {
+    return `${base}api/storage${objectPath}`;
+  }
+  return objectPath;
+}
+
+function BoardCropDialog({
+  base,
+  member,
+  onSave,
+  onClose,
+}: {
+  base: string;
+  member: BoardMember;
+  onSave: (data: { focalX: number; focalY: number; zoom: number }) => void;
+  onClose: () => void;
+}) {
+  const VP = 260;
+  const [focalX, setFocalX] = useState(member.focalX);
+  const [focalY, setFocalY] = useState(member.focalY);
+  const [zoom, setZoom] = useState(member.zoom);
+
+  const panCleanupRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    return () => {
+      panCleanupRef.current?.();
+    };
+  }, []);
+
+  const handlePanStart = (e: React.PointerEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const sfx = focalX;
+    const sfy = focalY;
+    const move = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      setFocalX(Math.max(0, Math.min(100, sfx - (dx / VP) * 100)));
+      setFocalY(Math.max(0, Math.min(100, sfy - (dy / VP) * 100)));
+    };
+    const up = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", up);
+      panCleanupRef.current = null;
+    };
+    panCleanupRef.current = up;
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", up);
+  };
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(o) => {
+        if (!o) onClose();
+      }}
+    >
+      <DialogContent className="sm:max-w-sm">
+        <DialogHeader>
+          <DialogTitle>Adjust photo</DialogTitle>
+          <DialogDescription>
+            Drag the photo to reposition the frame, slide to zoom.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div
+            onPointerDown={handlePanStart}
+            style={{ width: VP, height: VP }}
+            className="relative overflow-hidden rounded-2xl border bg-muted cursor-grab active:cursor-grabbing select-none touch-none"
+          >
+            <img
+              src={boardImgSrc(base, member.objectPath)}
+              draggable={false}
+              alt={member.name ?? "Board member"}
+              className="absolute inset-0 h-full w-full object-cover pointer-events-none"
+              style={{
+                objectPosition: `${focalX}% ${focalY}%`,
+                transform: `scale(${zoom})`,
+              }}
+            />
+          </div>
+          <div className="w-full px-1">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <ZoomIn className="h-3.5 w-3.5" />
+              Zoom
+            </div>
+            <Slider
+              min={1}
+              max={3}
+              step={0.01}
+              value={[zoom]}
+              onValueChange={(v) => setZoom(v[0])}
+              className="mt-2"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button size="sm" onClick={() => onSave({ focalX, focalY, zoom })}>
+            Save
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function PersonalBoardOfDirectors() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const base = import.meta.env.BASE_URL || "/";
+  const QKEY = ["board-members"];
+  const containerRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dragCleanupRef = useRef<(() => void) | null>(null);
+  const [editMode, setEditMode] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [cropId, setCropId] = useState<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      dragCleanupRef.current?.();
+    };
+  }, []);
+
+  const { data: members = [] } = useQuery<BoardMember[]>({
+    queryKey: QKEY,
+    queryFn: async () => {
+      const res = await fetch(`${base}api/ideal-week/board-members`);
+      if (!res.ok) throw new Error("Failed to load board members");
+      return res.json();
+    },
+  });
+
+  const { uploadFile, isUploading } = useUpload({
+    onError: (err) =>
+      toast({
+        title: "Upload failed",
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+
+  const createMember = useMutation({
+    mutationFn: async (data: Partial<BoardMember> & { objectPath: string }) => {
+      const res = await fetch(`${base}api/ideal-week/board-members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to add photo");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QKEY }),
+    onError: (err: Error) =>
+      toast({
+        title: "Could not add photo",
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+
+  const updateMember = useMutation({
+    mutationFn: async ({
+      id,
+      data,
+    }: {
+      id: number;
+      data: Partial<BoardMember>;
+    }) => {
+      const res = await fetch(`${base}api/ideal-week/board-members/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      if (!res.ok) throw new Error("Failed to save change");
+      return res.json();
+    },
+    onMutate: async ({ id, data }) => {
+      await queryClient.cancelQueries({ queryKey: QKEY });
+      const prev = queryClient.getQueryData<BoardMember[]>(QKEY);
+      queryClient.setQueryData<BoardMember[]>(QKEY, (old = []) =>
+        old.map((m) => (m.id === id ? { ...m, ...data } : m)),
+      );
+      return { prev };
+    },
+    onError: (_e, _v, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(QKEY, ctx.prev);
+    },
+    onSettled: () => queryClient.invalidateQueries({ queryKey: QKEY }),
+  });
+
+  const deleteMember = useMutation({
+    mutationFn: async (id: number) => {
+      const res = await fetch(`${base}api/ideal-week/board-members/${id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to remove photo");
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: QKEY }),
+    onError: (err: Error) =>
+      toast({
+        title: "Could not remove photo",
+        description: err.message,
+        variant: "destructive",
+      }),
+  });
+
+  const setLive = (id: number, patch: Partial<BoardMember>) => {
+    queryClient.setQueryData<BoardMember[]>(QKEY, (old = []) =>
+      old.map((m) => (m.id === id ? { ...m, ...patch } : m)),
+    );
+  };
+
+  const startMove = (e: React.PointerEvent, m: BoardMember) => {
+    if (!editMode) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedId(m.id);
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const cw = containerRef.current?.clientWidth ?? 320;
+    let last = { x: m.x, y: m.y };
+    const move = (ev: PointerEvent) => {
+      const nx = Math.max(0, Math.min(cw - m.size, m.x + (ev.clientX - startX)));
+      const ny = Math.max(
+        0,
+        Math.min(COLLAGE_HEIGHT - m.size, m.y + (ev.clientY - startY)),
+      );
+      last = { x: nx, y: ny };
+      setLive(m.id, { x: nx, y: ny });
+    };
+    const detach = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", up);
+      dragCleanupRef.current = null;
+    };
+    const up = () => {
+      detach();
+      updateMember.mutate({ id: m.id, data: last });
+    };
+    dragCleanupRef.current = detach;
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", up);
+  };
+
+  const startResize = (e: React.PointerEvent, m: BoardMember) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const cw = containerRef.current?.clientWidth ?? 320;
+    let lastSize = m.size;
+    const move = (ev: PointerEvent) => {
+      const delta = Math.max(ev.clientX - startX, ev.clientY - startY);
+      let ns = Math.max(48, Math.min(200, m.size + delta));
+      ns = Math.min(ns, cw - m.x, COLLAGE_HEIGHT - m.y);
+      lastSize = ns;
+      setLive(m.id, { size: ns });
+    };
+    const detach = () => {
+      document.removeEventListener("pointermove", move);
+      document.removeEventListener("pointerup", up);
+      document.removeEventListener("pointercancel", up);
+      dragCleanupRef.current = null;
+    };
+    const up = () => {
+      detach();
+      updateMember.mutate({ id: m.id, data: { size: lastSize } });
+    };
+    dragCleanupRef.current = detach;
+    document.addEventListener("pointermove", move);
+    document.addEventListener("pointerup", up);
+    document.addEventListener("pointercancel", up);
+  };
+
+  const handleFilePicked = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const resp = await uploadFile(file);
+    if (resp) {
+      const n = members.length;
+      createMember.mutate({
+        objectPath: resp.objectPath,
+        x: 10 + (n % 4) * 58,
+        y: 10 + (Math.floor(n / 4) % 2) * 58,
+        size: 92,
+      });
+    }
+  };
+
+  const cropMember = cropId
+    ? members.find((m) => m.id === cropId) ?? null
+    : null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Users className="h-4 w-4 text-primary" />
+          Personal Board of Directors
+        </CardTitle>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => {
+            setEditMode((v) => {
+              if (v) setSelectedId(null);
+              return !v;
+            });
+          }}
+        >
+          {editMode ? "Done" : "Edit"}
+        </Button>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={handleFilePicked}
+        />
+        <div
+          ref={containerRef}
+          onClick={() => {
+            if (!editMode) {
+              setEditMode(true);
+            } else {
+              setSelectedId(null);
+            }
+          }}
+          style={{ height: COLLAGE_HEIGHT }}
+          className="relative w-full overflow-hidden rounded-lg border border-dashed border-border bg-muted/40"
+        >
+          {members.map((m) => {
+            const selected = editMode && selectedId === m.id;
+            return (
+              <div
+                key={m.id}
+                onPointerDown={(e) => startMove(e, m)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (editMode) setSelectedId(m.id);
+                }}
+                style={{
+                  left: m.x,
+                  top: m.y,
+                  width: m.size,
+                  height: m.size,
+                }}
+                className={[
+                  "absolute rounded-xl overflow-hidden shadow-md bg-muted touch-none",
+                  editMode ? "cursor-move" : "",
+                  selected
+                    ? "ring-2 ring-primary ring-offset-1"
+                    : "border-2 border-white",
+                ].join(" ")}
+              >
+                <img
+                  src={boardImgSrc(base, m.objectPath)}
+                  draggable={false}
+                  alt={m.name ?? "Board member"}
+                  className="h-full w-full object-cover pointer-events-none select-none"
+                  style={{
+                    objectPosition: `${m.focalX}% ${m.focalY}%`,
+                    transform: `scale(${m.zoom})`,
+                  }}
+                />
+                {selected && (
+                  <>
+                    <div className="absolute top-1 right-1 flex gap-1">
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCropId(m.id);
+                        }}
+                        className="h-6 w-6 flex items-center justify-center rounded-md bg-black/55 text-white hover:bg-black/75"
+                        title="Crop / reposition"
+                      >
+                        <Crop className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        type="button"
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteMember.mutate(m.id);
+                          setSelectedId(null);
+                        }}
+                        className="h-6 w-6 flex items-center justify-center rounded-md bg-black/55 text-white hover:bg-red-600"
+                        title="Remove"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                    <div
+                      onPointerDown={(e) => startResize(e, m)}
+                      className="absolute bottom-0 right-0 h-4 w-4 cursor-se-resize bg-primary/90 rounded-tl-md"
+                      title="Resize"
+                    />
+                  </>
+                )}
+              </div>
+            );
+          })}
+
+          {members.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-center px-4 pointer-events-none">
+              <Users className="h-7 w-7 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                Your board is watching.
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                {editMode
+                  ? "Add the people whose standards you hold yourself to."
+                  : "Click to build your collage."}
+              </p>
+            </div>
+          )}
+        </div>
+
+        {editMode && (
+          <div className="flex items-center justify-between">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              disabled={isUploading || createMember.isPending}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isUploading || createMember.isPending ? (
+                <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+              ) : (
+                <ImagePlus className="h-3.5 w-3.5 mr-1" />
+              )}
+              Add photo
+            </Button>
+            {selectedId !== null && (
+              <span className="text-[11px] text-muted-foreground">
+                Drag to move · corner to resize · crop icon to reframe
+              </span>
+            )}
+          </div>
+        )}
+      </CardContent>
+
+      {cropMember && (
+        <BoardCropDialog
+          base={base}
+          member={cropMember}
+          onClose={() => setCropId(null)}
+          onSave={({ focalX, focalY, zoom }) => {
+            updateMember.mutate({
+              id: cropMember.id,
+              data: { focalX, focalY, zoom },
+            });
+            setCropId(null);
+          }}
+        />
+      )}
+    </Card>
   );
 }
 
@@ -2562,6 +3063,8 @@ export function IdealWeek() {
               </p>
             </CardContent>
           </Card>
+
+          <PersonalBoardOfDirectors />
 
           <DailyBrainwashing />
 

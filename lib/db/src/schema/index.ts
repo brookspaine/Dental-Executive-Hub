@@ -7,6 +7,7 @@ export * from "./idealWeek";
 export * from "./morningRitual";
 export * from "./journalResponses";
 export * from "./ritualItems";
+export * from "./boardMembers";
 export * from "./readingList";
 export * from "./wisdomQuotes";
 export * from "./yearlyPlanning";
