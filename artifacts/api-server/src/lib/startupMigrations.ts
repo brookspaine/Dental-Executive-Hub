@@ -115,7 +115,10 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
 
   // Seed Brooks + Chad shared across both businesses so they appear as
   // owner options on every task (direct-report + project) in both apps.
-  // Both are marked hidden so they don't render as sections in the list.
+  // They are real direct reports the CEO delegates to, so they render as
+  // sections (project tasks owned by them merge in with a "from [Project]"
+  // badge) — they are seeded visible and any earlier hidden seed is un-hidden
+  // further below.
   //
   // De-duplicate first: earlier deploys seeded these owners per-business
   // (one row per business id) before the name-based dedup landed, leaving
@@ -170,14 +173,25 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
   for (const name of ["Brooks", "Chad"] as const) {
     const ins = await client.query(
       `INSERT INTO cc_direct_reports (business_ids, name, sort_order, collapsed, hidden)
-       SELECT ARRAY[1,2]::int[], $1, 99, false, true
+       SELECT ARRAY[1,2]::int[], $1, 99, false, false
        WHERE NOT EXISTS (SELECT 1 FROM cc_direct_reports WHERE name=$1)`,
       [name],
     );
     if ((ins as { rowCount?: number }).rowCount) {
-      logger.info({ name }, "startup migration: seeded hidden owner direct report");
+      logger.info({ name }, "startup migration: seeded owner direct report");
     }
   }
+  // Brooks/Chad are real direct reports: project tasks owned by them should
+  // merge into their section with a "from [Project]" badge. An earlier deploy
+  // seeded them hidden=true, which suppressed the whole section (Brooks owns
+  // many project tasks that were therefore invisible). Un-hide them so they
+  // render. `hidden` is never set from the UI, so this does not fight a user
+  // choice. Idempotent — a no-op once they are already visible.
+  await client.query(
+    `UPDATE cc_direct_reports SET hidden=false
+       WHERE name IN ('Brooks','Chad') AND hidden=true`,
+  );
+
   for (const p of projSeed) {
     const refs = (await client.query(
       `SELECT 1 FROM cc_tasks WHERE parent_type='project' AND parent_id=$1

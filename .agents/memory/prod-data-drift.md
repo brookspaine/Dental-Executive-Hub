@@ -20,3 +20,10 @@ When collapsing duplicate seeded direct reports (Brooks/Chad in `cc_direct_repor
 **Why:** picking min(id) kept the hidden seed and would delete the user's real direct report. Also: do NOT force seeded owners back to `hidden=true` on every boot — that re-hides a direct report the user intentionally made visible.
 
 **How to verify a deploy actually applied it:** log post-dedup counts (expect exactly 1 per name) so it shows in deployment logs. The migration only runs at deploy boot — a DB rollback or live manual edit after deploy can re-introduce drift, so re-check prod after any rollback.
+
+## "hidden" direct reports suppress the whole section (incl. merged project tasks)
+`cc_direct_reports.hidden=true` removes a person from the Direct Reports tab entirely (client filters `!p.hidden`), but they remain selectable as a task owner (the `/direct-reports` list returns hidden rows). Project tasks owned by a direct report merge into that person's accordion with a "from [Project]" badge — but only if the section renders, i.e. the owner is NOT hidden.
+
+**Why:** the seeded owners Brooks/Chad were inserted `hidden=true` (owner-only). Brooks accumulated ~28 delegated project tasks that were invisible because his section never rendered, while visible Chad's tasks showed — that asymmetry was the bug. `hidden` is only ever set by the seed migration (no UI toggles it), so forcing seeded owners visible is safe and won't fight a user choice.
+
+**How to apply:** if delegated/merged tasks "don't show" for one person but do for another, check the owner's `hidden` flag before assuming a query/label bug.
