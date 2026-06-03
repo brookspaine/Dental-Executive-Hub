@@ -873,7 +873,7 @@ function FutureTodoSection({
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <ListTodo className="h-4 w-4" />
-            Future To-Do
+            Brain Dump
           </CardTitle>
           <Badge variant="secondary" className="text-xs">
             {openItems.length} open
@@ -897,7 +897,7 @@ function FutureTodoSection({
             value={newTitle}
             onChange={(e) => setNewTitle(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            placeholder="Add something for later..."
+            placeholder="Dump a thought..."
             className="h-8 text-sm"
           />
           <Button
@@ -2533,11 +2533,16 @@ export function IdealWeek() {
 
           <FutureTodoSection
             items={futureTodos}
-            onAdd={(title) =>
+            onAdd={(title) => {
               createFuture.mutate({
                 data: { title, sortOrder: futureTodos.length },
-              })
-            }
+              });
+              void fetch(`${base}api/command-center/brain-dump`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ text: title }),
+              });
+            }}
             onToggle={(id, completed) =>
               updateFuture.mutate({ id, data: { completed } })
             }
