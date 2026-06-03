@@ -2908,10 +2908,10 @@ function formatDueDate(
   const [y, m, d] = iso.split("-").map((n) => parseInt(n, 10));
   const due = new Date(y, m - 1, d);
   const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-  if (diffDays < 0) return { tone: "overdue", label: shortDate(iso) };
-  if (diffDays === 0) return { tone: "today", label: "Today" };
-  if (diffDays === 1) return { tone: "soon", label: "Tomorrow" };
-  if (diffDays <= 7) return { tone: "soon", label: shortDate(iso) };
+  if (diffDays <= 0) return { tone: "overdue", label: diffDays === 0 ? "Today" : shortDate(iso) };
+  if (diffDays === 1) return { tone: "today", label: "Tomorrow" };
+  if (diffDays <= 7) return { tone: "today", label: shortDate(iso) };
+  if (diffDays <= 14) return { tone: "soon", label: shortDate(iso) };
   return { tone: "future", label: shortDate(iso) };
 }
 
