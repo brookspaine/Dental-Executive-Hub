@@ -87,6 +87,32 @@ async function restoreOrphanedParents(client: PgClient): Promise<void> {
        ADD COLUMN IF NOT EXISTS next_steps text NOT NULL DEFAULT ''`,
   );
 
+  // Free-form owner name for tasks whose owner is NOT a direct report
+  // ("Other…" in the owner picker). Owner is either a direct report OR a
+  // custom name, never both.
+  await client.query(
+    `ALTER TABLE cc_tasks
+       ADD COLUMN IF NOT EXISTS owner_name text`,
+  );
+
+  // Clean up any rows that violate the XOR before enforcing it (defensive:
+  // app handlers already enforce this, but a manual write could not have).
+  await client.query(
+    `UPDATE cc_tasks SET owner_name = NULL
+       WHERE owner_direct_report_id IS NOT NULL AND owner_name IS NOT NULL`,
+  );
+  // DB-level XOR guard so non-handler write paths can't persist both. Idempotent.
+  await client.query(
+    `DO $$ BEGIN
+       IF NOT EXISTS (
+         SELECT 1 FROM pg_constraint WHERE conname = 'cc_tasks_owner_xor'
+       ) THEN
+         ALTER TABLE cc_tasks ADD CONSTRAINT cc_tasks_owner_xor
+           CHECK (owner_direct_report_id IS NULL OR owner_name IS NULL);
+       END IF;
+     END $$`,
+  );
+
   // Seed Brooks + Chad shared across both businesses so they appear as
   // owner options on every task (direct-report + project) in both apps.
   // Both are marked hidden so they don't render as sections in the list.

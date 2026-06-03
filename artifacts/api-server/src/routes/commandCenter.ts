@@ -730,6 +730,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
       parentId: z.number().int(),
       sectionId: z.number().int().nullable().optional(),
       ownerDirectReportId: z.number().int().nullable().optional(),
+      ownerName: z.string().trim().max(120).nullable().optional(),
       text: z.string().min(1),
       status: z.enum(TASK_STATUSES).optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
@@ -758,8 +759,13 @@ router.post("/tasks", async (req, res): Promise<void> => {
       return;
     }
   }
+  // Owner is either a direct report OR a free-form name, never both.
   const insertData = {
     ...body.data,
+    ownerName:
+      body.data.ownerDirectReportId != null
+        ? null
+        : body.data.ownerName?.trim() || null,
     done:
       body.data.status === "completed"
         ? true
@@ -782,6 +788,7 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       sectionId: z.number().int().nullable().optional(),
       ownerDirectReportId: z.number().int().nullable().optional(),
+      ownerName: z.string().trim().max(120).nullable().optional(),
       nextSteps: z.string().optional(),
     })
     .safeParse(req.body);
@@ -811,6 +818,13 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
     }
   }
   const patch: Record<string, unknown> = { ...body.data };
+  // Owner is either a direct report OR a free-form name, never both.
+  if (body.data.ownerDirectReportId != null) {
+    patch.ownerName = null;
+  } else if (typeof body.data.ownerName === "string") {
+    patch.ownerName = body.data.ownerName.trim() || null;
+    patch.ownerDirectReportId = null;
+  }
   if (patch.status === "completed") patch.done = true;
   else if (patch.status !== undefined) patch.done = false;
   else if (patch.done === true) patch.status = "completed";

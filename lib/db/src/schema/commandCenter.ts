@@ -114,6 +114,7 @@ export const ccTasksTable = pgTable(
     parentId: integer("parent_id").notNull(),
     sectionId: integer("section_id"),
     ownerDirectReportId: integer("owner_direct_report_id"),
+    ownerName: text("owner_name"),
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
     status: text("status").notNull().default("not_started"),

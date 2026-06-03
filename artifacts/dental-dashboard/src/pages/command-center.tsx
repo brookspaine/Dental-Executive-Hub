@@ -61,6 +61,7 @@ type Task = {
   parentId: number;
   sectionId: number | null;
   ownerDirectReportId: number | null;
+  ownerName: string | null;
   text: string;
   done: boolean;
   status: TaskStatus;
@@ -2480,9 +2481,15 @@ function TaskRow({
           }}
         >
           <OwnerPicker
-            value={task.ownerDirectReportId}
+            directReportId={task.ownerDirectReportId}
+            ownerName={task.ownerName}
             options={directReports}
-            onChange={(next) => onUpdate({ ownerDirectReportId: next })}
+            onChange={(next) =>
+              onUpdate({
+                ownerDirectReportId: next.directReportId,
+                ownerName: next.ownerName,
+              })
+            }
           />
         </div>
       )}
@@ -2551,16 +2558,67 @@ function TaskRow({
 }
 
 function OwnerPicker({
-  value,
+  directReportId,
+  ownerName,
   options,
   onChange,
 }: {
-  value: number | null;
+  directReportId: number | null;
+  ownerName: string | null;
   options: DirectReport[];
-  onChange: (next: number | null) => void;
+  onChange: (next: { directReportId: number | null; ownerName: string | null }) => void;
 }) {
-  const current = value != null ? options.find((o) => o.id === value) : null;
-  const label = current?.name ?? "Unassigned";
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(ownerName ?? "");
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
+
+  const current = directReportId != null ? options.find((o) => o.id === directReportId) : null;
+  const customName = !current && ownerName ? ownerName : null;
+  const label = current?.name ?? customName ?? "Unassigned";
+  const hasOwner = current != null || customName != null;
+
+  const commitOther = () => {
+    const v = draft.trim();
+    onChange({ directReportId: null, ownerName: v === "" ? null : v });
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <input
+        ref={inputRef}
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commitOther}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            commitOther();
+          } else if (e.key === "Escape") {
+            setDraft(ownerName ?? "");
+            setEditing(false);
+          }
+        }}
+        placeholder="Type a name…"
+        maxLength={120}
+        style={{
+          width: 124,
+          fontSize: 12,
+          fontFamily: SANS,
+          padding: "3px 8px",
+          border: `1px solid ${C.accent}`,
+          borderRadius: 10,
+          color: C.textPrimary,
+          outline: "none",
+        }}
+      />
+    );
+  }
+
   return (
     <label
       style={{
@@ -2570,8 +2628,8 @@ function OwnerPicker({
         gap: 4,
         fontSize: 12,
         fontFamily: SANS,
-        color: current ? C.textPrimary : C.textSecondary,
-        background: current ? "#eef2f7" : "transparent",
+        color: hasOwner ? C.textPrimary : C.textSecondary,
+        background: hasOwner ? "#eef2f7" : "transparent",
         padding: "3px 10px",
         borderRadius: 10,
         cursor: "pointer",
@@ -2580,14 +2638,21 @@ function OwnerPicker({
         overflow: "hidden",
         textOverflow: "ellipsis",
       }}
-      title={current ? `Owner: ${label}` : "Assign owner"}
+      title={hasOwner ? `Owner: ${label}` : "Assign owner"}
     >
       <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
       <select
-        value={value ?? ""}
+        value={current ? String(current.id) : customName != null ? "__custom__" : ""}
         onChange={(e) => {
           const v = e.target.value;
-          onChange(v === "" ? null : parseInt(v, 10));
+          if (v === "__other__" || v === "__custom__") {
+            setDraft(customName ?? "");
+            setEditing(true);
+          } else if (v === "") {
+            onChange({ directReportId: null, ownerName: null });
+          } else {
+            onChange({ directReportId: parseInt(v, 10), ownerName: null });
+          }
         }}
         style={{
           position: "absolute",
@@ -2605,6 +2670,10 @@ function OwnerPicker({
             {o.name}
           </option>
         ))}
+        {customName != null && <option value="__custom__">{customName}</option>}
+        <option value="__other__">
+          {customName != null ? "Edit name…" : "Other…"}
+        </option>
       </select>
     </label>
   );
