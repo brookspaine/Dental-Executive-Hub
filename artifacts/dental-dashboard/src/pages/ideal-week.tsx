@@ -928,6 +928,132 @@ function DailyBrainwashing() {
   );
 }
 
+function AutomaticRulesForSuccess() {
+  const queryClient = useQueryClient();
+  const base = import.meta.env.BASE_URL || "/";
+  const category = "automatic_rules";
+  const { data: items = [] } = useRitualItems(category);
+  const [adding, setAdding] = useState(false);
+  const [newLabel, setNewLabel] = useState("");
+  const [editMode, setEditMode] = useState(false);
+
+  const createItem = useMutation({
+    mutationFn: async (label: string) => {
+      const res = await fetch(`${base}api/ideal-week/ritual-items`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, label, sortOrder: items.length }),
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      setNewLabel("");
+      setAdding(false);
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+    },
+  });
+
+  const deleteItem = useMutation({
+    mutationFn: async (id: number) => {
+      await fetch(`${base}api/ideal-week/ritual-items/${id}`, {
+        method: "DELETE",
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ritual-items", category] });
+    },
+  });
+
+  const handleAdd = () => {
+    const label = newLabel.trim();
+    if (!label) {
+      setAdding(false);
+      return;
+    }
+    createItem.mutate(label);
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Zap className="h-4 w-4 text-primary" />
+          Automatic Rules for Success
+        </CardTitle>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          onClick={() => {
+            setEditMode((v) => {
+              const next = !v;
+              if (!next) {
+                setAdding(false);
+                setNewLabel("");
+              }
+              return next;
+            });
+          }}
+        >
+          {editMode ? "Done" : "Edit"}
+        </Button>
+      </CardHeader>
+      <CardContent className="pt-0 space-y-1">
+        {items.map((item) => (
+          <BrainwashingItemRow
+            key={item.id}
+            item={item}
+            category={category}
+            editMode={editMode}
+            onDelete={() => deleteItem.mutate(item.id)}
+          />
+        ))}
+
+        {editMode && !adding && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 px-2 text-xs mt-1"
+            onClick={() => setAdding(true)}
+          >
+            <Plus className="h-3.5 w-3.5 mr-1" />
+            Add
+          </Button>
+        )}
+
+        {adding && (
+          <div className="flex items-center gap-2 pt-1">
+            <span className="text-primary select-none leading-none">•</span>
+            <Input
+              autoFocus
+              value={newLabel}
+              onChange={(e) => setNewLabel(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  handleAdd();
+                } else if (e.key === "Escape") {
+                  setAdding(false);
+                  setNewLabel("");
+                }
+              }}
+              onBlur={handleAdd}
+              placeholder="New rule…"
+              className="h-8 text-sm"
+            />
+          </div>
+        )}
+
+        {items.length === 0 && !adding && (
+          <p className="text-sm text-muted-foreground italic py-1">
+            No items yet — click Add to create one.
+          </p>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 function BrainwashingItemRow({
   item,
   category,
@@ -3031,6 +3157,8 @@ export function IdealWeek() {
               onChanged={invalidateCcTop3}
             />
           </div>
+
+          <AutomaticRulesForSuccess />
 
           <FutureTodoSection
             items={futureTodos}
