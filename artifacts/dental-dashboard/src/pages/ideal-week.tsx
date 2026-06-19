@@ -49,6 +49,8 @@ import {
   RotateCcw,
   Plus,
   Trash2,
+  Layers,
+  ArrowUp,
   Star,
   Target,
   Sun,
@@ -172,6 +174,97 @@ function useCcTop3() {
     queryFn: async () => {
       const base = import.meta.env.BASE_URL || "/";
       const res = await fetch(`${base}api/command-center/top3`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+type OnDeckTag = "move_the_needle" | "maintenance" | "follow_up";
+type OnDeckItem = {
+  id: number;
+  businessId: number;
+  text: string;
+  ownerDirectReportId: number | null;
+  ownerName: string | null;
+  dueDate: string | null;
+  tag: OnDeckTag;
+  sourceTaskId: number | null;
+  sortOrder: number;
+};
+type CcDirectReport = { id: number; name: string; hidden?: boolean };
+type CcProject = { id: number; name: string };
+type CcTaskRow = {
+  id: number;
+  parentType: "life_area" | "direct_report" | "project";
+  parentId: number;
+  ownerDirectReportId: number | null;
+  ownerName: string | null;
+  text: string;
+  done: boolean;
+  dueDate: string | null;
+};
+
+const ON_DECK_TAG_META: Record<OnDeckTag, { label: string; className: string }> = {
+  move_the_needle: { label: "Move-the-needle", className: "bg-primary/10 text-primary" },
+  maintenance: { label: "Maintenance", className: "bg-amber-100 text-amber-800" },
+  follow_up: { label: "Follow-up", className: "bg-blue-100 text-blue-800" },
+};
+const ON_DECK_TAGS: OnDeckTag[] = ["move_the_needle", "maintenance", "follow_up"];
+const ON_DECK_CAP = 7;
+
+function onDeckFormatDue(d: string | null): string {
+  if (!d) return "";
+  const [y, m, day] = d.split("-").map((n) => Number(n));
+  if (!y || !m || !day) return d;
+  return new Date(y, m - 1, day).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
+function useOnDeck() {
+  return useQuery<OnDeckItem[]>({
+    queryKey: ["cc-on-deck"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/command-center/on-deck`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+function useCcDirectReports() {
+  return useQuery<CcDirectReport[]>({
+    queryKey: ["cc-direct-reports"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/command-center/direct-reports`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+function useCcProjects() {
+  return useQuery<CcProject[]>({
+    queryKey: ["cc-projects"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/command-center/projects`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+}
+
+function useCcTasks() {
+  return useQuery<CcTaskRow[]>({
+    queryKey: ["cc-tasks-all"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/command-center/tasks`);
       if (!res.ok) return [];
       return res.json();
     },
@@ -1463,6 +1556,466 @@ function CcTop3Slot({
           done ? "line-through text-muted-foreground" : "",
         ].join(" ")}
       />
+    </div>
+  );
+}
+
+function IdealWeekOnDeckCard({
+  items,
+  dailyRows,
+  onChanged,
+}: {
+  items: OnDeckItem[];
+  dailyRows: CcTop3Row[];
+  onChanged: () => void;
+}) {
+  const base = import.meta.env.BASE_URL || "/";
+  const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [mode, setMode] = useState<"manual" | "pull">("manual");
+  const [text, setText] = useState("");
+  const [owner, setOwner] = useState("none");
+  const [customOwner, setCustomOwner] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [tag, setTag] = useState<OnDeckTag>("move_the_needle");
+
+  const { data: directReports = [] } = useCcDirectReports();
+  const { data: projects = [] } = useCcProjects();
+  const { data: tasks = [] } = useCcTasks();
+
+  const drName = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const d of directReports) m.set(d.id, d.name);
+    return m;
+  }, [directReports]);
+  const projName = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const p of projects) m.set(p.id, p.name);
+    return m;
+  }, [projects]);
+
+  const atCap = items.length >= ON_DECK_CAP;
+  const ownerLabel = (it: OnDeckItem) =>
+    it.ownerDirectReportId != null
+      ? drName.get(it.ownerDirectReportId) ?? "—"
+      : it.ownerName ?? "";
+
+  const create = async (body: Record<string, unknown>) => {
+    const res = await fetch(`${base}api/command-center/on-deck`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      window.alert("Couldn't add — On Deck may be full (max 7). Remove an item first.");
+      return;
+    }
+    resetForm();
+    onChanged();
+  };
+
+  const resetForm = () => {
+    setText("");
+    setOwner("none");
+    setCustomOwner("");
+    setDueDate("");
+    setTag("move_the_needle");
+    setAdding(false);
+  };
+
+  const remove = async (id: number) => {
+    await fetch(`${base}api/command-center/on-deck/${id}`, { method: "DELETE" });
+    onChanged();
+  };
+
+  const patch = async (id: number, body: Record<string, unknown>) => {
+    await fetch(`${base}api/command-center/on-deck/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    onChanged();
+  };
+
+  const promote = async (it: OnDeckItem) => {
+    const slots = [1, 2, 3].map((slot) => dailyRows.find((r) => r.slot === slot) ?? null);
+    const openIdx = slots.findIndex((r) => !r || r.text.trim().length === 0);
+    if (openIdx === -1) {
+      window.alert(
+        "All three of Today's Top 3 slots are full. Free a slot before promoting this item.",
+      );
+      return;
+    }
+    const putRes = await fetch(`${base}api/command-center/top3/day/${openIdx + 1}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text: it.text, done: false }),
+    });
+    if (!putRes.ok) {
+      window.alert("Couldn't promote — failed to update Today's Top 3. Try again.");
+      return;
+    }
+    await fetch(`${base}api/command-center/on-deck/${it.id}`, { method: "DELETE" });
+    window.dispatchEvent(new CustomEvent("cc:top3-changed"));
+    onChanged();
+  };
+
+  const submitManual = () => {
+    if (!text.trim()) return;
+    void create({
+      text: text.trim(),
+      ownerDirectReportId: owner.startsWith("dr:") ? Number(owner.slice(3)) : null,
+      ownerName: owner === "custom" ? customOwner.trim() || null : null,
+      dueDate: dueDate || null,
+      tag,
+    });
+  };
+
+  const pullable = useMemo(
+    () =>
+      tasks.filter(
+        (t) =>
+          (t.parentType === "project" || t.parentType === "direct_report") &&
+          !t.done &&
+          !items.some((i) => i.sourceTaskId === t.id),
+      ),
+    [tasks, items],
+  );
+
+  const submitPull = (t: CcTaskRow) => {
+    const ownerDr =
+      t.parentType === "direct_report" ? t.parentId : t.ownerDirectReportId ?? null;
+    void create({
+      text: t.text,
+      ownerDirectReportId: ownerDr,
+      ownerName: ownerDr == null ? t.ownerName : null,
+      dueDate: t.dueDate,
+      tag,
+      sourceTaskId: t.id,
+    });
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Layers className="h-4 w-4" />
+            On Deck
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              {items.length}/{ON_DECK_CAP}
+            </Badge>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs px-2"
+              onClick={() => {
+                setEditing((e) => !e);
+                setAdding(false);
+              }}
+            >
+              {editing ? "Done" : "Edit"}
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-2">
+        {items.length === 0 && (
+          <div className="text-sm text-muted-foreground py-1">
+            Nothing on deck yet. Tap Edit to add up to 7 priorities.
+          </div>
+        )}
+        {items.map((it) => (
+          <div
+            key={it.id}
+            className="flex items-center gap-2 border-b last:border-b-0 pb-2 last:pb-0"
+          >
+            <span
+              className={[
+                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
+                ON_DECK_TAG_META[it.tag].className,
+              ].join(" ")}
+            >
+              {ON_DECK_TAG_META[it.tag].label}
+            </span>
+            <div className="flex-1 min-w-0">
+              <div className="text-sm truncate">{it.text}</div>
+              {(ownerLabel(it) || it.dueDate) && (
+                <div className="text-[11px] text-muted-foreground">
+                  {ownerLabel(it)}
+                  {ownerLabel(it) && it.dueDate ? " · " : ""}
+                  {it.dueDate ? `due ${onDeckFormatDue(it.dueDate)}` : ""}
+                </div>
+              )}
+            </div>
+            <Button
+              size="sm"
+              className="h-7 text-xs px-2 shrink-0"
+              onClick={() => void promote(it)}
+              title="Promote to Today's Top 3"
+            >
+              <ArrowUp className="h-3 w-3 mr-1" />
+              Top 3
+            </Button>
+            {editing && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 shrink-0"
+                onClick={() => void remove(it.id)}
+                title="Remove from On Deck"
+              >
+                <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+              </Button>
+            )}
+          </div>
+        ))}
+
+        {editing && (
+          <div className="pt-2 space-y-3">
+            {items.length > 0 && (
+              <div className="space-y-2">
+                {items.map((it) => (
+                  <OnDeckEditRow
+                    key={it.id}
+                    item={it}
+                    directReports={directReports}
+                    onPatch={patch}
+                  />
+                ))}
+              </div>
+            )}
+            {adding ? (
+              <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+                <div className="flex gap-2">
+                  {(["manual", "pull"] as const).map((m) => (
+                    <Button
+                      key={m}
+                      type="button"
+                      size="sm"
+                      variant={mode === m ? "default" : "outline"}
+                      className="h-7 text-xs"
+                      onClick={() => setMode(m)}
+                    >
+                      {m === "manual" ? "New item" : "Pull from task"}
+                    </Button>
+                  ))}
+                </div>
+                {mode === "manual" ? (
+                  <div className="space-y-2">
+                    <Input
+                      autoFocus
+                      value={text}
+                      onChange={(e) => setText(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && submitManual()}
+                      placeholder="What needs to move this week…"
+                      className="h-8 text-sm"
+                    />
+                    <div className="flex flex-wrap gap-2">
+                      <Select value={owner} onValueChange={setOwner}>
+                        <SelectTrigger className="h-8 text-xs flex-1 min-w-[120px]">
+                          <SelectValue placeholder="Owner" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">No owner</SelectItem>
+                          {directReports
+                            .filter((d) => !d.hidden)
+                            .map((d) => (
+                              <SelectItem key={d.id} value={`dr:${d.id}`}>
+                                {d.name}
+                              </SelectItem>
+                            ))}
+                          <SelectItem value="custom">Other…</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {owner === "custom" && (
+                        <Input
+                          value={customOwner}
+                          onChange={(e) => setCustomOwner(e.target.value)}
+                          placeholder="Owner name"
+                          className="h-8 text-sm flex-1 min-w-[120px]"
+                        />
+                      )}
+                      <Input
+                        type="date"
+                        value={dueDate}
+                        onChange={(e) => setDueDate(e.target.value)}
+                        className="h-8 text-sm flex-1 min-w-[130px]"
+                      />
+                      <Select value={tag} onValueChange={(v) => setTag(v as OnDeckTag)}>
+                        <SelectTrigger className="h-8 text-xs flex-1 min-w-[130px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ON_DECK_TAGS.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {ON_DECK_TAG_META[t].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetForm}>
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={submitManual}
+                        disabled={!text.trim()}
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[11px] text-muted-foreground">Tag:</span>
+                      <Select value={tag} onValueChange={(v) => setTag(v as OnDeckTag)}>
+                        <SelectTrigger className="h-7 text-xs w-[150px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {ON_DECK_TAGS.map((t) => (
+                            <SelectItem key={t} value={t}>
+                              {ON_DECK_TAG_META[t].label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto space-y-1">
+                      {pullable.length === 0 && (
+                        <div className="text-xs text-muted-foreground py-1">
+                          No open Project or Direct Report tasks to pull.
+                        </div>
+                      )}
+                      {pullable.map((t) => {
+                        const where =
+                          t.parentType === "project"
+                            ? projName.get(t.parentId) ?? "Project"
+                            : drName.get(t.parentId) ?? "Direct Report";
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            onClick={() => submitPull(t)}
+                            className="w-full text-left rounded-md border bg-background px-3 py-2 hover:bg-muted/50"
+                          >
+                            <div className="text-sm">{t.text}</div>
+                            <div className="text-[11px] text-muted-foreground">from {where}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <div className="flex justify-end">
+                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetForm}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full h-8 text-xs border-dashed"
+                disabled={atCap}
+                onClick={() =>
+                  atCap
+                    ? window.alert(
+                        "On Deck is capped at 7 items. Remove one before adding another.",
+                      )
+                    : setAdding(true)
+                }
+              >
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                {atCap ? "On Deck is full (7) — remove one to add" : "Add to On Deck"}
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function OnDeckEditRow({
+  item,
+  directReports,
+  onPatch,
+}: {
+  item: OnDeckItem;
+  directReports: CcDirectReport[];
+  onPatch: (id: number, body: Record<string, unknown>) => void | Promise<void>;
+}) {
+  const [text, setText] = useState(item.text);
+  useEffect(() => setText(item.text), [item.text]);
+  const ownerValue =
+    item.ownerDirectReportId != null
+      ? `dr:${item.ownerDirectReportId}`
+      : item.ownerName
+        ? "custom"
+        : "none";
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <Input
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() =>
+          text.trim() && text !== item.text && onPatch(item.id, { text: text.trim() })
+        }
+        onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+        className="h-8 text-sm flex-[2] min-w-[160px]"
+      />
+      <Select
+        value={ownerValue}
+        onValueChange={(v) => {
+          if (v === "none") onPatch(item.id, { ownerDirectReportId: null, ownerName: null });
+          else if (v === "custom") {
+            const name = window.prompt("Owner name", item.ownerName ?? "");
+            if (name && name.trim()) onPatch(item.id, { ownerName: name.trim() });
+          } else onPatch(item.id, { ownerDirectReportId: Number(v.slice(3)) });
+        }}
+      >
+        <SelectTrigger className="h-8 text-xs flex-1 min-w-[110px]">
+          <SelectValue placeholder="Owner" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="none">No owner</SelectItem>
+          {directReports
+            .filter((d) => !d.hidden)
+            .map((d) => (
+              <SelectItem key={d.id} value={`dr:${d.id}`}>
+                {d.name}
+              </SelectItem>
+            ))}
+          <SelectItem value="custom">Other…</SelectItem>
+        </SelectContent>
+      </Select>
+      <Input
+        type="date"
+        value={item.dueDate ?? ""}
+        onChange={(e) => onPatch(item.id, { dueDate: e.target.value || null })}
+        className="h-8 text-sm flex-1 min-w-[130px]"
+      />
+      <Select value={item.tag} onValueChange={(v) => onPatch(item.id, { tag: v as OnDeckTag })}>
+        <SelectTrigger className="h-8 text-xs flex-1 min-w-[130px]">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {ON_DECK_TAGS.map((t) => (
+            <SelectItem key={t} value={t}>
+              {ON_DECK_TAG_META[t].label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }
@@ -3078,6 +3631,10 @@ export function IdealWeek() {
     return () => window.removeEventListener("cc:top3-changed", onChanged);
   }, []);
 
+  const { data: onDeckItems = [] } = useOnDeck();
+  const invalidateOnDeck = () =>
+    queryClient.invalidateQueries({ queryKey: ["cc-on-deck"] });
+
   const { data: futureTodos = [] } = useListFutureTodos();
   const invalidateFuture = () =>
     queryClient.invalidateQueries({ queryKey: getListFutureTodosQueryKey() });
@@ -3157,6 +3714,12 @@ export function IdealWeek() {
               onChanged={invalidateCcTop3}
             />
           </div>
+
+          <IdealWeekOnDeckCard
+            items={onDeckItems}
+            dailyRows={ccDailyRows}
+            onChanged={invalidateOnDeck}
+          />
 
           <AutomaticRulesForSuccess />
 

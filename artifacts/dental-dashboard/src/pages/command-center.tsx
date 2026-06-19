@@ -91,9 +91,22 @@ type BrainDumpEntry = {
 };
 type Business = { id: number; name: string; slug: string; sortOrder: number };
 type BrainDumpFilter = "inbox" | "reference" | "someday" | "processed";
+type OnDeckTag = "move_the_needle" | "maintenance" | "follow_up";
+type OnDeckItem = {
+  id: number;
+  businessId: number;
+  text: string;
+  ownerDirectReportId: number | null;
+  ownerName: string | null;
+  dueDate: string | null;
+  tag: OnDeckTag;
+  sourceTaskId: number | null;
+  sortOrder: number;
+};
 type Overview = {
   top3: Top3Row[];
   weekTop3: Top3Row[];
+  onDeck: OnDeckItem[];
   stats: {
     openLifeTasks: number;
     openTeamItems: number;
@@ -528,6 +541,7 @@ function OverviewTab() {
           onChange={reload}
         />
       </div>
+      <OnDeckCard items={data.onDeck ?? []} top3={data.top3} onChange={reload} />
       <OverviewSection title="Direct Reports">
         <DirectReportsTab />
       </OverviewSection>
@@ -721,6 +735,662 @@ function Top3Row({
           color: done ? C.textSecondary : C.textPrimary,
         }}
       />
+    </div>
+  );
+}
+
+const ON_DECK_TAG_META: Record<OnDeckTag, { label: string; color: string; soft: string }> = {
+  move_the_needle: { label: "Move-the-needle", color: "#6b1d2a", soft: "#f0e6e8" },
+  maintenance: { label: "Maintenance", color: "#a07a1e", soft: "#f6efdc" },
+  follow_up: { label: "Follow-up", color: "#3f5f8f", soft: "#e6ecf5" },
+};
+const ON_DECK_TAGS: OnDeckTag[] = ["move_the_needle", "maintenance", "follow_up"];
+const ON_DECK_CAP = 7;
+
+function formatDue(d: string | null): string {
+  if (!d) return "";
+  const [y, m, day] = d.split("-").map((n) => Number(n));
+  if (!y || !m || !day) return d;
+  const dt = new Date(y, m - 1, day);
+  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function OnDeckCard({
+  items,
+  top3,
+  onChange,
+}: {
+  items: OnDeckItem[];
+  top3: Top3Row[];
+  onChange: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [directReports, setDirectReports] = useState<DirectReport[]>([]);
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+
+  const loadPickerData = useCallback(async () => {
+    try {
+      const [dr, pr, tk] = await Promise.all([
+        api<DirectReport[]>("/command-center/direct-reports"),
+        api<Project[]>("/command-center/projects"),
+        api<Task[]>("/command-center/tasks"),
+      ]);
+      setDirectReports(dr);
+      setProjects(pr);
+      setTasks(tk);
+    } catch {
+      /* ignore — picker just stays empty */
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadPickerData();
+  }, [loadPickerData]);
+
+  const drNameById = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const d of directReports) m.set(d.id, d.name);
+    return m;
+  }, [directReports]);
+
+  const ownerLabel = (it: OnDeckItem): string => {
+    if (it.ownerDirectReportId != null) return drNameById.get(it.ownerDirectReportId) ?? "—";
+    return it.ownerName ?? "";
+  };
+
+  const atCap = items.length >= ON_DECK_CAP;
+
+  const promote = async (it: OnDeckItem) => {
+    const slots = [1, 2, 3].map((slot) => top3.find((r) => r.slot === slot) ?? null);
+    const openIdx = slots.findIndex((r) => !r || r.text.trim().length === 0);
+    if (openIdx === -1) {
+      window.alert(
+        "All three of Today's Top 3 slots are full. Free a slot before promoting this item.",
+      );
+      return;
+    }
+    await api(`/command-center/top3/day/${openIdx + 1}`, {
+      method: "PUT",
+      body: JSON.stringify({ text: it.text, done: false }),
+    });
+    await api(`/command-center/on-deck/${it.id}`, { method: "DELETE" });
+    window.dispatchEvent(new CustomEvent("cc:top3-changed"));
+    onChange();
+  };
+
+  const remove = async (id: number) => {
+    await api(`/command-center/on-deck/${id}`, { method: "DELETE" });
+    onChange();
+  };
+
+  const patch = async (id: number, body: Partial<OnDeckItem>) => {
+    await api(`/command-center/on-deck/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+    onChange();
+  };
+
+  const create = async (body: {
+    text: string;
+    ownerDirectReportId?: number | null;
+    ownerName?: string | null;
+    dueDate?: string | null;
+    tag?: OnDeckTag;
+    sourceTaskId?: number | null;
+  }) => {
+    if (atCap) {
+      window.alert("On Deck is capped at 7 items. Remove one before adding another.");
+      return;
+    }
+    try {
+      await api("/command-center/on-deck", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      setAdding(false);
+      onChange();
+    } catch {
+      window.alert("Couldn't add — On Deck may be full (max 7). Remove an item first.");
+    }
+  };
+
+  return (
+    <Card>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          marginBottom: 14,
+          gap: 8,
+        }}
+      >
+        <div>
+          <h2
+            style={{
+              margin: 0,
+              fontFamily: SERIF,
+              fontSize: 18,
+              fontWeight: 600,
+              color: C.textPrimary,
+            }}
+          >
+            On Deck
+          </h2>
+          <div style={{ marginTop: 2, fontSize: 12, color: C.textSecondary }}>
+            {items.length}/{ON_DECK_CAP} · this week's shortlist
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setEditing((e) => !e);
+            setAdding(false);
+          }}
+          style={{
+            background: "transparent",
+            border: `1px solid ${C.cardBorder}`,
+            color: C.textSecondary,
+            borderRadius: 6,
+            padding: "4px 12px",
+            fontFamily: SANS,
+            fontSize: 12,
+            fontWeight: 600,
+            cursor: "pointer",
+          }}
+        >
+          {editing ? "Done" : "Edit"}
+        </button>
+      </div>
+
+      {items.length === 0 && !editing && (
+        <div style={{ fontSize: 13, color: C.textSecondary, padding: "4px 0" }}>
+          Nothing on deck yet. Tap Edit to add up to 7 priorities.
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map((it) => {
+          const meta = ON_DECK_TAG_META[it.tag];
+          const owner = ownerLabel(it);
+          const due = formatDue(it.dueDate);
+          return (
+            <div
+              key={it.id}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                padding: "8px 0",
+                borderBottom: `1px solid ${C.divider}`,
+              }}
+            >
+              <span
+                title={meta.label}
+                style={{
+                  flexShrink: 0,
+                  fontSize: 10,
+                  fontWeight: 700,
+                  letterSpacing: 0.3,
+                  textTransform: "uppercase",
+                  color: meta.color,
+                  background: meta.soft,
+                  borderRadius: 10,
+                  padding: "3px 8px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {meta.label}
+              </span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    color: C.textPrimary,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {it.text}
+                </div>
+                {(owner || due) && (
+                  <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>
+                    {owner}
+                    {owner && due ? " · " : ""}
+                    {due ? `due ${due}` : ""}
+                  </div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => void promote(it)}
+                title="Promote to Today's Top 3"
+                style={{
+                  flexShrink: 0,
+                  background: C.accent,
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 6,
+                  padding: "5px 10px",
+                  fontFamily: SANS,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                ↑ Top 3
+              </button>
+              {editing && (
+                <button
+                  type="button"
+                  onClick={() => void remove(it.id)}
+                  title="Remove from On Deck"
+                  style={{
+                    flexShrink: 0,
+                    background: "transparent",
+                    border: "none",
+                    color: C.textSecondary,
+                    fontSize: 18,
+                    lineHeight: 1,
+                    cursor: "pointer",
+                    padding: "0 2px",
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {editing && (
+        <div style={{ marginTop: 14 }}>
+          {editing && items.length > 0 && (
+            <OnDeckEditList
+              items={items}
+              directReports={directReports}
+              onPatch={patch}
+            />
+          )}
+          {adding ? (
+            <OnDeckAddForm
+              directReports={directReports}
+              projects={projects}
+              tasks={tasks}
+              existingSourceIds={items
+                .map((i) => i.sourceTaskId)
+                .filter((x): x is number => x != null)}
+              onCancel={() => setAdding(false)}
+              onCreate={create}
+            />
+          ) : (
+            <button
+              type="button"
+              disabled={atCap}
+              onClick={() =>
+                atCap
+                  ? window.alert(
+                      "On Deck is capped at 7 items. Remove one before adding another.",
+                    )
+                  : setAdding(true)
+              }
+              style={{
+                marginTop: 10,
+                background: "transparent",
+                border: `1px dashed ${C.cardBorder}`,
+                color: atCap ? C.statusComplete : C.accent,
+                borderRadius: 6,
+                padding: "8px 12px",
+                fontFamily: SANS,
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: atCap ? "not-allowed" : "pointer",
+                width: "100%",
+              }}
+            >
+              {atCap ? "On Deck is full (7) — remove one to add" : "+ Add to On Deck"}
+            </button>
+          )}
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function OnDeckEditList({
+  items,
+  directReports,
+  onPatch,
+}: {
+  items: OnDeckItem[];
+  directReports: DirectReport[];
+  onPatch: (id: number, body: Partial<OnDeckItem>) => Promise<void>;
+}) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        gap: 10,
+        marginBottom: 4,
+        paddingBottom: 12,
+        borderBottom: `1px solid ${C.divider}`,
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary }}>
+        Edit items
+      </div>
+      {items.map((it) => (
+        <OnDeckEditRow key={it.id} item={it} directReports={directReports} onPatch={onPatch} />
+      ))}
+    </div>
+  );
+}
+
+function OnDeckEditRow({
+  item,
+  directReports,
+  onPatch,
+}: {
+  item: OnDeckItem;
+  directReports: DirectReport[];
+  onPatch: (id: number, body: Partial<OnDeckItem>) => Promise<void>;
+}) {
+  const [text, setText] = useState(item.text);
+  useEffect(() => setText(item.text), [item.text]);
+  const ownerValue =
+    item.ownerDirectReportId != null
+      ? `dr:${item.ownerDirectReportId}`
+      : item.ownerName
+        ? "custom"
+        : "";
+  return (
+    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => text.trim() && text !== item.text && onPatch(item.id, { text: text.trim() })}
+        onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
+        style={{ ...smallInput, flex: "2 1 160px" }}
+      />
+      <select
+        value={ownerValue.startsWith("dr:") ? ownerValue : ownerValue === "custom" ? "custom" : ""}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v === "") onPatch(item.id, { ownerDirectReportId: null, ownerName: null });
+          else if (v === "custom") {
+            const name = window.prompt("Owner name", item.ownerName ?? "");
+            if (name && name.trim()) onPatch(item.id, { ownerName: name.trim() });
+          } else onPatch(item.id, { ownerDirectReportId: Number(v.slice(3)) });
+        }}
+        style={{ ...smallInput, flex: "1 1 110px" }}
+      >
+        <option value="">No owner</option>
+        {directReports
+          .filter((d) => !d.hidden)
+          .map((d) => (
+            <option key={d.id} value={`dr:${d.id}`}>
+              {d.name}
+            </option>
+          ))}
+        <option value="custom">Other…</option>
+      </select>
+      <input
+        type="date"
+        value={item.dueDate ?? ""}
+        onChange={(e) => onPatch(item.id, { dueDate: e.target.value || null })}
+        style={{ ...smallInput, flex: "1 1 130px" }}
+      />
+      <select
+        value={item.tag}
+        onChange={(e) => onPatch(item.id, { tag: e.target.value as OnDeckTag })}
+        style={{ ...smallInput, flex: "1 1 130px" }}
+      >
+        {ON_DECK_TAGS.map((t) => (
+          <option key={t} value={t}>
+            {ON_DECK_TAG_META[t].label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function OnDeckAddForm({
+  directReports,
+  projects,
+  tasks,
+  existingSourceIds,
+  onCancel,
+  onCreate,
+}: {
+  directReports: DirectReport[];
+  projects: Project[];
+  tasks: Task[];
+  existingSourceIds: number[];
+  onCancel: () => void;
+  onCreate: (body: {
+    text: string;
+    ownerDirectReportId?: number | null;
+    ownerName?: string | null;
+    dueDate?: string | null;
+    tag?: OnDeckTag;
+    sourceTaskId?: number | null;
+  }) => Promise<void>;
+}) {
+  const [mode, setMode] = useState<"manual" | "pull">("manual");
+  const [text, setText] = useState("");
+  const [owner, setOwner] = useState("");
+  const [customOwner, setCustomOwner] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [tag, setTag] = useState<OnDeckTag>("move_the_needle");
+
+  const projectName = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const p of projects) m.set(p.id, p.name);
+    return m;
+  }, [projects]);
+  const drName = useMemo(() => {
+    const m = new Map<number, string>();
+    for (const d of directReports) m.set(d.id, d.name);
+    return m;
+  }, [directReports]);
+
+  const pullable = useMemo(
+    () =>
+      tasks.filter(
+        (t) =>
+          (t.parentType === "project" || t.parentType === "direct_report") &&
+          !t.done &&
+          !existingSourceIds.includes(t.id),
+      ),
+    [tasks, existingSourceIds],
+  );
+
+  const submitManual = () => {
+    if (!text.trim()) return;
+    void onCreate({
+      text: text.trim(),
+      ownerDirectReportId: owner.startsWith("dr:") ? Number(owner.slice(3)) : null,
+      ownerName: owner === "custom" ? customOwner.trim() || null : null,
+      dueDate: dueDate || null,
+      tag,
+    });
+  };
+
+  const submitPull = (t: Task) => {
+    const ownerDr =
+      t.parentType === "direct_report" ? t.parentId : t.ownerDirectReportId ?? null;
+    void onCreate({
+      text: t.text,
+      ownerDirectReportId: ownerDr,
+      ownerName: ownerDr == null ? t.ownerName : null,
+      dueDate: t.dueDate,
+      tag,
+      sourceTaskId: t.id,
+    });
+  };
+
+  return (
+    <div
+      style={{
+        marginTop: 10,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 6,
+        padding: 12,
+        background: "#faf8f4",
+      }}
+    >
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {(["manual", "pull"] as const).map((m) => (
+          <button
+            key={m}
+            type="button"
+            onClick={() => setMode(m)}
+            style={{
+              background: mode === m ? C.accent : "transparent",
+              color: mode === m ? "#fff" : C.textSecondary,
+              border: `1px solid ${mode === m ? C.accent : C.cardBorder}`,
+              borderRadius: 6,
+              padding: "4px 10px",
+              fontFamily: SANS,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+            }}
+          >
+            {m === "manual" ? "New item" : "Pull from task"}
+          </button>
+        ))}
+      </div>
+
+      {mode === "manual" ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <input
+            type="text"
+            value={text}
+            autoFocus
+            onChange={(e) => setText(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && submitManual()}
+            placeholder="What needs to move this week…"
+            style={smallInput}
+          />
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <select
+              value={owner}
+              onChange={(e) => setOwner(e.target.value)}
+              style={{ ...smallInput, flex: "1 1 120px" }}
+            >
+              <option value="">No owner</option>
+              {directReports
+                .filter((d) => !d.hidden)
+                .map((d) => (
+                  <option key={d.id} value={`dr:${d.id}`}>
+                    {d.name}
+                  </option>
+                ))}
+              <option value="custom">Other…</option>
+            </select>
+            {owner === "custom" && (
+              <input
+                type="text"
+                value={customOwner}
+                onChange={(e) => setCustomOwner(e.target.value)}
+                placeholder="Owner name"
+                style={{ ...smallInput, flex: "1 1 120px" }}
+              />
+            )}
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              style={{ ...smallInput, flex: "1 1 130px" }}
+            />
+            <select
+              value={tag}
+              onChange={(e) => setTag(e.target.value as OnDeckTag)}
+              style={{ ...smallInput, flex: "1 1 130px" }}
+            >
+              {ON_DECK_TAGS.map((t) => (
+                <option key={t} value={t}>
+                  {ON_DECK_TAG_META[t].label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button type="button" onClick={onCancel} style={ghostBtn}>
+              Cancel
+            </button>
+            <button type="button" onClick={submitManual} disabled={!text.trim()} style={primaryBtn}>
+              Add
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: C.textSecondary }}>Tag:</span>
+            <select
+              value={tag}
+              onChange={(e) => setTag(e.target.value as OnDeckTag)}
+              style={{ ...smallInput, flex: "0 1 150px" }}
+            >
+              {ON_DECK_TAGS.map((t) => (
+                <option key={t} value={t}>
+                  {ON_DECK_TAG_META[t].label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
+            {pullable.length === 0 && (
+              <div style={{ fontSize: 12, color: C.textSecondary, padding: "4px 0" }}>
+                No open Project or Direct Report tasks to pull.
+              </div>
+            )}
+            {pullable.map((t) => {
+              const where =
+                t.parentType === "project"
+                  ? projectName.get(t.parentId) ?? "Project"
+                  : drName.get(t.parentId) ?? "Direct Report";
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => submitPull(t)}
+                  style={{
+                    textAlign: "left",
+                    background: "#fff",
+                    border: `1px solid ${C.cardBorder}`,
+                    borderRadius: 6,
+                    padding: "8px 10px",
+                    cursor: "pointer",
+                    fontFamily: SANS,
+                  }}
+                >
+                  <div style={{ fontSize: 13, color: C.textPrimary }}>{t.text}</div>
+                  <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>
+                    from {where}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button type="button" onClick={onCancel} style={ghostBtn}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -3797,6 +4467,42 @@ const inputStyle: CSSProperties = {
   color: C.textPrimary,
   padding: "4px 0",
   minWidth: 0,
+};
+
+const smallInput: CSSProperties = {
+  border: `1px solid ${C.cardBorder}`,
+  outline: "none",
+  background: "#fff",
+  fontFamily: SANS,
+  fontSize: 13,
+  color: C.textPrimary,
+  padding: "6px 8px",
+  borderRadius: 6,
+  minWidth: 0,
+};
+
+const ghostBtn: CSSProperties = {
+  background: "transparent",
+  border: `1px solid ${C.cardBorder}`,
+  color: C.textSecondary,
+  borderRadius: 6,
+  padding: "6px 12px",
+  fontFamily: SANS,
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const primaryBtn: CSSProperties = {
+  background: C.accent,
+  border: "none",
+  color: "#fff",
+  borderRadius: 6,
+  padding: "6px 14px",
+  fontFamily: SANS,
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
 };
 
 function Card({ children }: { children: React.ReactNode }) {

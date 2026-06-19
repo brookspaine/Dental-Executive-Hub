@@ -11,6 +11,7 @@ import {
   ccTasksTable,
   ccBrainDumpTable,
   ccTop3Table,
+  ccOnDeckTable,
   futureTodosTable,
 } from "@workspace/db";
 import { getBusinessId } from "../lib/businessScope";
@@ -243,6 +244,134 @@ router.put("/top3/:slot", async (req, res): Promise<void> => {
     )
     .returning();
   res.json(row);
+});
+
+/* -------------------------------------------------------------------------- */
+/* On Deck                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const ON_DECK_TAGS = ["move_the_needle", "maintenance", "follow_up"] as const;
+const ON_DECK_CAP = 7;
+
+router.get("/on-deck", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const rows = await db
+    .select()
+    .from(ccOnDeckTable)
+    .where(eq(ccOnDeckTable.businessId, businessId))
+    .orderBy(asc(ccOnDeckTable.sortOrder), asc(ccOnDeckTable.id));
+  res.json(rows);
+});
+
+router.post("/on-deck", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const body = z
+    .object({
+      text: z.string().min(1),
+      ownerDirectReportId: z.number().int().nullable().optional(),
+      ownerName: z.string().trim().max(120).nullable().optional(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      tag: z.enum(ON_DECK_TAGS).optional(),
+      sourceTaskId: z.number().int().nullable().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  // Enforce the 7-item cap server-side.
+  const countRows = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(ccOnDeckTable)
+    .where(eq(ccOnDeckTable.businessId, businessId));
+  const count = countRows[0]?.count ?? 0;
+  if (count >= ON_DECK_CAP) {
+    res.status(409).json({ error: "On Deck is full (max 7). Remove an item first." });
+    return;
+  }
+  // Owner, if a direct report, must belong to the current business.
+  if (body.data.ownerDirectReportId != null) {
+    const ok = await parentInBusiness("direct_report", body.data.ownerDirectReportId, businessId);
+    if (!ok) {
+      res.status(403).json({ error: "owner not in current business" });
+      return;
+    }
+  }
+  // Owner is either a direct report OR a free-form name, never both.
+  const [row] = await db
+    .insert(ccOnDeckTable)
+    .values({
+      businessId,
+      text: body.data.text,
+      ownerDirectReportId: body.data.ownerDirectReportId ?? null,
+      ownerName:
+        body.data.ownerDirectReportId != null
+          ? null
+          : body.data.ownerName?.trim() || null,
+      dueDate: body.data.dueDate ?? null,
+      tag: body.data.tag ?? "move_the_needle",
+      sourceTaskId: body.data.sourceTaskId ?? null,
+      sortOrder: count,
+    })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.patch("/on-deck/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      text: z.string().min(1).optional(),
+      ownerDirectReportId: z.number().int().nullable().optional(),
+      ownerName: z.string().trim().max(120).nullable().optional(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      tag: z.enum(ON_DECK_TAGS).optional(),
+      sortOrder: z.number().int().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success || Object.keys(body.data).length === 0) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  if (body.data.ownerDirectReportId != null) {
+    const ok = await parentInBusiness("direct_report", body.data.ownerDirectReportId, businessId);
+    if (!ok) {
+      res.status(403).json({ error: "owner not in current business" });
+      return;
+    }
+  }
+  const patch: Record<string, unknown> = { ...body.data };
+  // Owner is either a direct report OR a free-form name, never both.
+  if (body.data.ownerDirectReportId != null) {
+    patch.ownerName = null;
+  } else if (typeof body.data.ownerName === "string") {
+    patch.ownerName = body.data.ownerName.trim() || null;
+    patch.ownerDirectReportId = null;
+  }
+  const [row] = await db
+    .update(ccOnDeckTable)
+    .set(patch)
+    .where(and(eq(ccOnDeckTable.id, id.data), eq(ccOnDeckTable.businessId, businessId)))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  res.json(row);
+});
+
+router.delete("/on-deck/:id", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  await db
+    .delete(ccOnDeckTable)
+    .where(and(eq(ccOnDeckTable.id, id.data), eq(ccOnDeckTable.businessId, businessId)));
+  res.sendStatus(204);
 });
 
 /* -------------------------------------------------------------------------- */
@@ -1312,7 +1441,8 @@ router.get("/overview", async (req, res): Promise<void> => {
   await ensureLifeAreasSeeded(businessId);
   await ensureTop3Slots(businessId);
 
-  const [top3All, lifeAreas, directReports, projects, brainDumpCountRow] = await Promise.all([
+  const [top3All, lifeAreas, directReports, projects, brainDumpCountRow, onDeck] =
+    await Promise.all([
     db
       .select()
       .from(ccTop3Table)
@@ -1337,6 +1467,11 @@ router.get("/overview", async (req, res): Promise<void> => {
       .select({ count: sql<number>`count(*)::int` })
       .from(ccBrainDumpTable)
       .where(eq(ccBrainDumpTable.businessId, businessId)),
+    db
+      .select()
+      .from(ccOnDeckTable)
+      .where(eq(ccOnDeckTable.businessId, businessId))
+      .orderBy(asc(ccOnDeckTable.sortOrder), asc(ccOnDeckTable.id)),
   ]);
 
   // Now fetch only tasks belonging to in-business parents.
@@ -1397,6 +1532,7 @@ router.get("/overview", async (req, res): Promise<void> => {
   res.json({
     top3: top3All.filter((r) => r.period === "day"),
     weekTop3: top3All.filter((r) => r.period === "week"),
+    onDeck,
     stats: {
       openLifeTasks: counts.life_area,
       openTeamItems: counts.direct_report,

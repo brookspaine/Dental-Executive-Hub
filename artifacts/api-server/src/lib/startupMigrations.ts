@@ -31,6 +31,7 @@ export async function runStartupMigrations(): Promise<void> {
       await renameSetTop3RitualItem(client);
       await addWeeklyReviewTop3Bullet(client);
       await addWeeklyReviewRebuildOnDeckBullet(client);
+      await createOnDeckTable(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -731,4 +732,28 @@ async function addWeeklyReviewRebuildOnDeckBullet(client: PgClient): Promise<voi
       "startup migration: added Weekly Review 'Rebuild On-Deck' bullet",
     );
   }
+}
+
+/**
+ * Create the `cc_on_deck` table if it does not yet exist. The repo uses
+ * `drizzle-kit push` (no migration history), so new tables created in dev
+ * reach prod only via this idempotent boot-time CREATE TABLE IF NOT EXISTS.
+ * Safe to run repeatedly.
+ */
+async function createOnDeckTable(client: PgClient): Promise<void> {
+  await client.query(
+    `CREATE TABLE IF NOT EXISTS cc_on_deck (
+       id serial PRIMARY KEY,
+       business_id integer NOT NULL,
+       text text NOT NULL,
+       owner_direct_report_id integer,
+       owner_name text,
+       due_date date,
+       tag text NOT NULL DEFAULT 'move_the_needle',
+       source_task_id integer,
+       sort_order integer NOT NULL DEFAULT 0,
+       created_at timestamptz NOT NULL DEFAULT now(),
+       updated_at timestamptz NOT NULL DEFAULT now()
+     )`,
+  );
 }

@@ -178,3 +178,30 @@ export const ccTop3Table = pgTable(
   }),
 );
 export type CcTop3 = typeof ccTop3Table.$inferSelect;
+
+/* On Deck — a curated shortlist (capped at 7) that bridges the weekly
+   Top 3 and the full Projects list. One shared list per business, scoped
+   like cc_top3. Owner is either a direct report (ownerDirectReportId) OR a
+   free-form name (ownerName), never both — same convention as cc_tasks.
+   sourceTaskId optionally links back to the cc_tasks row it was pulled in
+   from (Project / Direct Report task). */
+export const ccOnDeckTable = pgTable("cc_on_deck", {
+  id: serial("id").primaryKey(),
+  businessId: integer("business_id").notNull(),
+  text: text("text").notNull(),
+  ownerDirectReportId: integer("owner_direct_report_id"),
+  ownerName: text("owner_name"),
+  dueDate: date("due_date", { mode: "string" }),
+  tag: text("tag").notNull().default("move_the_needle"),
+  // move_the_needle | maintenance | follow_up
+  sourceTaskId: integer("source_task_id"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+});
+export type CcOnDeck = typeof ccOnDeckTable.$inferSelect;
