@@ -3670,7 +3670,10 @@ export function IdealWeek() {
   );
 
   useEffect(() => {
-    const onChanged = () => invalidateCcTop3();
+    const onChanged = () => {
+      queryClient.invalidateQueries({ queryKey: ["cc-top3"] });
+      queryClient.invalidateQueries({ queryKey: ["cc-on-deck"] });
+    };
     window.addEventListener("cc:top3-changed", onChanged);
     return () => window.removeEventListener("cc:top3-changed", onChanged);
   }, []);
