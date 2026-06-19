@@ -28,6 +28,7 @@ export async function runStartupMigrations(): Promise<void> {
       await migrateLifeAreasToYearlyPlanning(client);
       await addCcTop3PeriodColumn(client);
       await renameStartupRitualLabel(client);
+      await renameSetTop3RitualItem(client);
       await addWeeklyReviewTop3Bullet(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
@@ -610,6 +611,38 @@ async function renameStartupRitualLabel(client: PgClient): Promise<void> {
   const rowCount = (res as unknown as { rowCount: number | null }).rowCount;
   if (rowCount && rowCount > 0) {
     logger.info({ rows: rowCount }, "startup migration: renamed Startup Ritual → Daily Planning Ritual");
+  }
+}
+
+/**
+ * Rename the Daily Planning Ritual (startup category) checklist item that
+ * sets the daily Top 3 to "Set Today's Top 3 From On-Deck", so the step makes
+ * clear the Top 3 are pulled from the On-Deck list.
+ *
+ * Matches every known historical label for this item across environments —
+ * prod stored "Set Today's Top 3" (with a curly apostrophe), dev stored
+ * "Set Big 3" — plus the straight-apostrophe variant for safety. Idempotent:
+ * once renamed, none of the old labels match so this is a no-op. Only touches
+ * an already-populated startup category, so a fresh/empty database is left to
+ * the default seed (which already uses the new label).
+ */
+async function renameSetTop3RitualItem(client: PgClient): Promise<void> {
+  const newLabel = "Set Today's Top 3 From On-Deck";
+  const oldLabels = [
+    "Set Big 3",
+    "Set Today\u2019s Top 3", // curly apostrophe (prod)
+    "Set Today's Top 3", // straight apostrophe
+  ];
+  const res = await client.query(
+    `UPDATE ritual_items
+       SET label = $1
+       WHERE category = 'startup'
+         AND label = ANY($2::text[])`,
+    [newLabel, oldLabels],
+  );
+  const rowCount = (res as unknown as { rowCount: number | null }).rowCount;
+  if (rowCount && rowCount > 0) {
+    logger.info({ rows: rowCount }, "startup migration: renamed Set Top 3 ritual item → 'Set Today's Top 3 From On-Deck'");
   }
 }
 

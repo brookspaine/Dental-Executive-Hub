@@ -464,7 +464,7 @@ const DEFAULT_RITUAL_ITEMS: Record<string, string[]> = {
   startup: [
     "Daily Brainwashing Sheet or Words of Wisdom",
     "Review Living Your Best Year Ever",
-    "Set Big 3",
+    "Set Today's Top 3 From On-Deck",
     "Block Deep Work session(s)",
     "Time Journal catch-up",
     "If I decide it's important → Reply to Emails\n(be timely, reply quickly, don't do other's jobs for them)",
