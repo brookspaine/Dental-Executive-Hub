@@ -80,6 +80,7 @@ import {
   Crop,
   ZoomIn,
   ImagePlus,
+  GripVertical,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import { useUpload } from "@workspace/object-storage-web";
@@ -1607,6 +1608,28 @@ function IdealWeekOnDeckCard({
   const [customOwner, setCustomOwner] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [tag, setTag] = useState<OnDeckTag>("move_the_needle");
+  const [orderedItems, setOrderedItems] = useState<OnDeckItem[]>(items);
+  const dragIndex = useRef<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  useEffect(() => setOrderedItems(items), [items]);
+
+  const reorder = async (from: number, to: number) => {
+    if (from === to) return;
+    const next = [...orderedItems];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrderedItems(next);
+    try {
+      await fetch(`${base}api/command-center/on-deck/reorder`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ids: next.map((i) => i.id) }),
+      });
+    } finally {
+      onChanged();
+    }
+  };
 
   const { data: directReports = [] } = useCcDirectReports();
   const { data: projects = [] } = useCcProjects();
@@ -1756,11 +1779,47 @@ function IdealWeekOnDeckCard({
             Nothing on deck yet. Tap Edit to add up to 7 priorities.
           </div>
         )}
-        {items.map((it) => (
+        {orderedItems.map((it, idx) => (
           <div
             key={it.id}
-            className="flex items-center gap-2 border-b last:border-b-0 pb-2 last:pb-0"
+            draggable={editing}
+            onDragStart={editing ? () => (dragIndex.current = idx) : undefined}
+            onDragOver={
+              editing
+                ? (e) => {
+                    e.preventDefault();
+                    if (overIndex !== idx) setOverIndex(idx);
+                  }
+                : undefined
+            }
+            onDrop={
+              editing
+                ? () => {
+                    if (dragIndex.current != null) void reorder(dragIndex.current, idx);
+                    dragIndex.current = null;
+                    setOverIndex(null);
+                  }
+                : undefined
+            }
+            onDragEnd={
+              editing
+                ? () => {
+                    dragIndex.current = null;
+                    setOverIndex(null);
+                  }
+                : undefined
+            }
+            className={[
+              "flex items-center gap-2 border-b last:border-b-0 pb-2 last:pb-0",
+              editing && overIndex === idx ? "border-t-2 border-t-primary" : "",
+            ].join(" ")}
           >
+            {editing && (
+              <GripVertical
+                className="h-4 w-4 shrink-0 cursor-grab text-muted-foreground"
+                aria-label="Drag to reorder"
+              />
+            )}
             <span
               className={[
                 "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",

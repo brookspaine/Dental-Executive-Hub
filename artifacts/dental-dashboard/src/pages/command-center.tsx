@@ -796,6 +796,27 @@ function OnDeckCard({
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [orderedItems, setOrderedItems] = useState<OnDeckItem[]>(items);
+  const dragIndex = useRef<number | null>(null);
+  const [overIndex, setOverIndex] = useState<number | null>(null);
+
+  useEffect(() => setOrderedItems(items), [items]);
+
+  const reorder = async (from: number, to: number) => {
+    if (from === to) return;
+    const next = [...orderedItems];
+    const [moved] = next.splice(from, 1);
+    next.splice(to, 0, moved);
+    setOrderedItems(next);
+    try {
+      await api("/command-center/on-deck/reorder", {
+        method: "POST",
+        body: JSON.stringify({ ids: next.map((i) => i.id) }),
+      });
+    } finally {
+      onChange();
+    }
+  };
 
   const loadPickerData = useCallback(async () => {
     try {
@@ -940,7 +961,7 @@ function OnDeckCard({
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {items.map((it) => {
+        {orderedItems.map((it, idx) => {
           const meta = ON_DECK_TAG_META[it.tag];
           const owner = ownerLabel(it);
           const due = formatDue(it.dueDate);
@@ -948,14 +969,65 @@ function OnDeckCard({
           return (
             <div
               key={it.id}
+              draggable={editing}
+              onDragStart={
+                editing
+                  ? () => {
+                      dragIndex.current = idx;
+                    }
+                  : undefined
+              }
+              onDragOver={
+                editing
+                  ? (e) => {
+                      e.preventDefault();
+                      if (overIndex !== idx) setOverIndex(idx);
+                    }
+                  : undefined
+              }
+              onDrop={
+                editing
+                  ? () => {
+                      if (dragIndex.current != null) void reorder(dragIndex.current, idx);
+                      dragIndex.current = null;
+                      setOverIndex(null);
+                    }
+                  : undefined
+              }
+              onDragEnd={
+                editing
+                  ? () => {
+                      dragIndex.current = null;
+                      setOverIndex(null);
+                    }
+                  : undefined
+              }
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
                 padding: "8px 0",
                 borderBottom: `1px solid ${C.divider}`,
+                borderTop:
+                  editing && overIndex === idx ? `2px solid ${C.accent}` : "2px solid transparent",
               }}
             >
+              {editing && (
+                <span
+                  title="Drag to reorder"
+                  style={{
+                    flexShrink: 0,
+                    cursor: "grab",
+                    color: C.textSecondary,
+                    fontSize: 14,
+                    lineHeight: 1,
+                    userSelect: "none",
+                    letterSpacing: -2,
+                  }}
+                >
+                  ⠿
+                </span>
+              )}
               <span
                 title={meta.label}
                 style={{

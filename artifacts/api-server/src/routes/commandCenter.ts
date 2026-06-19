@@ -317,6 +317,36 @@ router.post("/on-deck", async (req, res): Promise<void> => {
   res.status(201).json(row);
 });
 
+router.post("/on-deck/reorder", async (req, res): Promise<void> => {
+  const businessId = getBusinessId(req);
+  const body = z.object({ ids: z.array(z.number().int()) }).safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  // Only reorder rows that belong to the current business.
+  const existing = await db
+    .select({ id: ccOnDeckTable.id })
+    .from(ccOnDeckTable)
+    .where(eq(ccOnDeckTable.businessId, businessId));
+  const ownedIds = new Set(existing.map((r) => r.id));
+  const ordered = body.data.ids.filter((id) => ownedIds.has(id));
+  await Promise.all(
+    ordered.map((id, idx) =>
+      db
+        .update(ccOnDeckTable)
+        .set({ sortOrder: idx })
+        .where(and(eq(ccOnDeckTable.id, id), eq(ccOnDeckTable.businessId, businessId))),
+    ),
+  );
+  const rows = await db
+    .select()
+    .from(ccOnDeckTable)
+    .where(eq(ccOnDeckTable.businessId, businessId))
+    .orderBy(asc(ccOnDeckTable.sortOrder), asc(ccOnDeckTable.id));
+  res.json(rows);
+});
+
 router.patch("/on-deck/:id", async (req, res): Promise<void> => {
   const businessId = getBusinessId(req);
   const id = z.coerce.number().int().safeParse(req.params.id);
