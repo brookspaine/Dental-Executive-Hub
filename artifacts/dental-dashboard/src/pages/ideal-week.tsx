@@ -1602,6 +1602,7 @@ function IdealWeekOnDeckCard({
   const base = import.meta.env.BASE_URL || "/";
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [quickText, setQuickText] = useState("");
   const [mode, setMode] = useState<"manual" | "pull">("manual");
   const [text, setText] = useState("");
   const [owner, setOwner] = useState("none");
@@ -1673,6 +1674,17 @@ function IdealWeekOnDeckCard({
     setDueDate("");
     setTag("move_the_needle");
     setAdding(false);
+  };
+
+  const submitQuick = async () => {
+    const t = quickText.trim();
+    if (!t) return;
+    if (atCap) {
+      window.alert("On Deck is capped at 7 items. Remove one before adding another.");
+      return;
+    }
+    await create({ text: t, tag: "move_the_needle" });
+    setQuickText("");
   };
 
   const remove = async (id: number) => {
@@ -1875,6 +1887,26 @@ function IdealWeekOnDeckCard({
             )}
           </div>
         ))}
+
+        <div className="flex items-center gap-2.5 pt-2">
+          <button
+            type="button"
+            onClick={submitQuick}
+            title="Add to On Deck"
+            className="h-7 w-7 shrink-0 rounded-full flex items-center justify-center text-base font-semibold text-white border-none bg-primary cursor-pointer leading-none"
+          >
+            +
+          </button>
+          <Input
+            value={quickText}
+            onChange={(e) => setQuickText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") submitQuick();
+            }}
+            placeholder="Add to On Deck…"
+            className="h-8 text-sm"
+          />
+        </div>
 
         {editing && (
           <div className="pt-2 space-y-3">

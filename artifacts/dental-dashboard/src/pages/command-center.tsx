@@ -793,6 +793,7 @@ function OnDeckCard({
 }) {
   const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [quickText, setQuickText] = useState("");
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -903,6 +904,17 @@ function OnDeckCard({
     } catch {
       window.alert("Couldn't add — On Deck may be full (max 7). Remove an item first.");
     }
+  };
+
+  const submitQuick = async () => {
+    const t = quickText.trim();
+    if (!t) return;
+    if (atCap) {
+      window.alert("On Deck is capped at 7 items. Remove one before adding another.");
+      return;
+    }
+    await create({ text: t, tag: "move_the_needle" });
+    setQuickText("");
   };
 
   return (
@@ -1142,6 +1154,44 @@ function OnDeckCard({
             </div>
           );
         })}
+      </div>
+
+      <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          type="button"
+          onClick={submitQuick}
+          title="Add to On Deck"
+          style={{
+            width: 28,
+            height: 28,
+            borderRadius: "50%",
+            background: C.accent,
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: SERIF,
+            fontSize: 18,
+            fontWeight: 600,
+            flexShrink: 0,
+            border: "none",
+            cursor: "pointer",
+            padding: 0,
+            lineHeight: 1,
+          }}
+        >
+          +
+        </button>
+        <input
+          type="text"
+          value={quickText}
+          onChange={(e) => setQuickText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") submitQuick();
+          }}
+          placeholder="Add to On Deck…"
+          style={inputStyle}
+        />
       </div>
 
       {editing && (
