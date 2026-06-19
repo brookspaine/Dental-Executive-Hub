@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 /* ========================================================================== */
 /* Types                                                                      */
@@ -1706,6 +1706,53 @@ function SectionAccordion({
 
   useEffect(() => setNameDraft(name), [name]);
 
+  // Owner options for project tasks are fetched separately from the main load
+  // so they can be refreshed whenever this accordion is (re)opened or the
+  // window regains focus — picking up direct reports added in another tab
+  // without requiring a full page reload.
+  const loadDirectReports = useCallback(async (): Promise<DirectReport[]> => {
+    if (parentType !== "project") return [];
+    const rows = await api<DirectReport[]>("/command-center/direct-reports");
+    setDirectReports(rows);
+    return rows;
+  }, [parentType]);
+
+  // Auto-link project tasks whose owner was saved as a free-text name (because
+  // the person wasn't a selectable direct report yet) that now matches an
+  // existing direct report. Converges: once linked the task has an
+  // ownerDirectReportId and no longer matches, so no further patches occur.
+  const reconcileFreeTextOwners = async (
+    taskRows: Task[],
+    drRows: DirectReport[],
+  ): Promise<void> => {
+    if (parentType !== "project" || drRows.length === 0) return;
+    const byName = new Map<string, DirectReport>();
+    for (const dr of drRows) {
+      const key = dr.name.trim().toLowerCase();
+      if (key && !byName.has(key)) byName.set(key, dr);
+    }
+    const toLink = taskRows.filter(
+      (t) =>
+        t.parentType === "project" &&
+        t.ownerDirectReportId == null &&
+        t.ownerName != null &&
+        byName.has(t.ownerName.trim().toLowerCase()),
+    );
+    if (toLink.length === 0) return;
+    await Promise.all(
+      toLink.map((t) =>
+        api(`/command-center/tasks/${t.id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            ownerDirectReportId: byName.get(t.ownerName!.trim().toLowerCase())!.id,
+            ownerName: null,
+          }),
+        }),
+      ),
+    );
+    await load();
+  };
+
   const load = async () => {
     const [taskRows, sectionRows, drRows, projRows] = await Promise.all([
       api<Task[]>(`/command-center/tasks?parentType=${parentType}&parentId=${parentId}`),
@@ -1724,12 +1771,31 @@ function SectionAccordion({
     setDirectReports(drRows);
     setProjects(projRows);
     setLoaded(true);
+    void reconcileFreeTextOwners(taskRows, drRows);
   };
 
   useEffect(() => {
     if (!collapsed && !loaded) load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collapsed]);
+
+  // Keep owner options fresh while a project accordion is open: refetch on
+  // (re)open and whenever the window regains focus.
+  useEffect(() => {
+    if (collapsed || parentType !== "project") return;
+    let cancelled = false;
+    const refresh = async () => {
+      const rows = await loadDirectReports();
+      if (!cancelled) void reconcileFreeTextOwners(tasks, rows);
+    };
+    void refresh();
+    window.addEventListener("focus", refresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", refresh);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [collapsed, parentType, loadDirectReports]);
 
   const openCount = tasks.filter((t) => !t.done).length;
   const totalCount = tasks.length;
