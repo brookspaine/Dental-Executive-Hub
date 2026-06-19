@@ -1,1 +1,2 @@
 - [Prod/dev DB data drift](prod-data-drift.md) — dev fixes reach prod only via idempotent startupMigrations + republish; dedup seeded owners by keeping the VISIBLE row, never force-rehide real reports.
+- [ritual_items seeding](ritual-items-seeding.md) — startup migrations must not INSERT into an empty ritual_items category or the GET-endpoint default seed never fires.

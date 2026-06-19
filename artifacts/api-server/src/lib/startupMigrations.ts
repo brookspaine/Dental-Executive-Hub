@@ -28,6 +28,7 @@ export async function runStartupMigrations(): Promise<void> {
       await migrateLifeAreasToYearlyPlanning(client);
       await addCcTop3PeriodColumn(client);
       await renameStartupRitualLabel(client);
+      await addWeeklyReviewTop3Bullet(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -609,5 +610,58 @@ async function renameStartupRitualLabel(client: PgClient): Promise<void> {
   const rowCount = (res as unknown as { rowCount: number | null }).rowCount;
   if (rowCount && rowCount > 0) {
     logger.info({ rows: rowCount }, "startup migration: renamed Startup Ritual → Daily Planning Ritual");
+  }
+}
+
+/**
+ * Ensure the Weekly Review ritual checklist includes the
+ * "pick This Week's Top 3 + On Deck" bullet. Idempotent: once a bullet with
+ * that exact text exists, both statements are no-ops. Prefers filling the
+ * trailing empty bullet (so it lands as the last item); if there is no empty
+ * bullet to reuse, appends a new bullet at the end.
+ *
+ * Both statements only touch an already-populated weekly_review category, so a
+ * fresh/empty database is left untouched here and still gets its full default
+ * set from GET /ideal-week/ritual-items (which seeds only when the category is
+ * empty); the bullet is then appended on the following boot.
+ */
+async function addWeeklyReviewTop3Bullet(client: PgClient): Promise<void> {
+  const label = "pick This Week's Top 3 + On Deck";
+
+  const filled = await client.query(
+    `UPDATE ritual_items
+       SET label = $1
+       WHERE id = (
+         SELECT id FROM ritual_items
+         WHERE category = 'weekly_review' AND coalesce(trim(label), '') = ''
+         ORDER BY sort_order DESC
+         LIMIT 1
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM ritual_items WHERE category = 'weekly_review' AND label = $1
+       )`,
+    [label],
+  );
+
+  const appended = await client.query(
+    `INSERT INTO ritual_items (category, label, sort_order)
+       SELECT 'weekly_review', $1,
+              COALESCE((SELECT MAX(sort_order) + 1 FROM ritual_items WHERE category = 'weekly_review'), 0)
+       WHERE EXISTS (
+         SELECT 1 FROM ritual_items WHERE category = 'weekly_review'
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM ritual_items WHERE category = 'weekly_review' AND label = $1
+       )`,
+    [label],
+  );
+
+  const filledCount = (filled as unknown as { rowCount: number | null }).rowCount ?? 0;
+  const appendedCount = (appended as unknown as { rowCount: number | null }).rowCount ?? 0;
+  if (filledCount > 0 || appendedCount > 0) {
+    logger.info(
+      { filled: filledCount, appended: appendedCount },
+      "startup migration: added Weekly Review 'pick This Week's Top 3 + On Deck' bullet",
+    );
   }
 }
