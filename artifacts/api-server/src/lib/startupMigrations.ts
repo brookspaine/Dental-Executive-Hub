@@ -30,6 +30,7 @@ export async function runStartupMigrations(): Promise<void> {
       await renameStartupRitualLabel(client);
       await renameSetTop3RitualItem(client);
       await addWeeklyReviewTop3Bullet(client);
+      await addWeeklyReviewRebuildOnDeckBullet(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -695,6 +696,39 @@ async function addWeeklyReviewTop3Bullet(client: PgClient): Promise<void> {
     logger.info(
       { filled: filledCount, appended: appendedCount },
       "startup migration: added Weekly Review 'pick This Week's Top 3 + On Deck' bullet",
+    );
+  }
+}
+
+/**
+ * Append a "Rebuild On-Deck" bullet to the Weekly Review ritual checklist.
+ * Idempotent: once a bullet with that exact text exists the INSERT is a no-op.
+ * Only touches an already-populated weekly_review category, so a fresh/empty
+ * database still gets its full default set from GET /ideal-week/ritual-items
+ * (which seeds only when the category is empty) and this bullet is appended on
+ * the following boot.
+ */
+async function addWeeklyReviewRebuildOnDeckBullet(client: PgClient): Promise<void> {
+  const label = "Rebuild On-Deck";
+
+  const appended = await client.query(
+    `INSERT INTO ritual_items (category, label, sort_order)
+       SELECT 'weekly_review', $1,
+              COALESCE((SELECT MAX(sort_order) + 1 FROM ritual_items WHERE category = 'weekly_review'), 0)
+       WHERE EXISTS (
+         SELECT 1 FROM ritual_items WHERE category = 'weekly_review'
+       )
+       AND NOT EXISTS (
+         SELECT 1 FROM ritual_items WHERE category = 'weekly_review' AND label = $1
+       )`,
+    [label],
+  );
+
+  const appendedCount = (appended as unknown as { rowCount: number | null }).rowCount ?? 0;
+  if (appendedCount > 0) {
+    logger.info(
+      { appended: appendedCount },
+      "startup migration: added Weekly Review 'Rebuild On-Deck' bullet",
     );
   }
 }
