@@ -194,6 +194,8 @@ export const ccOnDeckTable = pgTable("cc_on_deck", {
   dueDate: date("due_date", { mode: "string" }),
   tag: text("tag").notNull().default("move_the_needle"),
   // move_the_needle | maintenance | follow_up
+  status: text("status").notNull().default("not_started"),
+  // not_started | in_progress | completed
   sourceTaskId: integer("source_task_id"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })

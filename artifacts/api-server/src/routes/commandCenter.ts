@@ -272,6 +272,7 @@ router.post("/on-deck", async (req, res): Promise<void> => {
       ownerName: z.string().trim().max(120).nullable().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       tag: z.enum(ON_DECK_TAGS).optional(),
+      status: z.enum(["not_started", "in_progress", "completed"]).optional(),
       sourceTaskId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
@@ -310,6 +311,7 @@ router.post("/on-deck", async (req, res): Promise<void> => {
           : body.data.ownerName?.trim() || null,
       dueDate: body.data.dueDate ?? null,
       tag: body.data.tag ?? "move_the_needle",
+      status: body.data.status ?? "not_started",
       sourceTaskId: body.data.sourceTaskId ?? null,
       sortOrder: count,
     })
@@ -357,6 +359,7 @@ router.patch("/on-deck/:id", async (req, res): Promise<void> => {
       ownerName: z.string().trim().max(120).nullable().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       tag: z.enum(ON_DECK_TAGS).optional(),
+      status: z.enum(["not_started", "in_progress", "completed"]).optional(),
       sortOrder: z.number().int().optional(),
     })
     .safeParse(req.body);

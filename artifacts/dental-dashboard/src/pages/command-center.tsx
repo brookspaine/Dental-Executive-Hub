@@ -100,6 +100,7 @@ type OnDeckItem = {
   ownerName: string | null;
   dueDate: string | null;
   tag: OnDeckTag;
+  status: TaskStatus;
   sourceTaskId: number | null;
   sortOrder: number;
 };
@@ -541,7 +542,7 @@ function OverviewTab() {
           onChange={reload}
         />
       </div>
-      <OnDeckCard items={data.onDeck ?? []} top3={data.top3} onChange={reload} />
+      <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
       <OverviewSection title="Direct Reports">
         <DirectReportsTab />
       </OverviewSection>
@@ -739,135 +740,34 @@ function Top3Row({
   );
 }
 
-const ON_DECK_TAG_META: Record<OnDeckTag, { label: string; color: string; soft: string }> = {
-  move_the_needle: { label: "Move-the-needle", color: "#6b1d2a", soft: "#f0e6e8" },
-  maintenance: { label: "Maintenance", color: "#a07a1e", soft: "#f6efdc" },
-  follow_up: { label: "Follow-up", color: "#3f5f8f", soft: "#e6ecf5" },
-};
-const ON_DECK_TAGS: OnDeckTag[] = ["move_the_needle", "maintenance", "follow_up"];
 const ON_DECK_CAP = 7;
-
-function formatDue(d: string | null): string {
-  if (!d) return "";
-  const [y, m, day] = d.split("-").map((n) => Number(n));
-  if (!y || !m || !day) return d;
-  const dt = new Date(y, m - 1, day);
-  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
-}
-
-type DueUrgency = "overdue" | "soon" | "week" | null;
-
-// Mirrors the EDGE Lease Matrix critical-date convention (red = past due,
-// orange = imminent, amber = this week) compressed for On Deck's weekly cadence.
-function onDeckDueUrgency(d: string | null): DueUrgency {
-  if (!d) return null;
-  const [y, m, day] = d.split("-").map((n) => Number(n));
-  if (!y || !m || !day) return null;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const due = new Date(y, m - 1, day);
-  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
-  if (diffDays < 0) return "overdue";
-  if (diffDays <= 3) return "soon";
-  if (diffDays <= 7) return "week";
-  return null;
-}
-
-const ON_DECK_DUE_STYLES: Record<
-  Exclude<DueUrgency, null>,
-  { bg: string; fg: string }
-> = {
-  overdue: { bg: "#fee2e2", fg: "#b91c1c" },
-  soon: { bg: "#ffedd5", fg: "#c2410c" },
-  week: { bg: "#fef3c7", fg: "#92400e" },
-};
 
 function OnDeckCard({
   items,
-  top3,
   onChange,
 }: {
   items: OnDeckItem[];
-  top3: Top3Row[];
   onChange: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
   const [adding, setAdding] = useState(false);
   const [quickText, setQuickText] = useState("");
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [orderedItems, setOrderedItems] = useState<OnDeckItem[]>(items);
-  const dragIndex = useRef<number | null>(null);
-  const [overIndex, setOverIndex] = useState<number | null>(null);
-
-  useEffect(() => setOrderedItems(items), [items]);
-
-  const reorder = async (from: number, to: number) => {
-    if (from === to) return;
-    const next = [...orderedItems];
-    const [moved] = next.splice(from, 1);
-    next.splice(to, 0, moved);
-    setOrderedItems(next);
-    try {
-      await api("/command-center/on-deck/reorder", {
-        method: "POST",
-        body: JSON.stringify({ ids: next.map((i) => i.id) }),
-      });
-    } finally {
-      onChange();
-    }
-  };
-
-  const loadPickerData = useCallback(async () => {
-    try {
-      const [dr, pr, tk] = await Promise.all([
-        api<DirectReport[]>("/command-center/direct-reports"),
-        api<Project[]>("/command-center/projects"),
-        api<Task[]>("/command-center/tasks"),
-      ]);
-      setDirectReports(dr);
-      setProjects(pr);
-      setTasks(tk);
-    } catch {
-      /* ignore — picker just stays empty */
-    }
-  }, []);
 
   useEffect(() => {
-    void loadPickerData();
-  }, [loadPickerData]);
-
-  const drNameById = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const d of directReports) m.set(d.id, d.name);
-    return m;
-  }, [directReports]);
-
-  const ownerLabel = (it: OnDeckItem): string => {
-    if (it.ownerDirectReportId != null) return drNameById.get(it.ownerDirectReportId) ?? "—";
-    return it.ownerName ?? "";
-  };
+    let cancelled = false;
+    api<DirectReport[]>("/command-center/direct-reports")
+      .then((dr) => {
+        if (!cancelled) setDirectReports(dr);
+      })
+      .catch(() => {
+        /* ignore — owner picker just stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const atCap = items.length >= ON_DECK_CAP;
-
-  const promote = async (it: OnDeckItem) => {
-    const slots = [1, 2, 3].map((slot) => top3.find((r) => r.slot === slot) ?? null);
-    const openIdx = slots.findIndex((r) => !r || r.text.trim().length === 0);
-    if (openIdx === -1) {
-      window.alert(
-        "All three of Today's Top 3 slots are full. Free a slot before promoting this item.",
-      );
-      return;
-    }
-    await api(`/command-center/top3/day/${openIdx + 1}`, {
-      method: "PUT",
-      body: JSON.stringify({ text: it.text, done: false }),
-    });
-    await api(`/command-center/on-deck/${it.id}`, { method: "DELETE" });
-    window.dispatchEvent(new CustomEvent("cc:top3-changed"));
-    onChange();
-  };
 
   const remove = async (id: number) => {
     await api(`/command-center/on-deck/${id}`, { method: "DELETE" });
@@ -882,30 +782,6 @@ function OnDeckCard({
     onChange();
   };
 
-  const create = async (body: {
-    text: string;
-    ownerDirectReportId?: number | null;
-    ownerName?: string | null;
-    dueDate?: string | null;
-    tag?: OnDeckTag;
-    sourceTaskId?: number | null;
-  }) => {
-    if (atCap) {
-      window.alert("On Deck is capped at 7 items. Remove one before adding another.");
-      return;
-    }
-    try {
-      await api("/command-center/on-deck", {
-        method: "POST",
-        body: JSON.stringify(body),
-      });
-      setAdding(false);
-      onChange();
-    } catch {
-      window.alert("Couldn't add — On Deck may be full (max 7). Remove an item first.");
-    }
-  };
-
   const submitQuick = async () => {
     const t = quickText.trim();
     if (!t) return;
@@ -913,560 +789,322 @@ function OnDeckCard({
       window.alert("On Deck is capped at 7 items. Remove one before adding another.");
       return;
     }
-    await create({ text: t, tag: "move_the_needle" });
-    setQuickText("");
+    try {
+      await api("/command-center/on-deck", {
+        method: "POST",
+        body: JSON.stringify({ text: t }),
+      });
+      setQuickText("");
+      setAdding(false);
+      onChange();
+    } catch {
+      window.alert("Couldn't add — On Deck may be full (max 7). Remove an item first.");
+    }
   };
 
   return (
     <Card>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          marginBottom: 14,
-          gap: 8,
-        }}
-      >
-        <div>
-          <h2
-            style={{
-              margin: 0,
-              fontFamily: SERIF,
-              fontSize: 18,
-              fontWeight: 600,
-              color: C.textPrimary,
-            }}
-          >
-            On Deck
-          </h2>
-          <div style={{ marginTop: 2, fontSize: 12, color: C.textSecondary }}>
-            {items.length}/{ON_DECK_CAP} · this week's shortlist
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            setEditing((e) => !e);
-            setAdding(false);
-          }}
+      <div style={{ marginBottom: 14 }}>
+        <h2
           style={{
-            background: "transparent",
-            border: `1px solid ${C.cardBorder}`,
-            color: C.textSecondary,
-            borderRadius: 6,
-            padding: "4px 12px",
-            fontFamily: SANS,
-            fontSize: 12,
+            margin: 0,
+            fontFamily: SERIF,
+            fontSize: 18,
             fontWeight: 600,
-            cursor: "pointer",
+            color: C.textPrimary,
           }}
         >
-          {editing ? "Done" : "Edit"}
-        </button>
+          On Deck
+        </h2>
+        <div style={{ marginTop: 2, fontSize: 12, color: C.textSecondary }}>
+          {items.length}/{ON_DECK_CAP} · this week's shortlist
+        </div>
       </div>
 
-      {items.length === 0 && (
-        <div style={{ fontSize: 13, color: C.textSecondary, padding: "4px 0" }}>
-          Nothing on deck yet — add up to 7 priorities below.
-        </div>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {orderedItems.map((it, idx) => {
-          const owner = ownerLabel(it);
-          return (
+      <div
+        style={{
+          border: `1px solid ${C.divider}`,
+          borderRadius: 6,
+          overflowX: "auto",
+          background: C.card,
+        }}
+      >
+        <div style={{ minWidth: 560 }}>
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: ON_DECK_GRID_COLS,
+              background: "#faf7f1",
+              borderBottom: `1px solid ${C.divider}`,
+              fontSize: 11,
+              fontWeight: 600,
+              color: C.textSecondary,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
+              Task name
+            </div>
             <div
+              style={{
+                padding: "7px 12px",
+                textAlign: "center",
+                borderRight: `1px solid ${C.divider}`,
+              }}
+            >
+              Owner
+            </div>
+            <div
+              style={{
+                padding: "7px 12px",
+                textAlign: "center",
+                borderRight: `1px solid ${C.divider}`,
+              }}
+            >
+              Due date
+            </div>
+            <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
+          </div>
+
+          {items.length === 0 && (
+            <div style={{ padding: "10px 12px", fontSize: 13, color: C.textSecondary }}>
+              Nothing on deck yet — add up to 7 priorities below.
+            </div>
+          )}
+
+          {items.map((it) => (
+            <OnDeckRow
               key={it.id}
-              draggable={editing}
-              onDragStart={
-                editing
-                  ? () => {
-                      dragIndex.current = idx;
-                    }
-                  : undefined
-              }
-              onDragOver={
-                editing
-                  ? (e) => {
-                      e.preventDefault();
-                      if (overIndex !== idx) setOverIndex(idx);
-                    }
-                  : undefined
-              }
-              onDrop={
-                editing
-                  ? () => {
-                      if (dragIndex.current != null) void reorder(dragIndex.current, idx);
-                      dragIndex.current = null;
-                      setOverIndex(null);
-                    }
-                  : undefined
-              }
-              onDragEnd={
-                editing
-                  ? () => {
-                      dragIndex.current = null;
-                      setOverIndex(null);
-                    }
-                  : undefined
-              }
+              item={it}
+              directReports={directReports}
+              onPatch={patch}
+              onDelete={() => remove(it.id)}
+            />
+          ))}
+
+          {adding ? (
+            <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "8px 0",
-                borderBottom: `1px solid ${C.divider}`,
-                borderTop:
-                  editing && overIndex === idx ? `2px solid ${C.accent}` : "2px solid transparent",
+                gap: 8,
+                padding: "8px 12px",
+                borderTop: items.length > 0 ? `1px solid ${C.divider}` : "none",
               }}
             >
-              {editing && (
-                <span
-                  title="Drag to reorder"
-                  style={{
-                    flexShrink: 0,
-                    cursor: "grab",
-                    color: C.textSecondary,
-                    fontSize: 14,
-                    lineHeight: 1,
-                    userSelect: "none",
-                    letterSpacing: -2,
-                  }}
-                >
-                  ⠿
-                </span>
-              )}
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div
-                  style={{
-                    fontSize: 14,
-                    color: C.textPrimary,
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {it.text}
-                </div>
-                {owner && (
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: C.textSecondary,
-                      marginTop: 2,
-                    }}
-                  >
-                    {owner}
-                  </div>
-                )}
-              </div>
+              <input
+                autoFocus
+                type="text"
+                value={quickText}
+                onChange={(e) => setQuickText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void submitQuick();
+                  else if (e.key === "Escape") {
+                    setAdding(false);
+                    setQuickText("");
+                  }
+                }}
+                placeholder="Task name…"
+                style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+              />
               <button
                 type="button"
-                onClick={() => void promote(it)}
-                title="Promote to Today's Top 3"
+                onClick={() => void submitQuick()}
                 style={{
-                  flexShrink: 0,
                   background: C.accent,
                   color: "#fff",
                   border: "none",
                   borderRadius: 6,
-                  padding: "5px 10px",
+                  padding: "5px 12px",
                   fontFamily: SANS,
-                  fontSize: 11,
+                  fontSize: 12,
                   fontWeight: 600,
                   cursor: "pointer",
-                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
-                ↑ Top 3
+                Add
               </button>
-              {editing && (
-                <button
-                  type="button"
-                  onClick={() => void remove(it.id)}
-                  title="Remove from On Deck"
-                  style={{
-                    flexShrink: 0,
-                    background: "transparent",
-                    border: "none",
-                    color: C.textSecondary,
-                    fontSize: 18,
-                    lineHeight: 1,
-                    cursor: "pointer",
-                    padding: "0 2px",
-                  }}
-                >
-                  ×
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setAdding(false);
+                  setQuickText("");
+                }}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: C.textSecondary,
+                  fontFamily: SANS,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  flexShrink: 0,
+                }}
+              >
+                Cancel
+              </button>
             </div>
-          );
-        })}
-      </div>
-
-      <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 12 }}>
-        <button
-          type="button"
-          onClick={submitQuick}
-          title="Add to On Deck"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: "50%",
-            background: C.accent,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: SERIF,
-            fontSize: 18,
-            fontWeight: 600,
-            flexShrink: 0,
-            border: "none",
-            cursor: "pointer",
-            padding: 0,
-            lineHeight: 1,
-          }}
-        >
-          +
-        </button>
-        <input
-          type="text"
-          value={quickText}
-          onChange={(e) => setQuickText(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") submitQuick();
-          }}
-          placeholder="Add to On Deck…"
-          style={inputStyle}
-        />
-      </div>
-
-      {editing && items.length > 0 && (
-        <div style={{ marginTop: 14 }}>
-          <OnDeckEditList
-            items={items}
-            directReports={directReports}
-            onPatch={patch}
-          />
+          ) : (
+            <button
+              type="button"
+              onClick={() => {
+                if (atCap) {
+                  window.alert(
+                    "On Deck is capped at 7 items. Remove one before adding another.",
+                  );
+                  return;
+                }
+                setAdding(true);
+              }}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                background: "transparent",
+                border: "none",
+                borderTop: items.length > 0 ? `1px solid ${C.divider}` : "none",
+                color: C.textSecondary,
+                fontFamily: SANS,
+                fontSize: 12,
+                fontWeight: 500,
+                padding: "8px 12px",
+                cursor: "pointer",
+                width: "100%",
+                textAlign: "left",
+                opacity: atCap ? 0.5 : 1,
+              }}
+            >
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+            </button>
+          )}
         </div>
-      )}
+      </div>
     </Card>
   );
 }
 
-function OnDeckEditList({
-  items,
-  directReports,
-  onPatch,
-}: {
-  items: OnDeckItem[];
-  directReports: DirectReport[];
-  onPatch: (id: number, body: Partial<OnDeckItem>) => Promise<void>;
-}) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 10,
-        marginBottom: 4,
-        paddingBottom: 12,
-        borderBottom: `1px solid ${C.divider}`,
-      }}
-    >
-      <div style={{ fontSize: 11, fontWeight: 600, color: C.textSecondary }}>
-        Edit items
-      </div>
-      {items.map((it) => (
-        <OnDeckEditRow key={it.id} item={it} directReports={directReports} onPatch={onPatch} />
-      ))}
-    </div>
-  );
-}
+const ON_DECK_GRID_COLS = "1fr 140px 132px 132px";
 
-function OnDeckEditRow({
+function OnDeckRow({
   item,
   directReports,
   onPatch,
+  onDelete,
 }: {
   item: OnDeckItem;
   directReports: DirectReport[];
   onPatch: (id: number, body: Partial<OnDeckItem>) => Promise<void>;
+  onDelete: () => void | Promise<void>;
 }) {
   const [text, setText] = useState(item.text);
+  const [hover, setHover] = useState(false);
   useEffect(() => setText(item.text), [item.text]);
-  const ownerValue =
-    item.ownerDirectReportId != null
-      ? `dr:${item.ownerDirectReportId}`
-      : item.ownerName
-        ? "custom"
-        : "";
-  return (
-    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-      <input
-        type="text"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onBlur={() => text.trim() && text !== item.text && onPatch(item.id, { text: text.trim() })}
-        onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
-        style={{ ...smallInput, flex: "2 1 160px" }}
-      />
-      <select
-        value={ownerValue.startsWith("dr:") ? ownerValue : ownerValue === "custom" ? "custom" : ""}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v === "") onPatch(item.id, { ownerDirectReportId: null, ownerName: null });
-          else if (v === "custom") {
-            const name = window.prompt("Owner name", item.ownerName ?? "");
-            if (name && name.trim()) onPatch(item.id, { ownerName: name.trim() });
-          } else onPatch(item.id, { ownerDirectReportId: Number(v.slice(3)) });
-        }}
-        style={{ ...smallInput, flex: "1 1 110px" }}
-      >
-        <option value="">No owner</option>
-        {directReports
-          .filter((d) => !d.hidden)
-          .map((d) => (
-            <option key={d.id} value={`dr:${d.id}`}>
-              {d.name}
-            </option>
-          ))}
-        <option value="custom">Other…</option>
-      </select>
-    </div>
-  );
-}
 
-function OnDeckAddForm({
-  directReports,
-  projects,
-  tasks,
-  existingSourceIds,
-  onCancel,
-  onCreate,
-}: {
-  directReports: DirectReport[];
-  projects: Project[];
-  tasks: Task[];
-  existingSourceIds: number[];
-  onCancel: () => void;
-  onCreate: (body: {
-    text: string;
-    ownerDirectReportId?: number | null;
-    ownerName?: string | null;
-    dueDate?: string | null;
-    tag?: OnDeckTag;
-    sourceTaskId?: number | null;
-  }) => Promise<void>;
-}) {
-  const [mode, setMode] = useState<"manual" | "pull">("manual");
-  const [text, setText] = useState("");
-  const [owner, setOwner] = useState("");
-  const [customOwner, setCustomOwner] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [tag, setTag] = useState<OnDeckTag>("move_the_needle");
-
-  const projectName = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const p of projects) m.set(p.id, p.name);
-    return m;
-  }, [projects]);
-  const drName = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const d of directReports) m.set(d.id, d.name);
-    return m;
-  }, [directReports]);
-
-  const pullable = useMemo(
-    () =>
-      tasks.filter(
-        (t) =>
-          (t.parentType === "project" || t.parentType === "direct_report") &&
-          !t.done &&
-          !existingSourceIds.includes(t.id),
-      ),
-    [tasks, existingSourceIds],
-  );
-
-  const submitManual = () => {
-    if (!text.trim()) return;
-    void onCreate({
-      text: text.trim(),
-      ownerDirectReportId: owner.startsWith("dr:") ? Number(owner.slice(3)) : null,
-      ownerName: owner === "custom" ? customOwner.trim() || null : null,
-      dueDate: dueDate || null,
-      tag,
-    });
-  };
-
-  const submitPull = (t: Task) => {
-    const ownerDr =
-      t.parentType === "direct_report" ? t.parentId : t.ownerDirectReportId ?? null;
-    void onCreate({
-      text: t.text,
-      ownerDirectReportId: ownerDr,
-      ownerName: ownerDr == null ? t.ownerName : null,
-      dueDate: t.dueDate,
-      tag,
-      sourceTaskId: t.id,
-    });
-  };
+  const dueInfo = formatDueDate(item.dueDate, false);
 
   return (
     <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
-        marginTop: 10,
-        border: `1px solid ${C.cardBorder}`,
-        borderRadius: 6,
-        padding: 12,
-        background: "#faf8f4",
+        display: "grid",
+        gridTemplateColumns: ON_DECK_GRID_COLS,
+        alignItems: "stretch",
+        borderBottom: `1px solid ${C.divider}`,
       }}
     >
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        {(["manual", "pull"] as const).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setMode(m)}
-            style={{
-              background: mode === m ? C.accent : "transparent",
-              color: mode === m ? "#fff" : C.textSecondary,
-              border: `1px solid ${mode === m ? C.accent : C.cardBorder}`,
-              borderRadius: 6,
-              padding: "4px 10px",
-              fontFamily: SANS,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            {m === "manual" ? "New item" : "Pull from task"}
-          </button>
-        ))}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "8px 12px",
+          borderRight: `1px solid ${C.divider}`,
+          minWidth: 0,
+        }}
+      >
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() =>
+            text !== item.text && text.trim() && void onPatch(item.id, { text: text.trim() })
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+        />
+        <PinStar taskText={text} visible />
+        <button
+          type="button"
+          onClick={() => void onDelete()}
+          aria-label="Remove from On Deck"
+          title="Remove from On Deck"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 16,
+            lineHeight: 1,
+            padding: "2px 6px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
       </div>
-
-      {mode === "manual" ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <input
-            type="text"
-            value={text}
-            autoFocus
-            onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && submitManual()}
-            placeholder="What needs to move this week…"
-            style={smallInput}
-          />
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <select
-              value={owner}
-              onChange={(e) => setOwner(e.target.value)}
-              style={{ ...smallInput, flex: "1 1 120px" }}
-            >
-              <option value="">No owner</option>
-              {directReports
-                .filter((d) => !d.hidden)
-                .map((d) => (
-                  <option key={d.id} value={`dr:${d.id}`}>
-                    {d.name}
-                  </option>
-                ))}
-              <option value="custom">Other…</option>
-            </select>
-            {owner === "custom" && (
-              <input
-                type="text"
-                value={customOwner}
-                onChange={(e) => setCustomOwner(e.target.value)}
-                placeholder="Owner name"
-                style={{ ...smallInput, flex: "1 1 120px" }}
-              />
-            )}
-            <input
-              type="date"
-              value={dueDate}
-              onChange={(e) => setDueDate(e.target.value)}
-              style={{ ...smallInput, flex: "1 1 130px" }}
-            />
-            <select
-              value={tag}
-              onChange={(e) => setTag(e.target.value as OnDeckTag)}
-              style={{ ...smallInput, flex: "1 1 130px" }}
-            >
-              {ON_DECK_TAGS.map((t) => (
-                <option key={t} value={t}>
-                  {ON_DECK_TAG_META[t].label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button type="button" onClick={onCancel} style={ghostBtn}>
-              Cancel
-            </button>
-            <button type="button" onClick={submitManual} disabled={!text.trim()} style={primaryBtn}>
-              Add
-            </button>
-          </div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-            <span style={{ fontSize: 11, color: C.textSecondary }}>Tag:</span>
-            <select
-              value={tag}
-              onChange={(e) => setTag(e.target.value as OnDeckTag)}
-              style={{ ...smallInput, flex: "0 1 150px" }}
-            >
-              {ON_DECK_TAGS.map((t) => (
-                <option key={t} value={t}>
-                  {ON_DECK_TAG_META[t].label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div style={{ maxHeight: 220, overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-            {pullable.length === 0 && (
-              <div style={{ fontSize: 12, color: C.textSecondary, padding: "4px 0" }}>
-                No open Project or Direct Report tasks to pull.
-              </div>
-            )}
-            {pullable.map((t) => {
-              const where =
-                t.parentType === "project"
-                  ? projectName.get(t.parentId) ?? "Project"
-                  : drName.get(t.parentId) ?? "Direct Report";
-              return (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => submitPull(t)}
-                  style={{
-                    textAlign: "left",
-                    background: "#fff",
-                    border: `1px solid ${C.cardBorder}`,
-                    borderRadius: 6,
-                    padding: "8px 10px",
-                    cursor: "pointer",
-                    fontFamily: SANS,
-                  }}
-                >
-                  <div style={{ fontSize: 13, color: C.textPrimary }}>{t.text}</div>
-                  <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>
-                    from {where}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <button type="button" onClick={onCancel} style={ghostBtn}>
-              Cancel
-            </button>
-          </div>
-        </div>
-      )}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
+        }}
+      >
+        <OwnerPicker
+          directReportId={item.ownerDirectReportId}
+          ownerName={item.ownerName}
+          options={directReports}
+          onChange={(next) =>
+            void onPatch(item.id, {
+              ownerDirectReportId: next.directReportId,
+              ownerName: next.ownerName,
+            })
+          }
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+          borderRight: `1px solid ${C.divider}`,
+        }}
+      >
+        <DueDateField
+          value={item.dueDate}
+          tone={dueInfo.tone}
+          label={dueInfo.label}
+          onChange={(next) => void onPatch(item.id, { dueDate: next })}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "6px 8px",
+        }}
+      >
+        <StatusPill status={item.status} onChange={(next) => void onPatch(item.id, { status: next })} />
+      </div>
     </div>
   );
 }

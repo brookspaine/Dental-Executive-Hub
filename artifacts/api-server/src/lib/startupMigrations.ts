@@ -750,10 +750,15 @@ async function createOnDeckTable(client: PgClient): Promise<void> {
        owner_name text,
        due_date date,
        tag text NOT NULL DEFAULT 'move_the_needle',
+       status text NOT NULL DEFAULT 'not_started',
        source_task_id integer,
        sort_order integer NOT NULL DEFAULT 0,
        created_at timestamptz NOT NULL DEFAULT now(),
        updated_at timestamptz NOT NULL DEFAULT now()
      )`,
+  );
+  // Idempotently add `status` to pre-existing cc_on_deck tables.
+  await client.query(
+    `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'not_started'`,
   );
 }
