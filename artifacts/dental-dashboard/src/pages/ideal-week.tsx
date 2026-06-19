@@ -223,6 +223,35 @@ function onDeckFormatDue(d: string | null): string {
   });
 }
 
+type OnDeckDueUrgency = "overdue" | "soon" | "week" | null;
+
+// Mirrors the EDGE Lease Matrix critical-date convention (red = past due,
+// orange = imminent, amber = this week) compressed for On Deck's weekly cadence.
+function onDeckDueUrgency(d: string | null): OnDeckDueUrgency {
+  if (!d) return null;
+  const [y, m, day] = d.split("-").map((n) => Number(n));
+  if (!y || !m || !day) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(y, m - 1, day);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays < 0) return "overdue";
+  if (diffDays <= 3) return "soon";
+  if (diffDays <= 7) return "week";
+  return null;
+}
+
+const ON_DECK_DUE_CLASSES: Record<Exclude<OnDeckDueUrgency, null>, string> = {
+  overdue: "bg-red-100 text-red-700",
+  soon: "bg-orange-100 text-orange-700",
+  week: "bg-amber-100 text-amber-800",
+};
+const ON_DECK_DUE_TITLES: Record<Exclude<OnDeckDueUrgency, null>, string> = {
+  overdue: "Past due",
+  soon: "Due within a few days",
+  week: "Due this week",
+};
+
 function useOnDeck() {
   return useQuery<OnDeckItem[]>({
     queryKey: ["cc-on-deck"],
@@ -1743,10 +1772,25 @@ function IdealWeekOnDeckCard({
             <div className="flex-1 min-w-0">
               <div className="text-sm truncate">{it.text}</div>
               {(ownerLabel(it) || it.dueDate) && (
-                <div className="text-[11px] text-muted-foreground">
-                  {ownerLabel(it)}
-                  {ownerLabel(it) && it.dueDate ? " · " : ""}
-                  {it.dueDate ? `due ${onDeckFormatDue(it.dueDate)}` : ""}
+                <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
+                  {ownerLabel(it) && <span>{ownerLabel(it)}</span>}
+                  {ownerLabel(it) && it.dueDate ? <span>·</span> : null}
+                  {it.dueDate ? (
+                    (() => {
+                      const u = onDeckDueUrgency(it.dueDate);
+                      return u ? (
+                        <span
+                          title={ON_DECK_DUE_TITLES[u]}
+                          className={`font-semibold rounded px-1.5 py-px ${ON_DECK_DUE_CLASSES[u]}`}
+                        >
+                          {u === "overdue" ? "overdue · " : ""}
+                          due {onDeckFormatDue(it.dueDate)}
+                        </span>
+                      ) : (
+                        <span>due {onDeckFormatDue(it.dueDate)}</span>
+                      );
+                    })()
+                  ) : null}
                 </div>
               )}
             </div>

@@ -755,6 +755,33 @@ function formatDue(d: string | null): string {
   return dt.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+type DueUrgency = "overdue" | "soon" | "week" | null;
+
+// Mirrors the EDGE Lease Matrix critical-date convention (red = past due,
+// orange = imminent, amber = this week) compressed for On Deck's weekly cadence.
+function onDeckDueUrgency(d: string | null): DueUrgency {
+  if (!d) return null;
+  const [y, m, day] = d.split("-").map((n) => Number(n));
+  if (!y || !m || !day) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const due = new Date(y, m - 1, day);
+  const diffDays = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  if (diffDays < 0) return "overdue";
+  if (diffDays <= 3) return "soon";
+  if (diffDays <= 7) return "week";
+  return null;
+}
+
+const ON_DECK_DUE_STYLES: Record<
+  Exclude<DueUrgency, null>,
+  { bg: string; fg: string }
+> = {
+  overdue: { bg: "#fee2e2", fg: "#b91c1c" },
+  soon: { bg: "#ffedd5", fg: "#c2410c" },
+  week: { bg: "#fef3c7", fg: "#92400e" },
+};
+
 function OnDeckCard({
   items,
   top3,
@@ -917,6 +944,7 @@ function OnDeckCard({
           const meta = ON_DECK_TAG_META[it.tag];
           const owner = ownerLabel(it);
           const due = formatDue(it.dueDate);
+          const dueUrgency = onDeckDueUrgency(it.dueDate);
           return (
             <div
               key={it.id}
@@ -958,10 +986,45 @@ function OnDeckCard({
                   {it.text}
                 </div>
                 {(owner || due) && (
-                  <div style={{ fontSize: 11, color: C.textSecondary, marginTop: 2 }}>
-                    {owner}
-                    {owner && due ? " · " : ""}
-                    {due ? `due ${due}` : ""}
+                  <div
+                    style={{
+                      fontSize: 11,
+                      color: C.textSecondary,
+                      marginTop: 2,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    {owner && <span>{owner}</span>}
+                    {owner && due ? <span>·</span> : null}
+                    {due ? (
+                      dueUrgency ? (
+                        <span
+                          title={
+                            dueUrgency === "overdue"
+                              ? "Past due"
+                              : dueUrgency === "soon"
+                                ? "Due within a few days"
+                                : "Due this week"
+                          }
+                          style={{
+                            fontWeight: 700,
+                            color: ON_DECK_DUE_STYLES[dueUrgency].fg,
+                            background: ON_DECK_DUE_STYLES[dueUrgency].bg,
+                            borderRadius: 4,
+                            padding: "1px 6px",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {dueUrgency === "overdue" ? "overdue · " : ""}
+                          due {due}
+                        </span>
+                      ) : (
+                        <span>due {due}</span>
+                      )
+                    ) : null}
                   </div>
                 )}
               </div>
