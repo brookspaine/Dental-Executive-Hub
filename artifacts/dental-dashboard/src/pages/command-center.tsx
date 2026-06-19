@@ -966,18 +966,15 @@ function OnDeckCard({
         </button>
       </div>
 
-      {items.length === 0 && !editing && (
+      {items.length === 0 && (
         <div style={{ fontSize: 13, color: C.textSecondary, padding: "4px 0" }}>
-          Nothing on deck yet. Tap Edit to add up to 7 priorities.
+          Nothing on deck yet — add up to 7 priorities below.
         </div>
       )}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {orderedItems.map((it, idx) => {
-          const meta = ON_DECK_TAG_META[it.tag];
           const owner = ownerLabel(it);
-          const due = formatDue(it.dueDate);
-          const dueUrgency = onDeckDueUrgency(it.dueDate);
           return (
             <div
               key={it.id}
@@ -1040,23 +1037,6 @@ function OnDeckCard({
                   ⠿
                 </span>
               )}
-              <span
-                title={meta.label}
-                style={{
-                  flexShrink: 0,
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: 0.3,
-                  textTransform: "uppercase",
-                  color: meta.color,
-                  background: meta.soft,
-                  borderRadius: 10,
-                  padding: "3px 8px",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {meta.label}
-              </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div
                   style={{
@@ -1069,46 +1049,15 @@ function OnDeckCard({
                 >
                   {it.text}
                 </div>
-                {(owner || due) && (
+                {owner && (
                   <div
                     style={{
                       fontSize: 11,
                       color: C.textSecondary,
                       marginTop: 2,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      flexWrap: "wrap",
                     }}
                   >
-                    {owner && <span>{owner}</span>}
-                    {owner && due ? <span>·</span> : null}
-                    {due ? (
-                      dueUrgency ? (
-                        <span
-                          title={
-                            dueUrgency === "overdue"
-                              ? "Past due"
-                              : dueUrgency === "soon"
-                                ? "Due within a few days"
-                                : "Due this week"
-                          }
-                          style={{
-                            fontWeight: 700,
-                            color: ON_DECK_DUE_STYLES[dueUrgency].fg,
-                            background: ON_DECK_DUE_STYLES[dueUrgency].bg,
-                            borderRadius: 4,
-                            padding: "1px 6px",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {dueUrgency === "overdue" ? "overdue · " : ""}
-                          due {due}
-                        </span>
-                      ) : (
-                        <span>due {due}</span>
-                      )
-                    ) : null}
+                    {owner}
                   </div>
                 )}
               </div>
@@ -1194,54 +1143,13 @@ function OnDeckCard({
         />
       </div>
 
-      {editing && (
+      {editing && items.length > 0 && (
         <div style={{ marginTop: 14 }}>
-          {editing && items.length > 0 && (
-            <OnDeckEditList
-              items={items}
-              directReports={directReports}
-              onPatch={patch}
-            />
-          )}
-          {adding ? (
-            <OnDeckAddForm
-              directReports={directReports}
-              projects={projects}
-              tasks={tasks}
-              existingSourceIds={items
-                .map((i) => i.sourceTaskId)
-                .filter((x): x is number => x != null)}
-              onCancel={() => setAdding(false)}
-              onCreate={create}
-            />
-          ) : (
-            <button
-              type="button"
-              disabled={atCap}
-              onClick={() =>
-                atCap
-                  ? window.alert(
-                      "On Deck is capped at 7 items. Remove one before adding another.",
-                    )
-                  : setAdding(true)
-              }
-              style={{
-                marginTop: 10,
-                background: "transparent",
-                border: `1px dashed ${C.cardBorder}`,
-                color: atCap ? C.statusComplete : C.accent,
-                borderRadius: 6,
-                padding: "8px 12px",
-                fontFamily: SANS,
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: atCap ? "not-allowed" : "pointer",
-                width: "100%",
-              }}
-            >
-              {atCap ? "On Deck is full (7) — remove one to add" : "+ Add to On Deck"}
-            </button>
-          )}
+          <OnDeckEditList
+            items={items}
+            directReports={directReports}
+            onPatch={patch}
+          />
         </div>
       )}
     </Card>
@@ -1326,23 +1234,6 @@ function OnDeckEditRow({
             </option>
           ))}
         <option value="custom">Other…</option>
-      </select>
-      <input
-        type="date"
-        value={item.dueDate ?? ""}
-        onChange={(e) => onPatch(item.id, { dueDate: e.target.value || null })}
-        style={{ ...smallInput, flex: "1 1 130px" }}
-      />
-      <select
-        value={item.tag}
-        onChange={(e) => onPatch(item.id, { tag: e.target.value as OnDeckTag })}
-        style={{ ...smallInput, flex: "1 1 130px" }}
-      >
-        {ON_DECK_TAGS.map((t) => (
-          <option key={t} value={t}>
-            {ON_DECK_TAG_META[t].label}
-          </option>
-        ))}
       </select>
     </div>
   );

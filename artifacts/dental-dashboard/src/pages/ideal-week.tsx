@@ -1633,19 +1633,12 @@ function IdealWeekOnDeckCard({
   };
 
   const { data: directReports = [] } = useCcDirectReports();
-  const { data: projects = [] } = useCcProjects();
-  const { data: tasks = [] } = useCcTasks();
 
   const drName = useMemo(() => {
     const m = new Map<number, string>();
     for (const d of directReports) m.set(d.id, d.name);
     return m;
   }, [directReports]);
-  const projName = useMemo(() => {
-    const m = new Map<number, string>();
-    for (const p of projects) m.set(p.id, p.name);
-    return m;
-  }, [projects]);
 
   const atCap = items.length >= ON_DECK_CAP;
   const ownerLabel = (it: OnDeckItem) =>
@@ -1724,41 +1717,6 @@ function IdealWeekOnDeckCard({
     onChanged();
   };
 
-  const submitManual = () => {
-    if (!text.trim()) return;
-    void create({
-      text: text.trim(),
-      ownerDirectReportId: owner.startsWith("dr:") ? Number(owner.slice(3)) : null,
-      ownerName: owner === "custom" ? customOwner.trim() || null : null,
-      dueDate: dueDate || null,
-      tag,
-    });
-  };
-
-  const pullable = useMemo(
-    () =>
-      tasks.filter(
-        (t) =>
-          (t.parentType === "project" || t.parentType === "direct_report") &&
-          !t.done &&
-          !items.some((i) => i.sourceTaskId === t.id),
-      ),
-    [tasks, items],
-  );
-
-  const submitPull = (t: CcTaskRow) => {
-    const ownerDr =
-      t.parentType === "direct_report" ? t.parentId : t.ownerDirectReportId ?? null;
-    void create({
-      text: t.text,
-      ownerDirectReportId: ownerDr,
-      ownerName: ownerDr == null ? t.ownerName : null,
-      dueDate: t.dueDate,
-      tag,
-      sourceTaskId: t.id,
-    });
-  };
-
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -1788,7 +1746,7 @@ function IdealWeekOnDeckCard({
       <CardContent className="space-y-2">
         {items.length === 0 && (
           <div className="text-sm text-muted-foreground py-1">
-            Nothing on deck yet. Tap Edit to add up to 7 priorities.
+            Nothing on deck yet — add up to 7 priorities below.
           </div>
         )}
         {orderedItems.map((it, idx) => (
@@ -1832,37 +1790,10 @@ function IdealWeekOnDeckCard({
                 aria-label="Drag to reorder"
               />
             )}
-            <span
-              className={[
-                "shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide",
-                ON_DECK_TAG_META[it.tag].className,
-              ].join(" ")}
-            >
-              {ON_DECK_TAG_META[it.tag].label}
-            </span>
             <div className="flex-1 min-w-0">
               <div className="text-sm truncate">{it.text}</div>
-              {(ownerLabel(it) || it.dueDate) && (
-                <div className="text-[11px] text-muted-foreground flex items-center gap-1 flex-wrap">
-                  {ownerLabel(it) && <span>{ownerLabel(it)}</span>}
-                  {ownerLabel(it) && it.dueDate ? <span>·</span> : null}
-                  {it.dueDate ? (
-                    (() => {
-                      const u = onDeckDueUrgency(it.dueDate);
-                      return u ? (
-                        <span
-                          title={ON_DECK_DUE_TITLES[u]}
-                          className={`font-semibold rounded px-1.5 py-px ${ON_DECK_DUE_CLASSES[u]}`}
-                        >
-                          {u === "overdue" ? "overdue · " : ""}
-                          due {onDeckFormatDue(it.dueDate)}
-                        </span>
-                      ) : (
-                        <span>due {onDeckFormatDue(it.dueDate)}</span>
-                      );
-                    })()
-                  ) : null}
-                </div>
+              {ownerLabel(it) && (
+                <div className="text-[11px] text-muted-foreground">{ownerLabel(it)}</div>
               )}
             </div>
             <Button
@@ -1908,171 +1839,16 @@ function IdealWeekOnDeckCard({
           />
         </div>
 
-        {editing && (
-          <div className="pt-2 space-y-3">
-            {items.length > 0 && (
-              <div className="space-y-2">
-                {items.map((it) => (
-                  <OnDeckEditRow
-                    key={it.id}
-                    item={it}
-                    directReports={directReports}
-                    onPatch={patch}
-                  />
-                ))}
-              </div>
-            )}
-            {adding ? (
-              <div className="rounded-md border p-3 space-y-2 bg-muted/30">
-                <div className="flex gap-2">
-                  {(["manual", "pull"] as const).map((m) => (
-                    <Button
-                      key={m}
-                      type="button"
-                      size="sm"
-                      variant={mode === m ? "default" : "outline"}
-                      className="h-7 text-xs"
-                      onClick={() => setMode(m)}
-                    >
-                      {m === "manual" ? "New item" : "Pull from task"}
-                    </Button>
-                  ))}
-                </div>
-                {mode === "manual" ? (
-                  <div className="space-y-2">
-                    <Input
-                      autoFocus
-                      value={text}
-                      onChange={(e) => setText(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && submitManual()}
-                      placeholder="What needs to move this week…"
-                      className="h-8 text-sm"
-                    />
-                    <div className="flex flex-wrap gap-2">
-                      <Select value={owner} onValueChange={setOwner}>
-                        <SelectTrigger className="h-8 text-xs flex-1 min-w-[120px]">
-                          <SelectValue placeholder="Owner" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="none">No owner</SelectItem>
-                          {directReports
-                            .filter((d) => !d.hidden)
-                            .map((d) => (
-                              <SelectItem key={d.id} value={`dr:${d.id}`}>
-                                {d.name}
-                              </SelectItem>
-                            ))}
-                          <SelectItem value="custom">Other…</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      {owner === "custom" && (
-                        <Input
-                          value={customOwner}
-                          onChange={(e) => setCustomOwner(e.target.value)}
-                          placeholder="Owner name"
-                          className="h-8 text-sm flex-1 min-w-[120px]"
-                        />
-                      )}
-                      <Input
-                        type="date"
-                        value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
-                        className="h-8 text-sm flex-1 min-w-[130px]"
-                      />
-                      <Select value={tag} onValueChange={(v) => setTag(v as OnDeckTag)}>
-                        <SelectTrigger className="h-8 text-xs flex-1 min-w-[130px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ON_DECK_TAGS.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {ON_DECK_TAG_META[t].label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex justify-end gap-2">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetForm}>
-                        Cancel
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={submitManual}
-                        disabled={!text.trim()}
-                      >
-                        Add
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">Tag:</span>
-                      <Select value={tag} onValueChange={(v) => setTag(v as OnDeckTag)}>
-                        <SelectTrigger className="h-7 text-xs w-[150px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ON_DECK_TAGS.map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {ON_DECK_TAG_META[t].label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="max-h-56 overflow-y-auto space-y-1">
-                      {pullable.length === 0 && (
-                        <div className="text-xs text-muted-foreground py-1">
-                          No open Project or Direct Report tasks to pull.
-                        </div>
-                      )}
-                      {pullable.map((t) => {
-                        const where =
-                          t.parentType === "project"
-                            ? projName.get(t.parentId) ?? "Project"
-                            : drName.get(t.parentId) ?? "Direct Report";
-                        return (
-                          <button
-                            key={t.id}
-                            type="button"
-                            onClick={() => submitPull(t)}
-                            className="w-full text-left rounded-md border bg-background px-3 py-2 hover:bg-muted/50"
-                          >
-                            <div className="text-sm">{t.text}</div>
-                            <div className="text-[11px] text-muted-foreground">from {where}</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                    <div className="flex justify-end">
-                      <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={resetForm}>
-                        Cancel
-                      </Button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <Button
-                variant="outline"
-                size="sm"
-                className="w-full h-8 text-xs border-dashed"
-                disabled={atCap}
-                onClick={() =>
-                  atCap
-                    ? window.alert(
-                        "On Deck is capped at 7 items. Remove one before adding another.",
-                      )
-                    : setAdding(true)
-                }
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                {atCap ? "On Deck is full (7) — remove one to add" : "Add to On Deck"}
-              </Button>
-            )}
+        {editing && items.length > 0 && (
+          <div className="pt-2 space-y-2">
+            {items.map((it) => (
+              <OnDeckEditRow
+                key={it.id}
+                item={it}
+                directReports={directReports}
+                onPatch={patch}
+              />
+            ))}
           </div>
         )}
       </CardContent>
@@ -2131,24 +1907,6 @@ function OnDeckEditRow({
               </SelectItem>
             ))}
           <SelectItem value="custom">Other…</SelectItem>
-        </SelectContent>
-      </Select>
-      <Input
-        type="date"
-        value={item.dueDate ?? ""}
-        onChange={(e) => onPatch(item.id, { dueDate: e.target.value || null })}
-        className="h-8 text-sm flex-1 min-w-[130px]"
-      />
-      <Select value={item.tag} onValueChange={(v) => onPatch(item.id, { tag: v as OnDeckTag })}>
-        <SelectTrigger className="h-8 text-xs flex-1 min-w-[130px]">
-          <SelectValue />
-        </SelectTrigger>
-        <SelectContent>
-          {ON_DECK_TAGS.map((t) => (
-            <SelectItem key={t} value={t}>
-              {ON_DECK_TAG_META[t].label}
-            </SelectItem>
-          ))}
         </SelectContent>
       </Select>
     </div>
