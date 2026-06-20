@@ -2900,6 +2900,7 @@ function TaskRow({
             {originLabel}
           </span>
         )}
+        <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button
           type="button"
@@ -3126,6 +3127,82 @@ function OwnerPicker({
         </option>
       </select>
     </label>
+  );
+}
+
+function SendToOnDeck({
+  task,
+  apiPrefix = "/command-center",
+  visible,
+}: {
+  task: Task;
+  apiPrefix?: string;
+  visible: boolean;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [added, setAdded] = useState(false);
+
+  const flashAdded = () => {
+    setAdded(true);
+    window.setTimeout(() => setAdded(false), 1500);
+  };
+
+  const send = async () => {
+    const text = task.text.trim();
+    if (!text || busy) return;
+    setBusy(true);
+    try {
+      const existing = await api<OnDeckItem[]>(`${apiPrefix}/on-deck`);
+      if (existing.some((i) => i.sourceTaskId === task.id)) {
+        flashAdded();
+        window.alert("This task is already on On Deck.");
+        return;
+      }
+      await api(`${apiPrefix}/on-deck`, {
+        method: "POST",
+        body: JSON.stringify({
+          text,
+          sourceTaskId: task.id,
+          ownerDirectReportId: task.ownerDirectReportId,
+          ownerName: task.ownerName,
+          dueDate: task.dueDate,
+        }),
+      });
+      flashAdded();
+      window.dispatchEvent(new CustomEvent("cc:top3-changed"));
+    } catch {
+      window.alert(
+        "Couldn't add — On Deck may be full (max 7). Remove an item first.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.stopPropagation();
+        void send();
+      }}
+      disabled={busy}
+      aria-label="Send to On Deck"
+      title={added ? "On On Deck" : "Send to On Deck"}
+      style={{
+        background: "transparent",
+        border: "none",
+        cursor: busy ? "default" : "pointer",
+        padding: "2px 4px",
+        fontSize: 15,
+        lineHeight: 1,
+        color: added ? C.accent : C.textSecondary,
+        visibility: visible || added ? "visible" : "hidden",
+        flexShrink: 0,
+      }}
+    >
+      {added ? "✓" : "→"}
+    </button>
   );
 }
 
