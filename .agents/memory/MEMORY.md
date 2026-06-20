@@ -1,2 +1,3 @@
 - [Prod/dev DB data drift](prod-data-drift.md) — dev fixes reach prod only via idempotent startupMigrations + republish; dedup seeded owners by keeping the VISIBLE row, never force-rehide real reports.
 - [ritual_items seeding](ritual-items-seeding.md) — startup migrations must not INSERT into an empty ritual_items category or the GET-endpoint default seed never fires.
+- [Command Center business scoping](cc-business-scoping.md) — every /api/command-center/* call must send x-business-id (from `cc-business` localStorage) or it silently reads/writes business 1.

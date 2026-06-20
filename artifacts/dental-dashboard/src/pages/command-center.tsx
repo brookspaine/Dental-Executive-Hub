@@ -92,7 +92,7 @@ type BrainDumpEntry = {
 type Business = { id: number; name: string; slug: string; sortOrder: number };
 type BrainDumpFilter = "inbox" | "reference" | "someday" | "processed";
 type OnDeckTag = "move_the_needle" | "maintenance" | "follow_up";
-type OnDeckItem = {
+export type OnDeckItem = {
   id: number;
   businessId: number;
   text: string;
@@ -634,7 +634,7 @@ function OverviewSection({
   );
 }
 
-function Top3Card({
+export function Top3Card({
   title,
   period,
   top3,
@@ -742,7 +742,7 @@ function Top3Row({
 
 const ON_DECK_CAP = 7;
 
-function OnDeckCard({
+export function OnDeckCard({
   items,
   onChange,
 }: {
