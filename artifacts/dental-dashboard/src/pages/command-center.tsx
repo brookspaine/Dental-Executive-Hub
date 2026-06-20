@@ -742,6 +742,19 @@ function Top3Row({
 
 const ON_DECK_CAP = 7;
 
+/* Turn an api() error (its message begins with the HTTP status) into an
+   accurate, human message instead of always blaming the 7-item cap. */
+function onDeckAddErrorMessage(e: unknown): string {
+  const msg = e instanceof Error ? e.message : "";
+  if (msg.startsWith("409"))
+    return `On Deck is full (max ${ON_DECK_CAP} — this week's shortlist). Remove an item before adding another.`;
+  if (msg.startsWith("403"))
+    return "Couldn't add — this task's owner isn't part of the current business.";
+  if (msg.startsWith("400"))
+    return "Couldn't add that task to On Deck — its data looks invalid.";
+  return "Couldn't add to On Deck. Please try again.";
+}
+
 export function OnDeckCard({
   items,
   onChange,
@@ -786,7 +799,9 @@ export function OnDeckCard({
     const t = quickText.trim();
     if (!t) return;
     if (atCap) {
-      window.alert("On Deck is capped at 7 items. Remove one before adding another.");
+      window.alert(
+        `On Deck is full (${items.length}/${ON_DECK_CAP} — this week's shortlist). Remove an item before adding another.`,
+      );
       return;
     }
     try {
@@ -797,8 +812,8 @@ export function OnDeckCard({
       setQuickText("");
       setAdding(false);
       onChange();
-    } catch {
-      window.alert("Couldn't add — On Deck may be full (max 7). Remove an item first.");
+    } catch (e) {
+      window.alert(onDeckAddErrorMessage(e));
     }
   };
 
@@ -3158,6 +3173,12 @@ function SendToOnDeck({
         window.alert("This task is already on On Deck.");
         return;
       }
+      if (existing.length >= ON_DECK_CAP) {
+        window.alert(
+          `On Deck is full (${existing.length}/${ON_DECK_CAP} — this week's shortlist). Remove an item before adding another.`,
+        );
+        return;
+      }
       await api(`${apiPrefix}/on-deck`, {
         method: "POST",
         body: JSON.stringify({
@@ -3170,10 +3191,8 @@ function SendToOnDeck({
       });
       flashAdded();
       window.dispatchEvent(new CustomEvent("cc:top3-changed"));
-    } catch {
-      window.alert(
-        "Couldn't add — On Deck may be full (max 7). Remove an item first.",
-      );
+    } catch (e) {
+      window.alert(onDeckAddErrorMessage(e));
     } finally {
       setBusy(false);
     }
