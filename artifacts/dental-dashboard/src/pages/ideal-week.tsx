@@ -3080,6 +3080,10 @@ export function IdealWeek() {
               />
             </div>
 
+            <p className="text-center text-sm font-medium italic text-slate-500">
+              What is the highest leverage use of my time right now?
+            </p>
+
             <OnDeckCard items={onDeckItems} onChange={invalidateOnDeck} />
           </div>
 
