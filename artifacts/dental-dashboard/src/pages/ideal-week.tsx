@@ -3064,22 +3064,24 @@ export function IdealWeek() {
         <div className="space-y-4">
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Top3Card
-              title="Today's Top 3"
-              period="day"
-              top3={ccDailyRows}
-              onChange={invalidateCcTop3}
-            />
-            <Top3Card
-              title="This Week's Top 3"
-              period="week"
-              top3={ccWeeklyRows}
-              onChange={invalidateCcTop3}
-            />
-          </div>
+          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <Top3Card
+                title="Today's Top 3"
+                period="day"
+                top3={ccDailyRows}
+                onChange={invalidateCcTop3}
+              />
+              <Top3Card
+                title="This Week's Top 3"
+                period="week"
+                top3={ccWeeklyRows}
+                onChange={invalidateCcTop3}
+              />
+            </div>
 
-          <OnDeckCard items={onDeckItems} onChange={invalidateOnDeck} />
+            <OnDeckCard items={onDeckItems} onChange={invalidateOnDeck} />
+          </div>
 
           <AutomaticRulesForSuccess />
 
