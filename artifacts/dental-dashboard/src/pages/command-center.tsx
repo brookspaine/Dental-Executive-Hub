@@ -1052,7 +1052,7 @@ function OnDeckRow({
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
         />
-        <PinStar taskText={text} visible />
+        <PinStar taskText={text} visible onPinned={onDelete} />
         <button
           type="button"
           onClick={() => void onDelete()}
@@ -3229,10 +3229,12 @@ function PinStar({
   taskText,
   apiPrefix = "/command-center",
   visible,
+  onPinned,
 }: {
   taskText: string;
   apiPrefix?: string;
   visible: boolean;
+  onPinned?: () => void | Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [slots, setSlots] = useState<Top3Row[] | null>(null);
@@ -3276,6 +3278,7 @@ function PinStar({
       );
       window.dispatchEvent(new CustomEvent("cc:top3-changed"));
       setOpen(false);
+      if (onPinned) await onPinned();
     } finally {
       setBusy(false);
     }
