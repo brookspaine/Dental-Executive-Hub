@@ -268,7 +268,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Full-width navy top bar */}
       <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
         {/* Brand spacer — aligned with sidebar width on desktop. */}
-        <div className="hidden md:flex w-64 items-center justify-center px-3 border-r border-white/10 shrink-0" />
+        <div className="hidden md:flex w-52 items-center justify-center px-3 border-r border-white/10 shrink-0" />
 
         {/* Mobile: hamburger + condensed brand */}
         <div className="md:hidden flex items-center gap-2 px-3 flex-1 min-w-0">
@@ -335,7 +335,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       {/* Sidebar + main content */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Persistent sidebar — md and up — White chrome */}
-        <aside className="hidden md:flex w-64 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10">
+        <aside className="hidden md:flex w-52 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10">
           <NavList location={location} />
           <UserBadge />
         </aside>
