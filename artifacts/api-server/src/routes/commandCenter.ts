@@ -280,43 +280,59 @@ router.post("/on-deck", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
-  // Enforce the 7-item cap server-side.
-  const countRows = await db
-    .select({ count: sql<number>`count(*)::int` })
-    .from(ccOnDeckTable)
-    .where(eq(ccOnDeckTable.businessId, businessId));
-  const count = countRows[0]?.count ?? 0;
-  if (count >= ON_DECK_CAP) {
-    res.status(409).json({ error: "On Deck is full (max 7). Remove an item first." });
-    return;
-  }
-  // Owner, if a direct report, must belong to the current business.
-  if (body.data.ownerDirectReportId != null) {
-    const ok = await parentInBusiness("direct_report", body.data.ownerDirectReportId, businessId);
-    if (!ok) {
-      res.status(403).json({ error: "owner not in current business" });
+  try {
+    // Enforce the 7-item cap server-side.
+    const countRows = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(ccOnDeckTable)
+      .where(eq(ccOnDeckTable.businessId, businessId));
+    const count = countRows[0]?.count ?? 0;
+    if (count >= ON_DECK_CAP) {
+      res.status(409).json({ error: "On Deck is full (max 7). Remove an item first." });
       return;
     }
+    // Owner, if a direct report, must belong to the current business.
+    if (body.data.ownerDirectReportId != null) {
+      const ok = await parentInBusiness("direct_report", body.data.ownerDirectReportId, businessId);
+      if (!ok) {
+        res.status(403).json({ error: "owner not in current business" });
+        return;
+      }
+    }
+    // Append to the end. Use max(sort_order)+1 rather than the row count so a
+    // history of mid-list deletes can't produce a value that collides with an
+    // existing row's sort_order.
+    const sortRows = await db
+      .select({ max: sql<number>`coalesce(max(${ccOnDeckTable.sortOrder}), -1)::int` })
+      .from(ccOnDeckTable)
+      .where(eq(ccOnDeckTable.businessId, businessId));
+    const nextSort = (sortRows[0]?.max ?? -1) + 1;
+    // Owner is either a direct report OR a free-form name, never both.
+    const [row] = await db
+      .insert(ccOnDeckTable)
+      .values({
+        businessId,
+        text: body.data.text,
+        ownerDirectReportId: body.data.ownerDirectReportId ?? null,
+        ownerName:
+          body.data.ownerDirectReportId != null
+            ? null
+            : body.data.ownerName?.trim() || null,
+        dueDate: body.data.dueDate ?? null,
+        tag: body.data.tag ?? "move_the_needle",
+        status: body.data.status ?? "not_started",
+        sourceTaskId: body.data.sourceTaskId ?? null,
+        sortOrder: nextSort,
+      })
+      .returning();
+    res.status(201).json(row);
+  } catch (err) {
+    // Without this, an insert/query failure bubbles to Express's default
+    // handler as a bare 500 with no detail — invisible in production. Log the
+    // real cause so deployment logs can show why an add failed.
+    req.log.error({ err, businessId }, "failed to add On Deck item");
+    res.status(500).json({ error: "could not add to On Deck" });
   }
-  // Owner is either a direct report OR a free-form name, never both.
-  const [row] = await db
-    .insert(ccOnDeckTable)
-    .values({
-      businessId,
-      text: body.data.text,
-      ownerDirectReportId: body.data.ownerDirectReportId ?? null,
-      ownerName:
-        body.data.ownerDirectReportId != null
-          ? null
-          : body.data.ownerName?.trim() || null,
-      dueDate: body.data.dueDate ?? null,
-      tag: body.data.tag ?? "move_the_needle",
-      status: body.data.status ?? "not_started",
-      sourceTaskId: body.data.sourceTaskId ?? null,
-      sortOrder: count,
-    })
-    .returning();
-  res.status(201).json(row);
 });
 
 router.post("/on-deck/reorder", async (req, res): Promise<void> => {

@@ -752,7 +752,13 @@ function onDeckAddErrorMessage(e: unknown): string {
     return "Couldn't add — this task's owner isn't part of the current business.";
   if (msg.startsWith("400"))
     return "Couldn't add that task to On Deck — its data looks invalid.";
-  return "Couldn't add to On Deck. Please try again.";
+  // api() throws "<status> <statusText>" for HTTP errors; fetch() rejects with
+  // a TypeError (no leading status) on network/timeout failures. Surface the
+  // real status so a recurring failure is diagnosable instead of a blind retry.
+  const code = msg.match(/^(\d{3})/)?.[1];
+  if (!code)
+    return "Couldn't reach the server to add to On Deck. Check your connection and try again.";
+  return `Couldn't add to On Deck (server error ${code}). Please try again in a moment.`;
 }
 
 export function OnDeckCard({

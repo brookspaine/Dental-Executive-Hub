@@ -1,4 +1,4 @@
 - [Prod/dev DB data drift](prod-data-drift.md) — dev fixes reach prod only via idempotent startupMigrations + republish; dedup seeded owners by keeping the VISIBLE row, never force-rehide real reports.
 - [ritual_items seeding](ritual-items-seeding.md) — startup migrations must not INSERT into an empty ritual_items category or the GET-endpoint default seed never fires.
 - [Command Center business scoping](cc-business-scoping.md) — every /api/command-center/* call must send x-business-id (from `cc-business` localStorage) or it silently reads/writes business 1.
-- [dental-dashboard api() error shape](dental-api-error-shape.md) — api() throws Error("<status> <statusText>"); branch on the status prefix instead of catch-all alerts that wrongly blame the On Deck cap.
+- [dental-dashboard api() error shape](dental-api-error-shape.md) — api() throws Error("<status> <statusText>"), branch on status prefix; api-server has NO global error handler so mutating routes must req.log.error their own failures or prod 500s are invisible.
