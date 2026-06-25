@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
+
+const MOBILE_META_COLS = "repeat(auto-fit, minmax(104px, 1fr))";
 
 /* ========================================================================== */
 /* Types                                                                      */
@@ -768,6 +771,7 @@ export function OnDeckCard({
   items: OnDeckItem[];
   onChange: () => void;
 }) {
+  const isMobile = useIsMobile();
   const [adding, setAdding] = useState(false);
   const [quickText, setQuickText] = useState("");
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
@@ -846,11 +850,12 @@ export function OnDeckCard({
         style={{
           border: `1px solid ${C.divider}`,
           borderRadius: 6,
-          overflowX: "auto",
+          overflowX: isMobile ? "visible" : "auto",
           background: C.card,
         }}
       >
-        <div style={{ minWidth: 560 }}>
+        <div style={{ minWidth: isMobile ? 0 : 560 }}>
+          {!isMobile && (
           <div
             style={{
               display: "grid",
@@ -887,6 +892,7 @@ export function OnDeckCard({
             </div>
             <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
           </div>
+          )}
 
           {items.length === 0 && (
             <div style={{ padding: "10px 12px", fontSize: 13, color: C.textSecondary }}>
@@ -898,6 +904,7 @@ export function OnDeckCard({
             <OnDeckRow
               key={it.id}
               item={it}
+              isMobile={isMobile}
               directReports={directReports}
               onPatch={patch}
               onDelete={() => remove(it.id)}
@@ -1010,11 +1017,13 @@ const ON_DECK_GRID_COLS = "1fr 140px 132px 132px";
 
 function OnDeckRow({
   item,
+  isMobile,
   directReports,
   onPatch,
   onDelete,
 }: {
   item: OnDeckItem;
+  isMobile: boolean;
   directReports: DirectReport[];
   onPatch: (id: number, body: Partial<OnDeckItem>) => Promise<void>;
   onDelete: () => void | Promise<void>;
@@ -1031,18 +1040,20 @@ function OnDeckRow({
       onMouseLeave={() => setHover(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: ON_DECK_GRID_COLS,
+        gridTemplateColumns: isMobile ? MOBILE_META_COLS : ON_DECK_GRID_COLS,
         alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
       }}
     >
       <div
         style={{
+          gridColumn: isMobile ? "1 / -1" : "auto",
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "8px 12px",
-          borderRight: `1px solid ${C.divider}`,
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+          borderBottom: isMobile ? `1px solid ${C.divider}` : "none",
           minWidth: 0,
         }}
       >
@@ -1083,9 +1094,9 @@ function OnDeckRow({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
           padding: "6px 8px",
-          borderRight: `1px solid ${C.divider}`,
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
         }}
       >
         <OwnerPicker
@@ -1104,9 +1115,9 @@ function OnDeckRow({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
           padding: "6px 8px",
-          borderRight: `1px solid ${C.divider}`,
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
         }}
       >
         <DueDateField
@@ -1120,7 +1131,7 @@ function OnDeckRow({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
           padding: "6px 8px",
         }}
       >
@@ -2428,6 +2439,7 @@ function TaskSectionGroup({
   projects: Project[];
   onChange: () => void | Promise<void>;
 }) {
+  const isMobile = useIsMobile();
   const showOwnerColumn = parentType === "project";
   const showNextStepsColumn = parentType === "life_area";
   const gridCols = showOwnerColumn
@@ -2607,12 +2619,13 @@ function TaskSectionGroup({
           style={{
             border: `1px solid ${C.divider}`,
             borderRadius: 6,
-            overflowX: "auto",
+            overflowX: isMobile ? "visible" : "auto",
             background: C.card,
           }}
         >
-        <div style={{ minWidth: showNextStepsColumn ? 640 : showOwnerColumn ? 560 : 480 }}>
+        <div style={{ minWidth: isMobile ? 0 : showNextStepsColumn ? 640 : showOwnerColumn ? 560 : 480 }}>
           {/* Column header */}
+          {!isMobile && (
           <div
             style={{
               display: "grid",
@@ -2662,11 +2675,13 @@ function TaskSectionGroup({
               <div style={{ padding: "7px 12px" }}>Next steps</div>
             )}
           </div>
+          )}
 
           {tasks.map((task) => (
             <TaskRow
               key={task.id}
               task={task}
+              isMobile={isMobile}
               gridCols={gridCols}
               showOwnerColumn={showOwnerColumn}
               showNextStepsColumn={showNextStepsColumn}
@@ -2838,6 +2853,7 @@ function StatusPill({
 
 function TaskRow({
   task,
+  isMobile,
   gridCols,
   showOwnerColumn,
   showNextStepsColumn,
@@ -2847,6 +2863,7 @@ function TaskRow({
   onDelete,
 }: {
   task: Task;
+  isMobile: boolean;
   gridCols: string;
   showOwnerColumn: boolean;
   showNextStepsColumn: boolean;
@@ -2870,18 +2887,20 @@ function TaskRow({
       onMouseLeave={() => setHover(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: gridCols,
+        gridTemplateColumns: isMobile ? MOBILE_META_COLS : gridCols,
         alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
       }}
     >
       <div
         style={{
+          gridColumn: isMobile ? "1 / -1" : "auto",
           display: "flex",
           alignItems: "center",
           gap: 10,
           padding: "8px 12px",
-          borderRight: `1px solid ${C.divider}`,
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+          borderBottom: isMobile ? `1px solid ${C.divider}` : "none",
           minWidth: 0,
         }}
       >
@@ -2947,9 +2966,9 @@ function TaskRow({
           style={{
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
+            justifyContent: isMobile ? "flex-start" : "center",
             padding: "6px 8px",
-            borderRight: `1px solid ${C.divider}`,
+            borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
           }}
         >
           <OwnerPicker
@@ -2969,9 +2988,9 @@ function TaskRow({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
           padding: "6px 8px",
-          borderRight: `1px solid ${C.divider}`,
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
         }}
       >
         <DueDateField
@@ -2985,9 +3004,9 @@ function TaskRow({
         style={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
           padding: "6px 8px",
-          borderRight: showNextStepsColumn ? `1px solid ${C.divider}` : "none",
+          borderRight: isMobile || !showNextStepsColumn ? "none" : `1px solid ${C.divider}`,
         }}
       >
         <StatusPill
@@ -2998,6 +3017,7 @@ function TaskRow({
       {showNextStepsColumn && (
         <div
           style={{
+            gridColumn: isMobile ? "1 / -1" : "auto",
             display: "flex",
             alignItems: "stretch",
             padding: "6px 8px",
