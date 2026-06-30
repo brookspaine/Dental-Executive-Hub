@@ -12,7 +12,6 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useClerk } from "@clerk/react";
 import {
   Sheet,
   SheetContent,
@@ -175,7 +174,6 @@ function NavList({
 
 function UserBadge() {
   const { activeUser } = useActiveUser();
-  const { signOut } = useClerk();
   const [menuOpen, setMenuOpen] = useState(false);
 
   // While Clerk is still loading we render a quiet skeleton so the
@@ -235,10 +233,7 @@ function UserBadge() {
           </div>
           <button
             type="button"
-            onClick={() => {
-              setMenuOpen(false);
-              void signOut();
-            }}
+            onClick={() => setMenuOpen(false)}
             className="w-full flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-slate-100 text-left text-slate-700"
           >
             <LogOut className="h-4 w-4" />

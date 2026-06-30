@@ -3,26 +3,12 @@ import fs from "fs";
 import express, { type Express, type Request } from "express";
 import cors, { type CorsOptions } from "cors";
 import pinoHttp from "pino-http";
-import { clerkMiddleware } from "@clerk/express";
 import router from "./routes";
 import { logger } from "./lib/logger";
 import { requireAuth } from "./lib/auth";
-import {
-  CLERK_PROXY_PATH,
-  clerkProxyMiddleware,
-} from "./middlewares/clerkProxyMiddleware";
 
 const app: Express = express();
 
-/**
- * The dental-dashboard frontend and this API are served from the same
- * Replit domain (the frontend at `/` and the API at `/api`), so genuine
- * browser traffic is same-origin and arrives without an `Origin` header.
- * We still need CORS configured because the same domain is used in
- * development (`*.replit.dev`) and production (the deployment domain),
- * and we want to keep the door open for those — but explicitly NOT for
- * arbitrary origins, since we send credentials (Clerk session cookies).
- */
 const allowedOriginSuffixes = [".replit.dev", ".replit.app", ".repl.co", ".railway.app", ".up.railway.app"];
 
 const corsOptions: CorsOptions = {
@@ -68,15 +54,9 @@ app.use(
   }),
 );
 
-// Clerk proxy must run before body parsers — it streams raw bytes through
-// to the Clerk frontend API.
-app.use(CLERK_PROXY_PATH, clerkProxyMiddleware());
-
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
-app.use(clerkMiddleware());
 
 /**
  * Routes that are intentionally reachable without a signed-in user.

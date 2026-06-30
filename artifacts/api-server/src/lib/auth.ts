@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from "express";
-import { clerkClient, getAuth } from "@clerk/express";
 import { db, usersTable } from "@workspace/db";
 
 export type AuthedUser = {
@@ -45,15 +44,6 @@ export function deriveInitials(name: string): string {
     .slice(0, 2);
 }
 
-/**
- * AUTH IS CURRENTLY DISABLED while the app is being built — every
- * request is treated as the local "Dev User" and routes that depend on
- * `req.authedUser` continue to work unchanged.
- *
- * To re-enable real Clerk auth, restore the original implementation
- * (kept in git history): call `getAuth(req)`, 401 on missing userId,
- * upsert the real Clerk profile into `users`, and attach req.authedUser.
- */
 const DEV_USER: AuthedUser = {
   id: "dev-user",
   name: "Dev User",
@@ -95,8 +85,3 @@ export async function requireAuth(
   req.authedUser = DEV_USER;
   next();
 }
-
-// Keep these imports referenced so re-enabling real auth is a one-line
-// edit (no need to re-add imports).
-void clerkClient;
-void getAuth;
