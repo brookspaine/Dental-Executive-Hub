@@ -1,3 +1,5 @@
+import path from "path";
+import fs from "fs";
 import express, { type Express, type Request } from "express";
 import cors, { type CorsOptions } from "cors";
 import pinoHttp from "pino-http";
@@ -21,7 +23,7 @@ const app: Express = express();
  * and we want to keep the door open for those — but explicitly NOT for
  * arbitrary origins, since we send credentials (Clerk session cookies).
  */
-const allowedOriginSuffixes = [".replit.dev", ".replit.app", ".repl.co"];
+const allowedOriginSuffixes = [".replit.dev", ".replit.app", ".repl.co", ".railway.app", ".up.railway.app"];
 
 const corsOptions: CorsOptions = {
   credentials: true,
@@ -110,5 +112,32 @@ app.use("/api", (req, res, next) => {
   }
   void requireAuth(req, res, next);
 }, router);
+
+// Serve the built dental-dashboard as a static SPA from this same process.
+// This keeps the frontend and API on the same origin so Clerk session cookies
+// work without any CORS dance. The path is relative to the compiled bundle
+// (artifacts/api-server/dist/), so ../../dental-dashboard/dist/public resolves
+// to artifacts/dental-dashboard/dist/public from the repo root.
+const dashboardDist = path.resolve(__dirname, "../../dental-dashboard/dist/public");
+if (fs.existsSync(dashboardDist)) {
+  app.use(
+    express.static(dashboardDist, {
+      index: false,
+      setHeaders(res, filePath) {
+        if (/\.(js|css|woff2?|png|jpe?g|svg|gif|webp|avif|ico)$/i.test(filePath)) {
+          res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+        }
+      },
+    }),
+  );
+  const indexHtml = path.join(dashboardDist, "index.html");
+  app.get(/.*/, (_req, res) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+    res.sendFile(indexHtml);
+  });
+  logger.info({ dashboardDist }, "Serving dental-dashboard static files");
+} else {
+  logger.warn({ dashboardDist }, "dental-dashboard dist not found — frontend not served");
+}
 
 export default app;
