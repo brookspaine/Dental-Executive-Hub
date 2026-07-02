@@ -15,6 +15,7 @@ import leaseToolkitRouter from "./leaseToolkit";
 import futureTodosRouter from "./futureTodos";
 import commandCenterRouter from "./commandCenter";
 import businessesRouter from "./businesses";
+import mcpRouter from "./mcp";
 import meRouter from "./me";
 import usersRouter from "./users";
 import { fromHeader, fixed } from "../lib/businessScope";
@@ -47,6 +48,7 @@ router.use("/command-center", fromHeader(), commandCenterRouter);
 router.use("/urgent-dental", fixed(2), commandCenterRouter);
 router.use("/urgent-dental", fixed(2), futureTodosRouter);
 
+router.use(mcpRouter);
 router.use(meRouter);
 router.use(usersRouter);
 

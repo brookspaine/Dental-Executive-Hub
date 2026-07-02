@@ -77,6 +77,12 @@ const PUBLIC_API_ROUTES: { method: string; pattern: RegExp }[] = [
   // unconditionally public by design (see routes/storage.ts).
   { method: "GET", pattern: /^\/storage\/public-objects\// },
   { method: "HEAD", pattern: /^\/storage\/public-objects\// },
+  // Hub Capture MCP endpoint for Claude.ai's custom connector. It enforces
+  // its own MCP_CAPTURE_TOKEN bearer check (see routes/mcp.ts) — the caller
+  // is Claude.ai, not a signed-in browser.
+  { method: "POST", pattern: /^\/mcp\/?$/ },
+  { method: "GET", pattern: /^\/mcp\/?$/ },
+  { method: "DELETE", pattern: /^\/mcp\/?$/ },
 ];
 
 function isPublicApiRoute(req: Request): boolean {
