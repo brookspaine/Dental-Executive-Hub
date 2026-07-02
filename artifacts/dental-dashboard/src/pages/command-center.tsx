@@ -2821,6 +2821,21 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string; bg: string; fg: string
   { value: "completed", label: "Completed", bg: "#cfead8", fg: "#1f6a3f" },
 ];
 
+/* Base style for a native <select> rendered as a colored pill
+   (StatusPill, PriorityFlag). */
+const pillSelectStyle: React.CSSProperties = {
+  appearance: "none",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+  border: "none",
+  borderRadius: 999,
+  fontSize: 11,
+  fontFamily: SANS,
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "center",
+};
+
 function StatusPill({
   status,
   onChange,
@@ -2835,19 +2850,10 @@ function StatusPill({
         value={status}
         onChange={(e) => onChange(e.target.value as TaskStatus)}
         style={{
-          appearance: "none",
-          WebkitAppearance: "none",
-          MozAppearance: "none",
+          ...pillSelectStyle,
           background: opt.bg,
           color: opt.fg,
-          border: "none",
-          borderRadius: 999,
           padding: "3px 14px",
-          fontSize: 11,
-          fontFamily: SANS,
-          fontWeight: 600,
-          cursor: "pointer",
-          textAlign: "center",
         }}
       >
         {STATUS_OPTIONS.map((o) => (
@@ -2894,19 +2900,10 @@ function PriorityFlag({
         aria-label="Priority"
         title="Priority"
         style={{
-          appearance: "none",
-          WebkitAppearance: "none",
-          MozAppearance: "none",
+          ...pillSelectStyle,
           background: opt ? opt.bg : "transparent",
           color: opt ? opt.fg : C.textSecondary,
-          border: "none",
-          borderRadius: 999,
           padding: opt ? "3px 10px" : "3px 4px",
-          fontSize: 11,
-          fontFamily: SANS,
-          fontWeight: 600,
-          cursor: "pointer",
-          textAlign: "center",
         }}
       >
         <option value="">{priority ? "None" : "⚑"}</option>
@@ -3287,6 +3284,7 @@ function SendToOnDeck({
           ownerDirectReportId: task.ownerDirectReportId,
           ownerName: task.ownerName,
           dueDate: task.dueDate,
+          priority: task.priority,
         }),
       });
       flashAdded();

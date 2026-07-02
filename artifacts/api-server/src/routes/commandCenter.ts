@@ -325,6 +325,7 @@ router.post("/on-deck", async (req, res): Promise<void> => {
         dueDate: body.data.dueDate ?? null,
         tag: body.data.tag ?? "move_the_needle",
         status: body.data.status ?? "not_started",
+        priority: body.data.priority ?? null,
         sourceTaskId: body.data.sourceTaskId ?? null,
         sortOrder: nextSort,
       })

@@ -770,14 +770,12 @@ async function createOnDeckTable(client: PgClient): Promise<void> {
  * rows stay NULL (unset). Idempotent via ADD COLUMN IF NOT EXISTS.
  */
 async function addTaskPriorityColumns(client: PgClient): Promise<void> {
-  for (const table of ["cc_tasks", "cc_on_deck"]) {
-    const tableExists = (await client.query(
-      `SELECT 1 FROM information_schema.tables
-       WHERE table_schema = 'public' AND table_name = '${table}'`,
-    )) as { rows: unknown[] };
-    if (tableExists.rows.length === 0) continue;
-    await client.query(
-      `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS priority text`,
-    );
-  }
+  // cc_tasks is a core table; cc_on_deck is guaranteed by createOnDeckTable,
+  // which runs immediately before this step.
+  await client.query(
+    `ALTER TABLE cc_tasks ADD COLUMN IF NOT EXISTS priority text`,
+  );
+  await client.query(
+    `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS priority text`,
+  );
 }
