@@ -129,10 +129,9 @@ type Overview = {
   }>;
 };
 
-/* View = how tasks render (task views), plus the non-task workflows kept
-   reachable below a divider. Group by = the organizing dimension. */
+/* View = the task list (default) plus the non-task workflows kept
+   reachable below a divider. */
 type ViewId = "list" | "direct-reports" | "projects" | "life-areas" | "brain-dump";
-type GroupBy = "priority" | "project" | "person" | "business" | "due" | "none";
 
 /* ========================================================================== */
 /* Design tokens                                                              */
@@ -225,20 +224,6 @@ export function CommandCenter() {
       return "list";
     }
   });
-  const [groupBy, setGroupBy] = useState<GroupBy>(() => {
-    try {
-      return (localStorage.getItem("cc-groupby") as GroupBy) || "priority";
-    } catch {
-      return "priority";
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem("cc-groupby", groupBy);
-    } catch {
-      /* ignore */
-    }
-  }, [groupBy]);
   const [businessId, setBusinessId] = useBusiness();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   useEffect(() => {
@@ -263,25 +248,6 @@ export function CommandCenter() {
       }),
     [],
   );
-
-  const headerSelectStyle: React.CSSProperties = {
-    background: "rgba(255,255,255,0.12)",
-    color: C.headerText,
-    border: "1px solid rgba(255,255,255,0.25)",
-    borderRadius: 8,
-    padding: "6px 10px",
-    fontFamily: SANS,
-    fontSize: 13,
-    fontWeight: 600,
-    cursor: "pointer",
-  };
-  const headerLabelStyle: React.CSSProperties = {
-    fontSize: 11,
-    fontWeight: 600,
-    textTransform: "uppercase",
-    letterSpacing: 0.5,
-    opacity: 0.65,
-  };
 
   return (
     <div
@@ -323,48 +289,7 @@ export function CommandCenter() {
           <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
         </div>
 
-        {/* View + Group by controls (replaces the old tab strip) */}
-        <div
-          style={{
-            marginTop: 16,
-            paddingBottom: 14,
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
-          }}
-        >
-          <span style={headerLabelStyle}>View</span>
-          <select
-            value={view}
-            onChange={(e) => setView(e.target.value as ViewId)}
-            style={headerSelectStyle}
-          >
-            <option value="list">List</option>
-            <option disabled>──────────</option>
-            <option value="brain-dump">Brain Dump</option>
-            <option value="life-areas">Life Areas</option>
-            <option value="projects">Projects</option>
-            <option value="direct-reports">Direct Reports</option>
-          </select>
-          {view === "list" && (
-            <>
-              <span style={{ ...headerLabelStyle, marginLeft: 10 }}>Group by</span>
-              <select
-                value={groupBy}
-                onChange={(e) => setGroupBy(e.target.value as GroupBy)}
-                style={headerSelectStyle}
-              >
-                <option value="priority">Priority</option>
-                <option value="project">Project</option>
-                <option value="person">Person</option>
-                <option value="business">Business</option>
-                <option value="due">Due date</option>
-                <option value="none">None (flat list)</option>
-              </select>
-            </>
-          )}
-        </div>
+        <div style={{ paddingBottom: 18 }} />
       </div>
 
       {/* Body — keyed by business so all views remount & refetch on switch */}
@@ -372,11 +297,17 @@ export function CommandCenter() {
         key={businessId}
         style={{ maxWidth: 980, margin: "0 auto", padding: "20px 14px 80px" }}
       >
-        {view === "list" && <CommandTab businesses={businesses} groupBy={groupBy} />}
-        {view === "direct-reports" && <DirectReportsTab businesses={businesses} />}
-        {view === "projects" && <ProjectsTab businesses={businesses} />}
-        {view === "life-areas" && <LifeAreasTab businesses={businesses} />}
-        {view === "brain-dump" && <BrainDumpTab businesses={businesses} />}
+        {view === "list" ? (
+          <CommandTab businesses={businesses} view={view} setView={setView} />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <ViewControls view={view} setView={setView} />
+            {view === "direct-reports" && <DirectReportsTab businesses={businesses} />}
+            {view === "projects" && <ProjectsTab businesses={businesses} />}
+            {view === "life-areas" && <LifeAreasTab businesses={businesses} />}
+            {view === "brain-dump" && <BrainDumpTab businesses={businesses} />}
+          </div>
+        )}
 
       </div>
     </div>
@@ -560,84 +491,139 @@ function taskBizHeaders(t: AllTask): Record<string, string> {
   return { "x-business-id": String(id) };
 }
 
-function buildTaskGroups(
-  tasks: AllTask[],
-  groupBy: GroupBy,
-  businesses: Business[],
-): Array<{ key: string; label: string; tasks: AllTask[] }> {
-  const sortTasks = (list: AllTask[]) =>
-    [...list].sort((a, b) => {
-      const pa = a.priority ? PRIORITY_RANK[a.priority] : 3;
-      const pb = b.priority ? PRIORITY_RANK[b.priority] : 3;
-      if (pa !== pb) return pa - pb;
-      if (a.dueDate !== b.dueDate) {
-        if (a.dueDate === null) return 1;
-        if (b.dueDate === null) return -1;
-        return a.dueDate < b.dueDate ? -1 : 1;
-      }
-      return a.sortOrder - b.sortOrder || a.id - b.id;
-    });
-
-  if (groupBy === "none") {
-    return [{ key: "all", label: "", tasks: sortTasks(tasks) }];
-  }
-  if (groupBy === "priority") {
-    const buckets: Array<{ key: string; label: string; match: (t: AllTask) => boolean }> = [
-      { key: "high", label: "High", match: (t) => t.priority === "high" },
-      { key: "medium", label: "Medium", match: (t) => t.priority === "medium" },
-      { key: "low", label: "Low", match: (t) => t.priority === "low" },
-      { key: "unset", label: "To triage", match: (t) => t.priority === null },
-    ];
-    return buckets
-      .map((b) => ({ key: b.key, label: b.label, tasks: sortTasks(tasks.filter(b.match)) }))
-      .filter((g) => g.tasks.length > 0);
-  }
-  if (groupBy === "due") {
-    const today = new Date().toISOString().slice(0, 10);
-    const weekOut = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
-    const buckets: Array<{ key: string; label: string; match: (t: AllTask) => boolean }> = [
-      { key: "overdue", label: "Overdue", match: (t) => t.dueDate !== null && t.dueDate < today },
-      { key: "today", label: "Today", match: (t) => t.dueDate === today },
-      { key: "week", label: "Next 7 days", match: (t) => t.dueDate !== null && t.dueDate > today && t.dueDate <= weekOut },
-      { key: "later", label: "Later", match: (t) => t.dueDate !== null && t.dueDate > weekOut },
-      { key: "none", label: "No due date", match: (t) => t.dueDate === null },
-    ];
-    return buckets
-      .map((b) => ({ key: b.key, label: b.label, tasks: sortTasks(tasks.filter(b.match)) }))
-      .filter((g) => g.tasks.length > 0);
-  }
-  // project / person / business — group by a per-task label.
-  const labelOf = (t: AllTask): string => {
-    if (groupBy === "project") {
-      return t.parentType === "project" ? (t.parentName ?? "Untitled") : "Not in a project";
+function sortCommandTasks(list: AllTask[]): AllTask[] {
+  return [...list].sort((a, b) => {
+    const pa = a.priority ? PRIORITY_RANK[a.priority] : 3;
+    const pb = b.priority ? PRIORITY_RANK[b.priority] : 3;
+    if (pa !== pb) return pa - pb;
+    if (a.dueDate !== b.dueDate) {
+      if (a.dueDate === null) return 1;
+      if (b.dueDate === null) return -1;
+      return a.dueDate < b.dueDate ? -1 : 1;
     }
-    if (groupBy === "person") return t.ownerLabel ?? "Unassigned";
-    if (t.businessIds.length > 1) return "Shared";
-    const biz = businesses.find((b) => b.id === t.businessIds[0]);
-    return biz?.name ?? `Business ${t.businessIds[0] ?? "?"}`;
+    return a.sortOrder - b.sortOrder || a.id - b.id;
+  });
+}
+
+/* Scope pill: a business id, or "personal" (life-area tasks). */
+type CommandScope = number | "personal";
+
+type CommandSection = {
+  title: string;
+  groups: Array<{ key: string; label: string; tasks: AllTask[] }>;
+};
+
+function buildScopedSections(tasks: AllTask[], scope: CommandScope): CommandSection[] {
+  const groupByParent = (list: AllTask[]) => {
+    const map = new Map<string, AllTask[]>();
+    for (const t of list) {
+      const label = t.parentName ?? "Untitled";
+      const cur = map.get(label);
+      if (cur) cur.push(t);
+      else map.set(label, [t]);
+    }
+    return [...map.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, list2]) => ({ key: label, label, tasks: sortCommandTasks(list2) }));
   };
-  const map = new Map<string, AllTask[]>();
-  for (const t of tasks) {
-    const label = labelOf(t);
-    const list = map.get(label);
-    if (list) list.push(t);
-    else map.set(label, [t]);
+
+  if (scope === "personal") {
+    const personal = tasks.filter((t) => t.parentType === "life_area");
+    return [{ title: "Life Areas", groups: groupByParent(personal) }];
   }
-  return [...map.entries()]
-    .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([label, list]) => ({ key: label, label, tasks: sortTasks(list) }));
+  const inBiz = tasks.filter(
+    (t) => t.parentType !== "life_area" && t.businessIds.includes(scope),
+  );
+  return [
+    {
+      title: "Direct Reports",
+      groups: groupByParent(inBiz.filter((t) => t.parentType === "direct_report")),
+    },
+    {
+      title: "Projects",
+      groups: groupByParent(inBiz.filter((t) => t.parentType === "project")),
+    },
+  ];
+}
+
+function ViewControls({
+  view,
+  setView,
+  children,
+}: {
+  view: ViewId;
+  setView: (v: ViewId) => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <span
+        style={{
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          color: C.textSecondary,
+        }}
+      >
+        View
+      </span>
+      <select
+        value={view}
+        onChange={(e) => setView(e.target.value as ViewId)}
+        style={{
+          background: C.card,
+          color: C.textPrimary,
+          border: `1px solid ${C.divider}`,
+          borderRadius: 8,
+          padding: "6px 10px",
+          fontFamily: SANS,
+          fontSize: 13,
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        <option value="list">List</option>
+        <option disabled>──────────</option>
+        <option value="brain-dump">Brain Dump</option>
+        <option value="life-areas">Life Areas</option>
+        <option value="projects">Projects</option>
+        <option value="direct-reports">Direct Reports</option>
+      </select>
+      {children}
+    </div>
+  );
 }
 
 function CommandTab({
   businesses,
-  groupBy,
+  view,
+  setView,
 }: {
   businesses: Business[];
-  groupBy: GroupBy;
+  view: ViewId;
+  setView: (v: ViewId) => void;
 }) {
   const [data, setData] = useState<Overview | null>(null);
   const [tasks, setTasks] = useState<AllTask[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [scope, setScope] = useState<CommandScope>(() => {
+    try {
+      const raw = localStorage.getItem("cc-scope");
+      if (raw === "personal") return "personal";
+      const n = raw ? parseInt(raw, 10) : NaN;
+      return Number.isFinite(n) && n > 0 ? n : currentBusinessId;
+    } catch {
+      return currentBusinessId;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("cc-scope", String(scope));
+    } catch {
+      /* ignore */
+    }
+  }, [scope]);
 
   const reload = async () => {
     try {
@@ -660,16 +646,28 @@ function CommandTab({
     return () => window.removeEventListener("cc:top3-changed", onChanged);
   }, []);
 
-  const groups = useMemo(
-    () => (tasks ? buildTaskGroups(tasks, groupBy, businesses) : []),
-    [tasks, groupBy, businesses],
+  const sections = useMemo(
+    () => (tasks ? buildScopedSections(tasks, scope) : []),
+    [tasks, scope],
   );
 
   if (error) return <ErrorBlock message={error} />;
   if (!data || !tasks) return <div style={{ color: C.textSecondary }}>Loading…</div>;
 
+  const pillStyle = (active: boolean): React.CSSProperties => ({
+    fontSize: 12,
+    fontWeight: 600,
+    padding: "6px 14px",
+    borderRadius: 999,
+    border: `1px solid ${active ? C.header : C.divider}`,
+    background: active ? C.header : C.card,
+    color: active ? "#fff" : C.textSecondary,
+    cursor: "pointer",
+    fontFamily: SANS,
+  });
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       <div
         style={{
           display: "grid",
@@ -693,31 +691,52 @@ function CommandTab({
       </div>
       <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
 
-      <div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            justifyContent: "space-between",
-            padding: "4px 2px 10px",
-          }}
-        >
-          <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600 }}>
-            All Tasks
-          </span>
-          <span style={{ fontSize: 12, color: C.textSecondary }}>
-            {tasks.length} open · both businesses
-          </span>
-        </div>
-        {groups.map((g) => (
-          <CommandGroup key={g.key} group={g} onChanged={reload} />
+      <ViewControls view={view} setView={setView}>
+        <span style={{ width: 10 }} />
+        {businesses.map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            onClick={() => setScope(b.id)}
+            style={pillStyle(scope === b.id)}
+          >
+            {b.name}
+          </button>
         ))}
-        {tasks.length === 0 && (
-          <div style={{ color: C.textSecondary, fontSize: 14, padding: 12 }}>
-            No open tasks. Capture something in Brain Dump or add tasks in
-            Projects.
+        <button
+          type="button"
+          onClick={() => setScope("personal")}
+          style={pillStyle(scope === "personal")}
+        >
+          Personal
+        </button>
+      </ViewControls>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {sections.map((sec) => (
+          <div key={sec.title}>
+            <div
+              style={{
+                fontFamily: SERIF,
+                fontSize: 18,
+                fontWeight: 600,
+                padding: "8px 2px 10px",
+                borderBottom: `1px solid ${C.divider}`,
+                marginBottom: 12,
+              }}
+            >
+              {sec.title}
+            </div>
+            {sec.groups.length === 0 && (
+              <div style={{ color: C.textSecondary, fontSize: 13, padding: "4px 2px 16px" }}>
+                No open tasks.
+              </div>
+            )}
+            {sec.groups.map((g) => (
+              <CommandGroup key={g.key} group={g} onChanged={reload} />
+            ))}
           </div>
-        )}
+        ))}
       </div>
     </div>
   );
@@ -736,20 +755,16 @@ function CommandGroup({
       {group.label && (
         <div
           style={{
-            fontSize: 12,
-            fontWeight: 700,
-            textTransform: "uppercase",
-            letterSpacing: 0.6,
-            color:
-              group.key === "high" || group.key === "overdue"
-                ? "#a02020"
-                : group.key === "medium"
-                  ? "#8a6d00"
-                  : C.textSecondary,
-            padding: "6px 2px 8px",
+            fontSize: 13,
+            fontWeight: 600,
+            color: C.textPrimary,
+            padding: "2px 2px 8px",
           }}
         >
-          {group.label} ({group.tasks.length})
+          {group.label}{" "}
+          <span style={{ color: C.textSecondary, fontWeight: 400 }}>
+            ({group.tasks.length})
+          </span>
         </div>
       )}
       <div
@@ -858,18 +873,6 @@ function CommandRow({
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
         />
-        {task.parentName && (
-          <span
-            style={{
-              fontSize: 12,
-              color: "#94a3b8",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
-          >
-            {task.parentName}
-          </span>
-        )}
         <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button
