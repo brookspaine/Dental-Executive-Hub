@@ -12,7 +12,6 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { Layout } from "@/components/layout";
-import { Organizations } from "@/pages/organizations";
 import { CommandCenter } from "@/pages/command-center";
 import { IdealWeek } from "@/pages/ideal-week";
 import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
@@ -36,11 +35,7 @@ function AppRouter() {
           component={LivingYourBestYearEver}
         />
         <Route path="/vision-board" component={VisionBoard} />
-        <Route path="/organizations" component={Organizations} />
         <Route path="/command-center" component={CommandCenter} />
-        <Route path="/edge-lease-matrix">
-          <Redirect to="/organizations?tab=lease-matrix" />
-        </Route>
         <Route component={NotFound} />
       </Switch>
     </Layout>

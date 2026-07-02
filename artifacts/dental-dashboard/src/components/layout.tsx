@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
 import {
-  Building2,
   Bell,
   CalendarCheck,
   Menu,
@@ -38,7 +37,6 @@ type NavItem = NavLeaf | NavGroup;
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/command-center", label: "Action Items", icon: LayoutDashboard },
-  { href: "/organizations", label: "EDGE", icon: Building2 },
 ];
 
 function isGroup(item: NavItem): item is NavGroup {
