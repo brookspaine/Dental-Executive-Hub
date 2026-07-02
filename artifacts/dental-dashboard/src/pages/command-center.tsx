@@ -1026,7 +1026,7 @@ export function OnDeckCard({
   );
 }
 
-const ON_DECK_GRID_COLS = "1fr 140px 96px 132px 132px";
+const ON_DECK_GRID_COLS = "1fr 104px 80px 96px 108px";
 
 function OnDeckRow({
   item,
@@ -2470,9 +2470,9 @@ function TaskSectionGroup({
   const showOwnerColumn = parentType === "project";
   const showNextStepsColumn = parentType === "life_area";
   const gridCols = showOwnerColumn
-    ? "1fr 140px 96px 132px 132px"
+    ? "1fr 104px 80px 96px 108px"
     : showNextStepsColumn
-      ? "1fr 96px 132px 132px 1.2fr"
+      ? "1fr 80px 96px 108px 1fr"
       : GRID_COLS;
   const projectsById = new Map(projects.map((p) => [p.id, p]));
   const collapsed = section?.collapsed ?? false;
@@ -2840,7 +2840,7 @@ function TaskSectionGroup({
   );
 }
 
-const GRID_COLS = "1fr 96px 132px 132px";
+const GRID_COLS = "1fr 80px 96px 108px";
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string; bg: string; fg: string }[] = [
   { value: "not_started", label: "Not started", bg: "#ece8df", fg: "#5a544a" },
