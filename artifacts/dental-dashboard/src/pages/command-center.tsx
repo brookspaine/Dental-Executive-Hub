@@ -138,20 +138,20 @@ type ViewId = "list" | "direct-reports" | "projects" | "life-areas" | "brain-dum
 /* ========================================================================== */
 
 const C = {
-  bg: "#f4f1ec",
+  bg: "#f8fafc",
   card: "#ffffff",
-  cardBorder: "#e6dfd4",
-  header: "#2a2520",
-  headerText: "#f4f1ec",
-  textPrimary: "#2a2520",
-  textSecondary: "#6b6258",
-  accent: "#6b1d2a",
-  accentSoft: "#f0e6e8",
-  divider: "#e6dfd4",
+  cardBorder: "#e2e8f0",
+  header: "#0F2A47",
+  headerText: "#f8fafc",
+  textPrimary: "#0F2A47",
+  textSecondary: "#64748b",
+  accent: "#D62828",
+  accentSoft: "#fdeaea",
+  divider: "#e2e8f0",
   statusActive: "#5b8a5a",
   statusHold: "#c8a14a",
   statusComplete: "#9a948c",
-  inputFocus: "#cbb98a",
+  inputFocus: "#94a3b8",
 };
 
 const SERIF = 'Inter, -apple-system, system-ui, sans-serif';
@@ -628,6 +628,152 @@ function ViewControls({
   );
 }
 
+/* Compact On Deck card for the Command top strip (v3.2 mockup style):
+   priority pill + text + owner, hover reveals ★ pin and × remove. */
+function OnDeckMini({
+  items,
+  onChange,
+}: {
+  items: OnDeckItem[];
+  onChange: () => void | Promise<void>;
+}) {
+  const [drs, setDrs] = useState<DirectReport[]>([]);
+  useEffect(() => {
+    api<DirectReport[]>("/command-center/direct-reports")
+      .then(setDrs)
+      .catch(() => setDrs([]));
+  }, []);
+  const ownerOf = (it: OnDeckItem): string =>
+    it.ownerDirectReportId != null
+      ? (drs.find((d) => d.id === it.ownerDirectReportId)?.name ?? "")
+      : (it.ownerName ?? "");
+  const remove = async (id: number) => {
+    await api(`/command-center/on-deck/${id}`, { method: "DELETE" });
+    await onChange();
+  };
+  return (
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.divider}`,
+        borderRadius: 10,
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          color: C.textSecondary,
+          fontWeight: 600,
+          padding: "12px 16px 8px",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>On Deck</span>
+        <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+          {items.length}/{ON_DECK_CAP} · this week
+        </span>
+      </div>
+      <div style={{ padding: "0 16px 14px" }}>
+        {items.length === 0 && (
+          <div style={{ color: C.textSecondary, fontSize: 13, padding: "6px 0" }}>
+            Nothing on deck yet.
+          </div>
+        )}
+        {items.map((it) => (
+          <OnDeckMiniRow
+            key={it.id}
+            item={it}
+            owner={ownerOf(it)}
+            onRemove={() => remove(it.id)}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function OnDeckMiniRow({
+  item,
+  owner,
+  onRemove,
+}: {
+  item: OnDeckItem;
+  owner: string;
+  onRemove: () => void | Promise<void>;
+}) {
+  const [hover, setHover] = useState(false);
+  const opt = item.priority
+    ? PRIORITY_OPTIONS.find((o) => o.value === item.priority)
+    : null;
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "7px 0",
+        borderBottom: `1px solid #f1f5f9`,
+        fontSize: 13.5,
+      }}
+    >
+      {opt && (
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 600,
+            padding: "2px 8px",
+            borderRadius: 999,
+            background: opt.bg,
+            color: opt.fg,
+            flexShrink: 0,
+          }}
+        >
+          {opt.label}
+        </span>
+      )}
+      <span
+        style={{
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          flex: 1,
+        }}
+      >
+        {item.text}
+      </span>
+      <span style={{ color: "#94a3b8", fontSize: 12, flexShrink: 0 }}>
+        {owner}
+      </span>
+      <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
+      <button
+        type="button"
+        onClick={() => void onRemove()}
+        aria-label="Remove from On Deck"
+        title="Remove from On Deck"
+        style={{
+          background: "transparent",
+          border: "none",
+          color: C.textSecondary,
+          cursor: "pointer",
+          fontSize: 15,
+          lineHeight: 1,
+          padding: "0 2px",
+          visibility: hover ? "visible" : "hidden",
+          flexShrink: 0,
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 function CommandTab({
   businesses,
   view,
@@ -708,25 +854,27 @@ function CommandTab({
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
           gap: 16,
           alignItems: "start",
         }}
       >
-        <Top3Card
-          title="Today's Top 3"
-          period="day"
-          top3={data.top3}
-          onChange={reload}
-        />
-        <Top3Card
-          title="This Week's Top 3"
-          period="week"
-          top3={data.weekTop3 ?? []}
-          onChange={reload}
-        />
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <Top3Card
+            title="Today's Top 3"
+            period="day"
+            top3={data.top3}
+            onChange={reload}
+          />
+          <Top3Card
+            title="This Week's Top 3"
+            period="week"
+            top3={data.weekTop3 ?? []}
+            onChange={reload}
+          />
+        </div>
+        <OnDeckMini items={data.onDeck ?? []} onChange={reload} />
       </div>
-      <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
 
       <ViewControls view={view} setView={setView}>
         <span style={{ width: 10 }} />
@@ -808,7 +956,7 @@ function SectionHeaderRow({
     <div
       style={{
         padding: "6px 12px",
-        background: "#f6f3ec",
+        background: "#f1f5f9",
         borderBottom: `1px solid ${C.divider}`,
         fontSize: 12,
         fontWeight: 600,
@@ -881,7 +1029,7 @@ function CommandGroup({
             style={{
               display: "grid",
               gridTemplateColumns: COMMAND_GRID_COLS,
-              background: "#faf7f1",
+              background: "#f8fafc",
               borderBottom: `1px solid ${C.divider}`,
               fontSize: 11,
               fontWeight: 600,
@@ -956,6 +1104,7 @@ function CommandRow({
         gridTemplateColumns: isMobile ? MOBILE_META_COLS : COMMAND_GRID_COLS,
         alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
+        background: hover ? "#f8fafc" : "transparent",
       }}
     >
       <div
@@ -1268,7 +1417,7 @@ export function OnDeckCard({
             style={{
               display: "grid",
               gridTemplateColumns: ON_DECK_GRID_COLS,
-              background: "#faf7f1",
+              background: "#f8fafc",
               borderBottom: `1px solid ${C.divider}`,
               fontSize: 11,
               fontWeight: 600,
@@ -3061,7 +3210,7 @@ function TaskSectionGroup({
             style={{
               display: "grid",
               gridTemplateColumns: gridCols,
-              background: "#faf7f1",
+              background: "#f8fafc",
               borderBottom: `1px solid ${C.divider}`,
               fontSize: 11,
               fontWeight: 600,
@@ -3323,11 +3472,12 @@ function PriorityFlag({
         style={{
           ...pillSelectStyle,
           background: opt ? opt.bg : "transparent",
-          color: opt ? opt.fg : C.textSecondary,
-          padding: opt ? "3px 10px" : "3px 8px",
+          color: opt ? opt.fg : "#94a3b8",
+          border: opt ? "none" : "1px dashed #cbd5e1",
+          padding: "3px 10px",
         }}
       >
-        <option value="">{priority ? "None" : "—"}</option>
+        <option value="">{priority ? "None" : "set —"}</option>
         {PRIORITY_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -3737,18 +3887,22 @@ function SendToOnDeck({
       aria-label="Send to On Deck"
       title={added ? "On On Deck" : "Send to On Deck"}
       style={{
-        background: "transparent",
-        border: "none",
+        background: "#fff",
+        border: `1px solid ${C.divider}`,
+        borderRadius: 6,
         cursor: busy ? "default" : "pointer",
-        padding: "2px 4px",
-        fontSize: 15,
-        lineHeight: 1,
-        color: added ? C.accent : C.textSecondary,
+        padding: "3px 8px",
+        fontSize: 10.5,
+        fontWeight: 600,
+        fontFamily: SANS,
+        lineHeight: 1.3,
+        whiteSpace: "nowrap",
+        color: added ? C.accent : "#475569",
         visibility: visible || added ? "visible" : "hidden",
         flexShrink: 0,
       }}
     >
-      {added ? "✓" : "→"}
+      {added ? "✓ Added" : "On Deck"}
     </button>
   );
 }
@@ -3844,17 +3998,21 @@ function PinStar({
         aria-label="Pin to Top 3"
         title="Pin to Top 3"
         style={{
-          background: "transparent",
-          border: "none",
+          background: open ? C.header : "#fff",
+          border: `1px solid ${open ? C.header : C.divider}`,
+          borderRadius: 6,
           cursor: "pointer",
-          padding: "2px 4px",
-          fontSize: 15,
-          lineHeight: 1,
-          color: open ? C.accent : C.textSecondary,
+          padding: "3px 8px",
+          fontSize: 10.5,
+          fontWeight: 600,
+          fontFamily: SANS,
+          lineHeight: 1.3,
+          whiteSpace: "nowrap",
+          color: open ? "#fff" : "#475569",
           visibility: visible || open ? "visible" : "hidden",
         }}
       >
-        {open ? "★" : "☆"}
+        ★ Top 3
       </button>
       {open && (
         <div
@@ -3890,7 +4048,7 @@ function PinStar({
                         display: "flex",
                         alignItems: "center",
                         gap: 6,
-                        background: "#faf7f1",
+                        background: "#f8fafc",
                         border: `1px solid ${C.divider}`,
                         borderRadius: 6,
                         padding: "6px 8px",
@@ -4563,7 +4721,7 @@ function ProcessPanel({
       style={{
         marginTop: 12,
         padding: 12,
-        background: "#faf7f1",
+        background: "#f8fafc",
         border: `1px solid ${C.cardBorder}`,
         borderRadius: 6,
         display: "flex",
