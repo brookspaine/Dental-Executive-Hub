@@ -822,6 +822,52 @@ router.delete("/life-area-goals/:id", async (req, res): Promise<void> => {
 /* Tasks (business inherited from parent — no business_id column on tasks)    */
 /* -------------------------------------------------------------------------- */
 
+/* Cross-business aggregate for the Command view: every open task with its
+   parent (container) name, business scope, and resolved owner label. The
+   x-business-id header is deliberately ignored — the view spans both. */
+router.get("/tasks/all", async (_req, res): Promise<void> => {
+  await ensureTaskStatusBackfilled();
+  const [tasks, projects, drs, lifeAreas] = await Promise.all([
+    db
+      .select()
+      .from(ccTasksTable)
+      .where(eq(ccTasksTable.done, false))
+      .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id)),
+    db.select().from(ccProjectsTable),
+    db.select().from(ccDirectReportsTable),
+    db.select().from(ccLifeAreasTable),
+  ]);
+  const projById = new Map(projects.map((p) => [p.id, p]));
+  const drById = new Map(drs.map((d) => [d.id, d]));
+  const laById = new Map(lifeAreas.map((l) => [l.id, l]));
+  const rows = tasks.flatMap((t) => {
+    let parentName: string | null = null;
+    let businessIds: number[] = [];
+    if (t.parentType === "project") {
+      const p = projById.get(t.parentId);
+      if (!p) return [];
+      parentName = p.name;
+      businessIds = p.businessIds;
+    } else if (t.parentType === "direct_report") {
+      const d = drById.get(t.parentId);
+      if (!d) return [];
+      parentName = d.name;
+      businessIds = d.businessIds;
+    } else {
+      const l = laById.get(t.parentId);
+      if (!l) return [];
+      parentName = l.name;
+      businessIds = [l.businessId];
+    }
+    const ownerLabel =
+      t.ownerDirectReportId != null
+        ? (drById.get(t.ownerDirectReportId)?.name ?? null)
+        : t.ownerName;
+    return [{ ...t, parentName, businessIds, ownerLabel }];
+  });
+  res.json(rows);
+});
+
 router.get("/tasks", async (req, res): Promise<void> => {
   await ensureTaskStatusBackfilled();
   const businessId = getBusinessId(req);

@@ -129,7 +129,10 @@ type Overview = {
   }>;
 };
 
-type TabId = "overview" | "direct-reports" | "projects" | "life-areas" | "brain-dump";
+/* View = how tasks render (task views), plus the non-task workflows kept
+   reachable below a divider. Group by = the organizing dimension. */
+type ViewId = "list" | "direct-reports" | "projects" | "life-areas" | "brain-dump";
+type GroupBy = "priority" | "project" | "person" | "business" | "due" | "none";
 
 /* ========================================================================== */
 /* Design tokens                                                              */
@@ -213,13 +216,29 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 /* ========================================================================== */
 
 export function CommandCenter() {
-  const [tab, setTab] = useState<TabId>(() => {
+  const [view, setView] = useState<ViewId>(() => {
     try {
-      return (localStorage.getItem("cc-tab") as TabId) || "overview";
+      const stored = localStorage.getItem("cc-view") ?? localStorage.getItem("cc-tab");
+      if (stored === "overview" || !stored) return "list";
+      return stored as ViewId;
     } catch {
-      return "overview";
+      return "list";
     }
   });
+  const [groupBy, setGroupBy] = useState<GroupBy>(() => {
+    try {
+      return (localStorage.getItem("cc-groupby") as GroupBy) || "priority";
+    } catch {
+      return "priority";
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem("cc-groupby", groupBy);
+    } catch {
+      /* ignore */
+    }
+  }, [groupBy]);
   const [businessId, setBusinessId] = useBusiness();
   const [businesses, setBusinesses] = useState<Business[]>([]);
   useEffect(() => {
@@ -228,11 +247,11 @@ export function CommandCenter() {
 
   useEffect(() => {
     try {
-      localStorage.setItem("cc-tab", tab);
+      localStorage.setItem("cc-view", view);
     } catch {
       /* ignore */
     }
-  }, [tab]);
+  }, [view]);
 
   const today = useMemo(
     () =>
@@ -245,13 +264,24 @@ export function CommandCenter() {
     [],
   );
 
-  const tabs: Array<{ id: TabId; label: string }> = [
-    { id: "overview", label: "Overview" },
-    { id: "direct-reports", label: "Direct Reports" },
-    { id: "projects", label: "Projects" },
-    { id: "life-areas", label: "Life Areas" },
-    { id: "brain-dump", label: "Brain Dump" },
-  ];
+  const headerSelectStyle: React.CSSProperties = {
+    background: "rgba(255,255,255,0.12)",
+    color: C.headerText,
+    border: "1px solid rgba(255,255,255,0.25)",
+    borderRadius: 8,
+    padding: "6px 10px",
+    fontFamily: SANS,
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+  const headerLabelStyle: React.CSSProperties = {
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    opacity: 0.65,
+  };
 
   return (
     <div
@@ -293,55 +323,60 @@ export function CommandCenter() {
           <div style={{ fontSize: 13, opacity: 0.75 }}>{today}</div>
         </div>
 
-        {/* Tabs */}
+        {/* View + Group by controls (replaces the old tab strip) */}
         <div
           style={{
-            marginTop: 18,
+            marginTop: 16,
+            paddingBottom: 14,
             display: "flex",
-            gap: 4,
-            overflowX: "auto",
-            paddingBottom: 0,
+            alignItems: "center",
+            gap: 10,
+            flexWrap: "wrap",
           }}
         >
-          {tabs.map((t) => {
-            const active = t.id === tab;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                style={{
-                  background: "transparent",
-                  border: "none",
-                  color: active ? C.headerText : "rgba(244,241,236,0.55)",
-                  fontFamily: SANS,
-                  fontSize: 13,
-                  fontWeight: active ? 600 : 500,
-                  padding: "10px 14px",
-                  cursor: "pointer",
-                  borderBottom: active
-                    ? `2px solid ${C.headerText}`
-                    : "2px solid transparent",
-                  whiteSpace: "nowrap",
-                }}
+          <span style={headerLabelStyle}>View</span>
+          <select
+            value={view}
+            onChange={(e) => setView(e.target.value as ViewId)}
+            style={headerSelectStyle}
+          >
+            <option value="list">List</option>
+            <option disabled>──────────</option>
+            <option value="brain-dump">Brain Dump</option>
+            <option value="life-areas">Life Areas</option>
+            <option value="projects">Projects</option>
+            <option value="direct-reports">Direct Reports</option>
+          </select>
+          {view === "list" && (
+            <>
+              <span style={{ ...headerLabelStyle, marginLeft: 10 }}>Group by</span>
+              <select
+                value={groupBy}
+                onChange={(e) => setGroupBy(e.target.value as GroupBy)}
+                style={headerSelectStyle}
               >
-                {t.label}
-              </button>
-            );
-          })}
+                <option value="priority">Priority</option>
+                <option value="project">Project</option>
+                <option value="person">Person</option>
+                <option value="business">Business</option>
+                <option value="due">Due date</option>
+                <option value="none">None (flat list)</option>
+              </select>
+            </>
+          )}
         </div>
       </div>
 
-      {/* Body — keyed by business so all tabs remount & refetch on switch */}
+      {/* Body — keyed by business so all views remount & refetch on switch */}
       <div
         key={businessId}
         style={{ maxWidth: 980, margin: "0 auto", padding: "20px 14px 80px" }}
       >
-        {tab === "overview" && <OverviewTab />}
-        {tab === "direct-reports" && <DirectReportsTab businesses={businesses} />}
-        {tab === "projects" && <ProjectsTab businesses={businesses} />}
-        {tab === "life-areas" && <LifeAreasTab businesses={businesses} />}
-        {tab === "brain-dump" && <BrainDumpTab businesses={businesses} />}
+        {view === "list" && <CommandTab businesses={businesses} groupBy={groupBy} />}
+        {view === "direct-reports" && <DirectReportsTab businesses={businesses} />}
+        {view === "projects" && <ProjectsTab businesses={businesses} />}
+        {view === "life-areas" && <LifeAreasTab businesses={businesses} />}
+        {view === "brain-dump" && <BrainDumpTab businesses={businesses} />}
 
       </div>
     </div>
@@ -503,13 +538,115 @@ function BusinessChip({
 /* Overview tab                                                               */
 /* ========================================================================== */
 
-function OverviewTab() {
+/* ---- Command view (default landing) ------------------------------------ */
+
+/* Task enriched by GET /tasks/all with container + business context. */
+type AllTask = Task & {
+  parentName: string | null;
+  businessIds: number[];
+  ownerLabel: string | null;
+};
+
+const PRIORITY_RANK: Record<string, number> = { high: 0, medium: 1, low: 2 };
+const COMMAND_GRID_COLS = "1fr 96px 96px 110px";
+
+/* The business header each cross-business task action must carry: prefer the
+   currently selected business when the task's parent belongs to it, else the
+   task's own (first) business. */
+function taskBizHeaders(t: AllTask): Record<string, string> {
+  const id = t.businessIds.includes(currentBusinessId)
+    ? currentBusinessId
+    : (t.businessIds[0] ?? currentBusinessId);
+  return { "x-business-id": String(id) };
+}
+
+function buildTaskGroups(
+  tasks: AllTask[],
+  groupBy: GroupBy,
+  businesses: Business[],
+): Array<{ key: string; label: string; tasks: AllTask[] }> {
+  const sortTasks = (list: AllTask[]) =>
+    [...list].sort((a, b) => {
+      const pa = a.priority ? PRIORITY_RANK[a.priority] : 3;
+      const pb = b.priority ? PRIORITY_RANK[b.priority] : 3;
+      if (pa !== pb) return pa - pb;
+      if (a.dueDate !== b.dueDate) {
+        if (a.dueDate === null) return 1;
+        if (b.dueDate === null) return -1;
+        return a.dueDate < b.dueDate ? -1 : 1;
+      }
+      return a.sortOrder - b.sortOrder || a.id - b.id;
+    });
+
+  if (groupBy === "none") {
+    return [{ key: "all", label: "", tasks: sortTasks(tasks) }];
+  }
+  if (groupBy === "priority") {
+    const buckets: Array<{ key: string; label: string; match: (t: AllTask) => boolean }> = [
+      { key: "high", label: "High", match: (t) => t.priority === "high" },
+      { key: "medium", label: "Medium", match: (t) => t.priority === "medium" },
+      { key: "low", label: "Low", match: (t) => t.priority === "low" },
+      { key: "unset", label: "To triage", match: (t) => t.priority === null },
+    ];
+    return buckets
+      .map((b) => ({ key: b.key, label: b.label, tasks: sortTasks(tasks.filter(b.match)) }))
+      .filter((g) => g.tasks.length > 0);
+  }
+  if (groupBy === "due") {
+    const today = new Date().toISOString().slice(0, 10);
+    const weekOut = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+    const buckets: Array<{ key: string; label: string; match: (t: AllTask) => boolean }> = [
+      { key: "overdue", label: "Overdue", match: (t) => t.dueDate !== null && t.dueDate < today },
+      { key: "today", label: "Today", match: (t) => t.dueDate === today },
+      { key: "week", label: "Next 7 days", match: (t) => t.dueDate !== null && t.dueDate > today && t.dueDate <= weekOut },
+      { key: "later", label: "Later", match: (t) => t.dueDate !== null && t.dueDate > weekOut },
+      { key: "none", label: "No due date", match: (t) => t.dueDate === null },
+    ];
+    return buckets
+      .map((b) => ({ key: b.key, label: b.label, tasks: sortTasks(tasks.filter(b.match)) }))
+      .filter((g) => g.tasks.length > 0);
+  }
+  // project / person / business — group by a per-task label.
+  const labelOf = (t: AllTask): string => {
+    if (groupBy === "project") {
+      return t.parentType === "project" ? (t.parentName ?? "Untitled") : "Not in a project";
+    }
+    if (groupBy === "person") return t.ownerLabel ?? "Unassigned";
+    if (t.businessIds.length > 1) return "Shared";
+    const biz = businesses.find((b) => b.id === t.businessIds[0]);
+    return biz?.name ?? `Business ${t.businessIds[0] ?? "?"}`;
+  };
+  const map = new Map<string, AllTask[]>();
+  for (const t of tasks) {
+    const label = labelOf(t);
+    const list = map.get(label);
+    if (list) list.push(t);
+    else map.set(label, [t]);
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([label, list]) => ({ key: label, label, tasks: sortTasks(list) }));
+}
+
+function CommandTab({
+  businesses,
+  groupBy,
+}: {
+  businesses: Business[];
+  groupBy: GroupBy;
+}) {
   const [data, setData] = useState<Overview | null>(null);
+  const [tasks, setTasks] = useState<AllTask[] | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const reload = async () => {
     try {
-      setData(await api<Overview>("/command-center/overview"));
+      const [ov, all] = await Promise.all([
+        api<Overview>("/command-center/overview"),
+        api<AllTask[]>("/command-center/tasks/all"),
+      ]);
+      setData(ov);
+      setTasks(all);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -523,11 +660,16 @@ function OverviewTab() {
     return () => window.removeEventListener("cc:top3-changed", onChanged);
   }, []);
 
+  const groups = useMemo(
+    () => (tasks ? buildTaskGroups(tasks, groupBy, businesses) : []),
+    [tasks, groupBy, businesses],
+  );
+
   if (error) return <ErrorBlock message={error} />;
-  if (!data) return <div style={{ color: C.textSecondary }}>Loading…</div>;
+  if (!data || !tasks) return <div style={{ color: C.textSecondary }}>Loading…</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
       <div
         style={{
           display: "grid",
@@ -550,94 +692,245 @@ function OverviewTab() {
         />
       </div>
       <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
-      <OverviewSection title="Direct Reports">
-        <DirectReportsTab />
-      </OverviewSection>
-      <OverviewSection title="Projects">
-        <ProjectsTab />
-      </OverviewSection>
-      <OverviewSection title="Life Areas">
-        <LifeAreasTab />
-      </OverviewSection>
-      <OverviewSection title="Brain Dump">
-        <BrainDumpTab />
-      </OverviewSection>
+
+      <div>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "baseline",
+            justifyContent: "space-between",
+            padding: "4px 2px 10px",
+          }}
+        >
+          <span style={{ fontFamily: SERIF, fontSize: 18, fontWeight: 600 }}>
+            All Tasks
+          </span>
+          <span style={{ fontSize: 12, color: C.textSecondary }}>
+            {tasks.length} open · both businesses
+          </span>
+        </div>
+        {groups.map((g) => (
+          <CommandGroup key={g.key} group={g} onChanged={reload} />
+        ))}
+        {tasks.length === 0 && (
+          <div style={{ color: C.textSecondary, fontSize: 14, padding: 12 }}>
+            No open tasks. Capture something in Brain Dump or add tasks in
+            Projects.
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
-function OverviewSection({
-  title,
-  children,
-  defaultOpen = true,
+function CommandGroup({
+  group,
+  onChanged,
 }: {
-  title: string;
-  children: React.ReactNode;
-  defaultOpen?: boolean;
+  group: { key: string; label: string; tasks: AllTask[] };
+  onChanged: () => void;
 }) {
-  const storageKey = `cc-overview-section:${title}`;
-  const [open, setOpen] = useState<boolean>(() => {
-    try {
-      const v = localStorage.getItem(storageKey);
-      return v === null ? defaultOpen : v === "1";
-    } catch {
-      return defaultOpen;
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem(storageKey, open ? "1" : "0");
-    } catch {
-      /* ignore */
-    }
-  }, [open, storageKey]);
+  const isMobile = useIsMobile();
+  return (
+    <div style={{ marginBottom: 18 }}>
+      {group.label && (
+        <div
+          style={{
+            fontSize: 12,
+            fontWeight: 700,
+            textTransform: "uppercase",
+            letterSpacing: 0.6,
+            color:
+              group.key === "high" || group.key === "overdue"
+                ? "#a02020"
+                : group.key === "medium"
+                  ? "#8a6d00"
+                  : C.textSecondary,
+            padding: "6px 2px 8px",
+          }}
+        >
+          {group.label} ({group.tasks.length})
+        </div>
+      )}
+      <div
+        style={{
+          background: C.card,
+          border: `1px solid ${C.divider}`,
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      >
+        {!isMobile && (
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: COMMAND_GRID_COLS,
+              background: "#faf7f1",
+              borderBottom: `1px solid ${C.divider}`,
+              fontSize: 11,
+              fontWeight: 600,
+              color: C.textSecondary,
+              textTransform: "uppercase",
+              letterSpacing: 0.5,
+            }}
+          >
+            <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
+              Task
+            </div>
+            <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
+              Priority
+            </div>
+            <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
+              Due
+            </div>
+            <div style={{ padding: "7px 12px", textAlign: "center" }}>Owner</div>
+          </div>
+        )}
+        {group.tasks.map((t) => (
+          <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CommandRow({
+  task,
+  isMobile,
+  onChanged,
+}: {
+  task: AllTask;
+  isMobile: boolean;
+  onChanged: () => void;
+}) {
+  const [text, setText] = useState(task.text);
+  const [hover, setHover] = useState(false);
+  useEffect(() => setText(task.text), [task.text]);
+  const dueInfo = formatDueDate(task.dueDate, task.done);
+
+  const patch = async (body: Record<string, unknown>) => {
+    await api(`/command-center/tasks/${task.id}`, {
+      method: "PATCH",
+      headers: taskBizHeaders(task),
+      body: JSON.stringify(body),
+    });
+    onChanged();
+  };
+  const del = async () => {
+    await api(`/command-center/tasks/${task.id}`, {
+      method: "DELETE",
+      headers: taskBizHeaders(task),
+    });
+    onChanged();
+  };
 
   return (
-    <section>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "grid",
+        gridTemplateColumns: isMobile ? MOBILE_META_COLS : COMMAND_GRID_COLS,
+        alignItems: "stretch",
+        borderBottom: `1px solid ${C.divider}`,
+      }}
+    >
+      <div
         style={{
+          gridColumn: isMobile ? "1 / -1" : "auto",
           display: "flex",
           alignItems: "center",
           gap: 10,
-          width: "100%",
-          background: "transparent",
-          border: "none",
-          borderBottom: `1px solid ${C.divider}`,
-          padding: "8px 2px",
-          cursor: "pointer",
-          textAlign: "left",
-          fontFamily: SANS,
+          padding: "8px 12px",
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+          borderBottom: isMobile ? `1px solid ${C.divider}` : "none",
+          minWidth: 0,
         }}
       >
-        <span
+        <AsanaCheck done={task.done} onToggle={() => patch({ done: !task.done })} />
+        <input
+          type="text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onBlur={() => text !== task.text && text.trim() && patch({ text: text.trim() })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+        />
+        {task.parentName && (
+          <span
+            style={{
+              fontSize: 12,
+              color: "#94a3b8",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {task.parentName}
+          </span>
+        )}
+        <SendToOnDeck task={task} visible={hover} />
+        <PinStar taskText={task.text} visible={hover} />
+        <button
+          type="button"
+          onClick={() => void del()}
+          aria-label="Delete task"
           style={{
-            fontSize: 11,
+            background: "transparent",
+            border: "none",
             color: C.textSecondary,
-            transform: open ? "rotate(0deg)" : "rotate(-90deg)",
-            transition: "transform 120ms ease",
-            display: "inline-block",
-            width: 10,
+            cursor: "pointer",
+            fontSize: 16,
             lineHeight: 1,
+            padding: "2px 6px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
           }}
         >
-          ▼
-        </span>
-        <span
-          style={{
-            fontFamily: SERIF,
-            fontSize: 18,
-            fontWeight: 600,
-            color: C.textPrimary,
-            letterSpacing: 0.1,
-          }}
-        >
-          {title}
-        </span>
-      </button>
-      {open && <div style={{ paddingTop: 14 }}>{children}</div>}
-    </section>
+          ×
+        </button>
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
+          padding: "6px 8px",
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+        }}
+      >
+        <PriorityFlag priority={task.priority} onChange={(next) => patch({ priority: next })} />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
+          padding: "6px 8px",
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+        }}
+      >
+        <DueDateField
+          value={task.dueDate}
+          tone={dueInfo.tone}
+          label={dueInfo.label}
+          onChange={(next) => patch({ dueDate: next })}
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
+          padding: "6px 8px",
+          fontSize: 13,
+          color: C.textSecondary,
+        }}
+      >
+        {task.ownerLabel ?? "—"}
+      </div>
+    </div>
   );
 }
 
