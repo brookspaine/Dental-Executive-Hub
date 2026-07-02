@@ -508,7 +508,7 @@ function sortCommandTasks(list: AllTask[]): AllTask[] {
 /* Scope pill: a business id, or "personal" (life-area tasks). */
 type CommandScope = number | "personal";
 
-type CommandChunk = { sectionName: string | null; tasks: AllTask[] };
+type CommandChunk = { sectionId: number | null; sectionName: string | null; tasks: AllTask[] };
 type CommandSection = {
   title: string;
   groups: Array<{ key: string; label: string; chunks: CommandChunk[]; count: number }>;
@@ -547,7 +547,7 @@ function buildScopedSections(
         }
         const chunks: CommandChunk[] = [];
         if (unsectioned.length > 0) {
-          chunks.push({ sectionName: null, tasks: sortCommandTasks(unsectioned) });
+          chunks.push({ sectionId: null, sectionName: null, tasks: sortCommandTasks(unsectioned) });
         }
         const orderedSections = [...bySection.entries()].sort((a, b) => {
           const sa = sectionById.get(a[0])!;
@@ -556,6 +556,7 @@ function buildScopedSections(
         });
         for (const [id, secTasks] of orderedSections) {
           chunks.push({
+            sectionId: id,
             sectionName: sectionById.get(id)!.name,
             tasks: sortCommandTasks(secTasks),
           });
@@ -778,6 +779,70 @@ function CommandTab({
   );
 }
 
+/* Click-to-edit section name inside a Command group table. */
+function SectionHeaderRow({
+  chunk,
+  onChanged,
+}: {
+  chunk: CommandChunk;
+  onChanged: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(chunk.sectionName ?? "");
+  useEffect(() => setDraft(chunk.sectionName ?? ""), [chunk.sectionName]);
+
+  const commit = async () => {
+    setEditing(false);
+    const name = draft.trim();
+    if (!name || name === chunk.sectionName || chunk.sectionId === null) return;
+    const anchor = chunk.tasks[0];
+    await api(`/command-center/task-sections/${chunk.sectionId}`, {
+      method: "PATCH",
+      headers: anchor ? taskBizHeaders(anchor) : undefined,
+      body: JSON.stringify({ name }),
+    });
+    onChanged();
+  };
+
+  return (
+    <div
+      style={{
+        padding: "6px 12px",
+        background: "#f6f3ec",
+        borderBottom: `1px solid ${C.divider}`,
+        fontSize: 12,
+        fontWeight: 600,
+        color: C.textSecondary,
+      }}
+    >
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => void commit()}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+            if (e.key === "Escape") {
+              setDraft(chunk.sectionName ?? "");
+              setEditing(false);
+            }
+          }}
+          style={{ ...inputStyle, fontSize: 12, fontWeight: 600, width: "60%" }}
+        />
+      ) : (
+        <span
+          onClick={() => setEditing(true)}
+          title="Click to rename section"
+          style={{ cursor: "text" }}
+        >
+          {chunk.sectionName}
+        </span>
+      )}
+    </div>
+  );
+}
+
 function CommandGroup({
   group,
   onChanged,
@@ -840,18 +905,7 @@ function CommandGroup({
         {group.chunks.map((chunk, ci) => (
           <Fragment key={chunk.sectionName ?? `__none-${ci}`}>
             {chunk.sectionName && (
-              <div
-                style={{
-                  padding: "6px 12px",
-                  background: "#f6f3ec",
-                  borderBottom: `1px solid ${C.divider}`,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  color: C.textSecondary,
-                }}
-              >
-                {chunk.sectionName}
-              </div>
+              <SectionHeaderRow chunk={chunk} onChanged={onChanged} />
             )}
             {chunk.tasks.map((t) => (
               <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
