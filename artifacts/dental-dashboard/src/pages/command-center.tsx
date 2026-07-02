@@ -892,6 +892,15 @@ export function OnDeckCard({
                 borderRight: `1px solid ${C.divider}`,
               }}
             >
+              Priority
+            </div>
+            <div
+              style={{
+                padding: "7px 12px",
+                textAlign: "center",
+                borderRight: `1px solid ${C.divider}`,
+              }}
+            >
               Due date
             </div>
             <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
@@ -1017,7 +1026,7 @@ export function OnDeckCard({
   );
 }
 
-const ON_DECK_GRID_COLS = "1fr 140px 132px 132px";
+const ON_DECK_GRID_COLS = "1fr 140px 96px 132px 132px";
 
 function OnDeckRow({
   item,
@@ -1073,11 +1082,6 @@ function OnDeckRow({
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
         />
-        <PriorityFlag
-          priority={item.priority}
-          visible={hover || isMobile}
-          onChange={(next) => void onPatch(item.id, { priority: next })}
-        />
         <PinStar taskText={text} visible onPinned={onDelete} />
         <button
           type="button"
@@ -1118,6 +1122,20 @@ function OnDeckRow({
               ownerName: next.ownerName,
             })
           }
+        />
+      </div>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
+          padding: "6px 8px",
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+        }}
+      >
+        <PriorityFlag
+          priority={item.priority}
+          onChange={(next) => void onPatch(item.id, { priority: next })}
         />
       </div>
       <div
@@ -2452,9 +2470,9 @@ function TaskSectionGroup({
   const showOwnerColumn = parentType === "project";
   const showNextStepsColumn = parentType === "life_area";
   const gridCols = showOwnerColumn
-    ? "1fr 140px 132px 132px"
+    ? "1fr 140px 96px 132px 132px"
     : showNextStepsColumn
-      ? "1fr 132px 132px 1.2fr"
+      ? "1fr 96px 132px 132px 1.2fr"
       : GRID_COLS;
   const projectsById = new Map(projects.map((p) => [p.id, p]));
   const collapsed = section?.collapsed ?? false;
@@ -2669,6 +2687,15 @@ function TaskSectionGroup({
                 borderRight: `1px solid ${C.divider}`,
               }}
             >
+              Priority
+            </div>
+            <div
+              style={{
+                padding: "7px 12px",
+                textAlign: "center",
+                borderRight: `1px solid ${C.divider}`,
+              }}
+            >
               Due date
             </div>
             <div
@@ -2813,7 +2840,7 @@ function TaskSectionGroup({
   );
 }
 
-const GRID_COLS = "1fr 132px 132px";
+const GRID_COLS = "1fr 96px 132px 132px";
 
 const STATUS_OPTIONS: { value: TaskStatus; label: string; bg: string; fg: string }[] = [
   { value: "not_started", label: "Not started", bg: "#ece8df", fg: "#5a544a" },
@@ -2872,28 +2899,18 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; bg: string; fg: st
   { value: "low", label: "Low", bg: "#e2e8f0", fg: "#475569" },
 ];
 
-/* Badge + picker in one control. Set → colored pill, always visible.
-   Unset → muted "⚑" that only appears on row hover, so clean rows stay
-   clean (AE2) while priority remains settable in place (R4). */
+/* Badge + picker in one control, rendered in the Priority column.
+   Set → colored pill; unset → muted "—" placeholder (AE2: no badge). */
 function PriorityFlag({
   priority,
-  visible,
   onChange,
 }: {
   priority: TaskPriority | null;
-  visible: boolean;
   onChange: (next: TaskPriority | null) => void;
 }) {
   const opt = priority ? PRIORITY_OPTIONS.find((o) => o.value === priority) : null;
   return (
-    <div
-      style={{
-        position: "relative",
-        display: "inline-block",
-        flexShrink: 0,
-        visibility: opt || visible ? "visible" : "hidden",
-      }}
-    >
+    <div style={{ position: "relative", display: "inline-block", flexShrink: 0 }}>
       <select
         value={priority ?? ""}
         onChange={(e) => onChange((e.target.value || null) as TaskPriority | null)}
@@ -2903,10 +2920,10 @@ function PriorityFlag({
           ...pillSelectStyle,
           background: opt ? opt.bg : "transparent",
           color: opt ? opt.fg : C.textSecondary,
-          padding: opt ? "3px 10px" : "3px 4px",
+          padding: opt ? "3px 10px" : "3px 8px",
         }}
       >
-        <option value="">{priority ? "None" : "⚑"}</option>
+        <option value="">{priority ? "None" : "—"}</option>
         {PRIORITY_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
@@ -3006,11 +3023,6 @@ function TaskRow({
             {originLabel}
           </span>
         )}
-        <PriorityFlag
-          priority={task.priority}
-          visible={hover || isMobile}
-          onChange={(next) => onUpdate({ priority: next })}
-        />
         <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button
@@ -3055,6 +3067,20 @@ function TaskRow({
           />
         </div>
       )}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: isMobile ? "flex-start" : "center",
+          padding: "6px 8px",
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+        }}
+      >
+        <PriorityFlag
+          priority={task.priority}
+          onChange={(next) => onUpdate({ priority: next })}
+        />
+      </div>
       <div
         style={{
           display: "flex",
