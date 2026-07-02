@@ -70,7 +70,7 @@ export default defineConfig({
     // Proxy to the API server when running locally.
     // Start the api-server on port 3001 (PORT=3001 pnpm run dev in artifacts/api-server)
     // then uncomment:
-    // proxy: { "/api": { target: "http://localhost:3001", changeOrigin: true } },
+    proxy: { "/api": { target: "http://localhost:3001", changeOrigin: true } },
   },
   preview: {
     port,
