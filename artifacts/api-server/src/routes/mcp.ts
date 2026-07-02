@@ -33,11 +33,21 @@ const IDEAS_SECTIONS = [
 
 /* ---- bearer auth -------------------------------------------------------- */
 
-function tokenMatches(header: string | undefined): boolean {
+/* Claude.ai's custom-connector dialog supports no bearer/API-key field
+   (it only offers OAuth), so the token may arrive either as an
+   Authorization header (scripts, other MCP clients) or as a `?key=` query
+   parameter baked into the registered connector URL. The request logger
+   strips query strings (app.ts serializer), so the key never lands in logs. */
+function tokenMatches(req: Request): boolean {
   const expected = process.env["MCP_CAPTURE_TOKEN"];
   if (!expected) return false; // unset env -> endpoint always 401s
-  if (!header?.startsWith("Bearer ")) return false;
-  const presented = header.slice("Bearer ".length).trim();
+  const header = req.headers.authorization;
+  const fromHeader = header?.startsWith("Bearer ")
+    ? header.slice("Bearer ".length).trim()
+    : undefined;
+  const fromQuery = typeof req.query["key"] === "string" ? req.query["key"] : undefined;
+  const presented = fromHeader ?? fromQuery;
+  if (!presented) return false;
   // Hash both sides so timingSafeEqual gets equal-length buffers.
   const a = createHash("sha256").update(presented).digest();
   const b = createHash("sha256").update(expected).digest();
@@ -201,7 +211,7 @@ router.post("/mcp", async (req: Request, res: Response): Promise<void> => {
     res.status(429).json({ error: "rate limit exceeded (30/min)" });
     return;
   }
-  if (!tokenMatches(req.headers.authorization)) {
+  if (!tokenMatches(req)) {
     res.status(401).json({ error: "unauthorized" });
     return;
   }

@@ -26,9 +26,14 @@ If the variable is unset the endpoint rejects everything with 401.
 ## 2. Register the connector in Claude.ai (one time)
 
 1. Claude.ai → **Settings → Connectors → Add custom connector**
-2. URL: `https://ceodashboard.up.railway.app/api/mcp`
-3. Auth: Bearer token → paste the same `MCP_CAPTURE_TOKEN` value
-4. Save, then enable the connector for your chats.
+2. URL: `https://ceodashboard.up.railway.app/api/mcp?key=<MCP_CAPTURE_TOKEN>`
+   (the token rides in the URL — Claude.ai's dialog has no bearer-token
+   field and its OAuth flow doesn't apply here; leave OAuth fields empty)
+3. Save, then enable the connector for your chats.
+
+Other MCP clients that do support headers can instead use the bare URL
+`https://ceodashboard.up.railway.app/api/mcp` with
+`Authorization: Bearer <MCP_CAPTURE_TOKEN>` — both paths are accepted.
 
 ## 3. Use it
 
