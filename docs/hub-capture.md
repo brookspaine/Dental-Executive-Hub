@@ -49,13 +49,13 @@ Tool inputs Claude can pass: `title` (required), `detail`, `priority`
 Local smoke test (api-server running on :3001):
 
 ```bash
-MCP_CAPTURE_TOKEN=<token> ./scripts/test-mcp.sh
+./scripts/test-mcp.sh          # reads the token from artifacts/api-server/.env
 ```
 
 Production check: same script against the live URL —
 
 ```bash
-MCP_CAPTURE_TOKEN=<token> ./scripts/test-mcp.sh https://ceodashboard.up.railway.app
+./scripts/test-mcp.sh https://ceodashboard.up.railway.app
 ```
 
 ## Notes
@@ -64,5 +64,8 @@ MCP_CAPTURE_TOKEN=<token> ./scripts/test-mcp.sh https://ceodashboard.up.railway.
 - The endpoint is stateless (fresh MCP session per request); only POST is
   accepted.
 - Rotating the token = generate a new value, update Railway + Claude.ai.
-- There is deliberately no list/read tool — a leaked token can only add
-  ideas, never read Hub data.
+- There is deliberately no list/read tool — a leaked token cannot read Hub
+  data *through this endpoint*. Be aware, however, that the Hub itself
+  currently runs without login (a deliberate choice), so the rest of the API
+  is not private; this endpoint's token protects the write path, not overall
+  data privacy.

@@ -60,50 +60,60 @@ function rateLimited(): boolean {
 
 /* ---- Ideas project / section seeding (lazy, idempotent) ------------------ */
 
+/* Advisory-lock key for seeding — serializes concurrent first captures so
+   duplicate "Ideas" projects/sections can't be created (no unique index
+   exists on project/section names). */
+const SEED_LOCK_KEY = 7421930126;
+
 async function ensureIdeasContainers(): Promise<{
   projectId: number;
   sectionIds: Record<(typeof IDEAS_SECTIONS)[number]["key"], number>;
 }> {
-  let [project] = await db
-    .select()
-    .from(ccProjectsTable)
-    .where(eq(ccProjectsTable.name, IDEAS_PROJECT_NAME));
-  if (!project) {
-    [project] = await db
-      .insert(ccProjectsTable)
-      .values({
-        name: IDEAS_PROJECT_NAME,
-        businessIds: [1, 2],
-        sortOrder: 99,
-      })
-      .returning();
-  }
-  const existing = await db
-    .select()
-    .from(ccTaskSectionsTable)
-    .where(
-      sql`${ccTaskSectionsTable.parentType} = 'project' AND ${ccTaskSectionsTable.parentId} = ${project.id}`,
-    )
-    .orderBy(asc(ccTaskSectionsTable.sortOrder));
-  const sectionIds = {} as Record<(typeof IDEAS_SECTIONS)[number]["key"], number>;
-  for (const [idx, spec] of IDEAS_SECTIONS.entries()) {
-    const found = existing.find((s) => s.name === spec.name);
-    if (found) {
-      sectionIds[spec.key] = found.id;
-    } else {
-      const [created] = await db
-        .insert(ccTaskSectionsTable)
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${SEED_LOCK_KEY})`);
+    let [project] = await tx
+      .select()
+      .from(ccProjectsTable)
+      .where(eq(ccProjectsTable.name, IDEAS_PROJECT_NAME))
+      .orderBy(asc(ccProjectsTable.id))
+      .limit(1);
+    if (!project) {
+      [project] = await tx
+        .insert(ccProjectsTable)
         .values({
-          parentType: "project",
-          parentId: project.id,
-          name: spec.name,
-          sortOrder: idx,
+          name: IDEAS_PROJECT_NAME,
+          businessIds: [1, 2],
+          sortOrder: 99,
         })
         .returning();
-      sectionIds[spec.key] = created.id;
     }
-  }
-  return { projectId: project.id, sectionIds };
+    const existing = await tx
+      .select()
+      .from(ccTaskSectionsTable)
+      .where(
+        sql`${ccTaskSectionsTable.parentType} = 'project' AND ${ccTaskSectionsTable.parentId} = ${project.id}`,
+      )
+      .orderBy(asc(ccTaskSectionsTable.sortOrder), asc(ccTaskSectionsTable.id));
+    const sectionIds = {} as Record<(typeof IDEAS_SECTIONS)[number]["key"], number>;
+    for (const [idx, spec] of IDEAS_SECTIONS.entries()) {
+      const found = existing.find((s) => s.name === spec.name);
+      if (found) {
+        sectionIds[spec.key] = found.id;
+      } else {
+        const [created] = await tx
+          .insert(ccTaskSectionsTable)
+          .values({
+            parentType: "project",
+            parentId: project.id,
+            name: spec.name,
+            sortOrder: idx,
+          })
+          .returning();
+        sectionIds[spec.key] = created.id;
+      }
+    }
+    return { projectId: project.id, sectionIds };
+  });
 }
 
 /* ---- the tool ------------------------------------------------------------ */
@@ -111,13 +121,13 @@ async function ensureIdeasContainers(): Promise<{
 const PRIORITY_MAP = { low: "low", normal: "medium", high: "high" } as const;
 
 const createActionItemShape = {
-  title: z.string().min(1).max(120).describe("Short action item title (<= 120 chars)"),
+  title: z.string().trim().min(1).max(120).describe("Short action item title (<= 120 chars)"),
   detail: z.string().max(2000).optional().describe("Longer context or next steps"),
   priority: z
     .enum(["low", "normal", "high"])
     .optional()
     .describe("Urgency; omit when the user doesn't indicate one"),
-  owner: z.string().max(80).optional().describe('Who owns it, e.g. "Brooks"'),
+  owner: z.string().trim().max(80).optional().describe('Who owns it, e.g. "Brooks"'),
   kr_link: z.string().max(200).optional().describe("Objective/KR reference, free text"),
   source_ref: z.string().max(300).optional().describe("Brief conversation context"),
   business: z
@@ -141,6 +151,7 @@ function buildMcpServer(): McpServer {
       inputSchema: createActionItemShape,
     },
     async (input) => {
+      try {
       const { projectId, sectionIds } = await ensureIdeasContainers();
       const notes = [
         input.detail?.trim(),
@@ -168,6 +179,16 @@ function buildMcpServer(): McpServer {
         content: [{ type: "text", text: JSON.stringify(result) }],
         structuredContent: result,
       };
+      } catch (err) {
+        // Never surface DB/driver error strings to the remote caller.
+        logger.error({ err }, "mcp: create_action_item failed");
+        return {
+          content: [
+            { type: "text", text: "Failed to create the action item — server error." },
+          ],
+          isError: true,
+        };
+      }
     },
   );
   return server;
@@ -176,12 +197,12 @@ function buildMcpServer(): McpServer {
 /* ---- transport (stateless: fresh server + transport per request) --------- */
 
 router.post("/mcp", async (req: Request, res: Response): Promise<void> => {
-  if (!tokenMatches(req.headers.authorization)) {
-    res.status(401).json({ error: "unauthorized" });
-    return;
-  }
   if (rateLimited()) {
     res.status(429).json({ error: "rate limit exceeded (30/min)" });
+    return;
+  }
+  if (!tokenMatches(req.headers.authorization)) {
+    res.status(401).json({ error: "unauthorized" });
     return;
   }
   try {
@@ -191,8 +212,8 @@ router.post("/mcp", async (req: Request, res: Response): Promise<void> => {
       enableJsonResponse: true,
     });
     res.on("close", () => {
-      void transport.close();
-      void server.close();
+      transport.close().catch(() => {});
+      server.close().catch(() => {});
     });
     await server.connect(transport);
     await transport.handleRequest(req, res, req.body);

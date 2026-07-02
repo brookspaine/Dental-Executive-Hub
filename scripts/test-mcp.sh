@@ -2,7 +2,7 @@
 # Smoke test for the Hub Capture MCP endpoint (docs/hub-capture.md).
 #
 # Usage:
-#   MCP_CAPTURE_TOKEN=<token> ./scripts/test-mcp.sh [base-url]
+#   ./scripts/test-mcp.sh [base-url]   # token from env or artifacts/api-server/.env
 #
 # base-url defaults to http://localhost:3001 (local dev api-server).
 set -euo pipefail
@@ -10,10 +10,20 @@ set -euo pipefail
 BASE="${1:-http://localhost:3001}"
 URL="$BASE/api/mcp"
 
+# Token source: env var, falling back to artifacts/api-server/.env — so the
+# token never has to appear on the command line (ps / shell history).
+if [ -z "${MCP_CAPTURE_TOKEN:-}" ] && [ -f artifacts/api-server/.env ]; then
+  MCP_CAPTURE_TOKEN=$(grep -m1 '^MCP_CAPTURE_TOKEN=' artifacts/api-server/.env | cut -d= -f2-)
+fi
 if [ -z "${MCP_CAPTURE_TOKEN:-}" ]; then
-  echo "ERROR: set MCP_CAPTURE_TOKEN in the environment first." >&2
+  echo "ERROR: MCP_CAPTURE_TOKEN not set (env or artifacts/api-server/.env)." >&2
   exit 1
 fi
+
+# Keep the token out of curl argv (visible via ps): pass headers from a file.
+HDRFILE=$(mktemp)
+trap 'rm -f "$HDRFILE"' EXIT
+printf 'header = "Authorization: Bearer %s"\n' "$MCP_CAPTURE_TOKEN" > "$HDRFILE"
 
 echo "== 1. Unauthorized request is rejected =="
 CODE=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$URL" \
@@ -25,7 +35,7 @@ if [ "$CODE" != "401" ]; then
 fi
 echo "   401 as expected"
 
-AUTH=(-H "Authorization: Bearer $MCP_CAPTURE_TOKEN")
+AUTH=(--config "$HDRFILE")
 JSON=(-H 'content-type: application/json' -H 'accept: application/json, text/event-stream')
 
 echo "== 2. Initialize MCP session =="
