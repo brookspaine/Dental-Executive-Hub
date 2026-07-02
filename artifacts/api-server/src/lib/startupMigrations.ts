@@ -33,6 +33,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addWeeklyReviewRebuildOnDeckBullet(client);
       await createOnDeckTable(client);
       await addTaskPriorityColumns(client);
+      await seedBusinesses(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -777,5 +778,23 @@ async function addTaskPriorityColumns(client: PgClient): Promise<void> {
   );
   await client.query(
     `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS priority text`,
+  );
+}
+
+/**
+ * Seed the two businesses so business pickers (Command view pills) have
+ * rows to render. The apps have always scoped by id (1 = EDGE via header
+ * default, 2 = Urgent Dental via the fixed mount) — this just gives those
+ * ids names. Idempotent via ON CONFLICT DO NOTHING on both id and slug.
+ */
+async function seedBusinesses(client: PgClient): Promise<void> {
+  await client.query(
+    `INSERT INTO businesses (id, name, slug, sort_order)
+     VALUES (1, 'EDGE', 'edge', 0), (2, 'Urgent Dental', 'urgent-dental', 1)
+     ON CONFLICT (id) DO NOTHING`,
+  );
+  await client.query(
+    `SELECT setval(pg_get_serial_sequence('businesses','id'),
+       (SELECT COALESCE(MAX(id),0)+1 FROM businesses), false)`,
   );
 }

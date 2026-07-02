@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const MOBILE_META_COLS = "repeat(auto-fit, minmax(104px, 1fr))";
@@ -217,9 +217,9 @@ async function api<T>(path: string, init?: RequestInit): Promise<T> {
 export function CommandCenter() {
   const [view, setView] = useState<ViewId>(() => {
     try {
-      const stored = localStorage.getItem("cc-view") ?? localStorage.getItem("cc-tab");
-      if (stored === "overview" || !stored) return "list";
-      return stored as ViewId;
+      // Only the List view is selectable for now (Kanban comes later);
+      // old stored tab/view values all land on the list.
+      return "list";
     } catch {
       return "list";
     }
@@ -508,12 +508,19 @@ function sortCommandTasks(list: AllTask[]): AllTask[] {
 /* Scope pill: a business id, or "personal" (life-area tasks). */
 type CommandScope = number | "personal";
 
+type CommandChunk = { sectionName: string | null; tasks: AllTask[] };
 type CommandSection = {
   title: string;
-  groups: Array<{ key: string; label: string; tasks: AllTask[] }>;
+  groups: Array<{ key: string; label: string; chunks: CommandChunk[]; count: number }>;
 };
 
-function buildScopedSections(tasks: AllTask[], scope: CommandScope): CommandSection[] {
+function buildScopedSections(
+  tasks: AllTask[],
+  sections: TaskSection[],
+  scope: CommandScope,
+): CommandSection[] {
+  const sectionById = new Map(sections.map((sec) => [sec.id, sec]));
+
   const groupByParent = (list: AllTask[]) => {
     const map = new Map<string, AllTask[]>();
     for (const t of list) {
@@ -524,7 +531,37 @@ function buildScopedSections(tasks: AllTask[], scope: CommandScope): CommandSect
     }
     return [...map.entries()]
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([label, list2]) => ({ key: label, label, tasks: sortCommandTasks(list2) }));
+      .map(([label, list2]) => {
+        // Unsectioned tasks first, then the parent's named sections in
+        // their manual order — matching the Projects / Direct Reports tabs.
+        const unsectioned = list2.filter(
+          (t) => t.sectionId === null || !sectionById.has(t.sectionId),
+        );
+        const bySection = new Map<number, AllTask[]>();
+        for (const t of list2) {
+          if (t.sectionId !== null && sectionById.has(t.sectionId)) {
+            const cur = bySection.get(t.sectionId);
+            if (cur) cur.push(t);
+            else bySection.set(t.sectionId, [t]);
+          }
+        }
+        const chunks: CommandChunk[] = [];
+        if (unsectioned.length > 0) {
+          chunks.push({ sectionName: null, tasks: sortCommandTasks(unsectioned) });
+        }
+        const orderedSections = [...bySection.entries()].sort((a, b) => {
+          const sa = sectionById.get(a[0])!;
+          const sb = sectionById.get(b[0])!;
+          return sa.sortOrder - sb.sortOrder || sa.id - sb.id;
+        });
+        for (const [id, secTasks] of orderedSections) {
+          chunks.push({
+            sectionName: sectionById.get(id)!.name,
+            tasks: sortCommandTasks(secTasks),
+          });
+        }
+        return { key: label, label, chunks, count: list2.length };
+      });
   };
 
   if (scope === "personal") {
@@ -584,11 +621,6 @@ function ViewControls({
         }}
       >
         <option value="list">List</option>
-        <option disabled>──────────</option>
-        <option value="brain-dump">Brain Dump</option>
-        <option value="life-areas">Life Areas</option>
-        <option value="projects">Projects</option>
-        <option value="direct-reports">Direct Reports</option>
       </select>
       {children}
     </div>
@@ -606,6 +638,7 @@ function CommandTab({
 }) {
   const [data, setData] = useState<Overview | null>(null);
   const [tasks, setTasks] = useState<AllTask[] | null>(null);
+  const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [scope, setScope] = useState<CommandScope>(() => {
     try {
@@ -629,10 +662,13 @@ function CommandTab({
     try {
       const [ov, all] = await Promise.all([
         api<Overview>("/command-center/overview"),
-        api<AllTask[]>("/command-center/tasks/all"),
+        api<{ tasks: AllTask[]; sections: TaskSection[] }>(
+          "/command-center/tasks/all",
+        ),
       ]);
       setData(ov);
-      setTasks(all);
+      setTasks(all.tasks);
+      setTaskSections(all.sections);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -647,8 +683,8 @@ function CommandTab({
   }, []);
 
   const sections = useMemo(
-    () => (tasks ? buildScopedSections(tasks, scope) : []),
-    [tasks, scope],
+    () => (tasks ? buildScopedSections(tasks, taskSections, scope) : []),
+    [tasks, taskSections, scope],
   );
 
   if (error) return <ErrorBlock message={error} />;
@@ -746,7 +782,7 @@ function CommandGroup({
   group,
   onChanged,
 }: {
-  group: { key: string; label: string; tasks: AllTask[] };
+  group: { key: string; label: string; chunks: CommandChunk[]; count: number };
   onChanged: () => void;
 }) {
   const isMobile = useIsMobile();
@@ -763,7 +799,7 @@ function CommandGroup({
         >
           {group.label}{" "}
           <span style={{ color: C.textSecondary, fontWeight: 400 }}>
-            ({group.tasks.length})
+            ({group.count})
           </span>
         </div>
       )}
@@ -801,8 +837,26 @@ function CommandGroup({
             <div style={{ padding: "7px 12px", textAlign: "center" }}>Owner</div>
           </div>
         )}
-        {group.tasks.map((t) => (
-          <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
+        {group.chunks.map((chunk, ci) => (
+          <Fragment key={chunk.sectionName ?? `__none-${ci}`}>
+            {chunk.sectionName && (
+              <div
+                style={{
+                  padding: "6px 12px",
+                  background: "#f6f3ec",
+                  borderBottom: `1px solid ${C.divider}`,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: C.textSecondary,
+                }}
+              >
+                {chunk.sectionName}
+              </div>
+            )}
+            {chunk.tasks.map((t) => (
+              <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
+            ))}
+          </Fragment>
         ))}
       </div>
     </div>

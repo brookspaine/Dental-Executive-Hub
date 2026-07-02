@@ -827,7 +827,7 @@ router.delete("/life-area-goals/:id", async (req, res): Promise<void> => {
    x-business-id header is deliberately ignored — the view spans both. */
 router.get("/tasks/all", async (_req, res): Promise<void> => {
   await ensureTaskStatusBackfilled();
-  const [tasks, projects, drs, lifeAreas] = await Promise.all([
+  const [tasks, projects, drs, lifeAreas, sections] = await Promise.all([
     db
       .select()
       .from(ccTasksTable)
@@ -836,6 +836,10 @@ router.get("/tasks/all", async (_req, res): Promise<void> => {
     db.select().from(ccProjectsTable),
     db.select().from(ccDirectReportsTable),
     db.select().from(ccLifeAreasTable),
+    db
+      .select()
+      .from(ccTaskSectionsTable)
+      .orderBy(asc(ccTaskSectionsTable.sortOrder), asc(ccTaskSectionsTable.id)),
   ]);
   const projById = new Map(projects.map((p) => [p.id, p]));
   const drById = new Map(drs.map((d) => [d.id, d]));
@@ -865,7 +869,7 @@ router.get("/tasks/all", async (_req, res): Promise<void> => {
         : t.ownerName;
     return [{ ...t, parentName, businessIds, ownerLabel }];
   });
-  res.json(rows);
+  res.json({ tasks: rows, sections });
 });
 
 router.get("/tasks", async (req, res): Promise<void> => {
