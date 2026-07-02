@@ -713,14 +713,24 @@ function OnDeckMiniRow({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: "flex",
+        display: "grid",
+        gridTemplateColumns: "1fr 130px",
         alignItems: "center",
-        gap: 10,
-        padding: "7px 0",
-        borderBottom: `1px solid #f1f5f9`,
+        borderBottom: `1px solid ${C.divider}`,
         fontSize: 13.5,
+        background: hover ? "#f8fafc" : "transparent",
       }}
     >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          padding: "7px 10px 7px 0",
+          borderRight: `1px solid ${C.divider}`,
+          minWidth: 0,
+        }}
+      >
       {opt && (
         <span
           style={{
@@ -747,29 +757,37 @@ function OnDeckMiniRow({
       >
         {item.text}
       </span>
-      <span style={{ color: "#94a3b8", fontSize: 12, flexShrink: 0 }}>
-        {owner}
-      </span>
-      <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
-      <button
-        type="button"
-        onClick={() => void onRemove()}
-        aria-label="Remove from On Deck"
-        title="Remove from On Deck"
+        <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
+        <button
+          type="button"
+          onClick={() => void onRemove()}
+          aria-label="Remove from On Deck"
+          title="Remove from On Deck"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 15,
+            lineHeight: 1,
+            padding: "0 2px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <span
         style={{
-          background: "transparent",
-          border: "none",
-          color: C.textSecondary,
-          cursor: "pointer",
-          fontSize: 15,
-          lineHeight: 1,
-          padding: "0 2px",
-          visibility: hover ? "visible" : "hidden",
-          flexShrink: 0,
+          color: "#94a3b8",
+          fontSize: 12,
+          padding: "7px 10px",
+          textAlign: "center",
         }}
       >
-        ×
-      </button>
+        {owner}
+      </span>
     </div>
   );
 }
@@ -956,10 +974,12 @@ function SectionHeaderRow({
     <div
       style={{
         padding: "6px 12px",
-        background: "#f1f5f9",
+        background: "#f8fafc",
         borderBottom: `1px solid ${C.divider}`,
-        fontSize: 12,
+        fontSize: 11,
         fontWeight: 600,
+        textTransform: "uppercase",
+        letterSpacing: 0.5,
         color: C.textSecondary,
       }}
     >
@@ -976,7 +996,7 @@ function SectionHeaderRow({
               setEditing(false);
             }
           }}
-          style={{ ...inputStyle, fontSize: 12, fontWeight: 600, width: "60%" }}
+          style={{ ...inputStyle, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, width: "60%" }}
         />
       ) : (
         <span
@@ -1210,13 +1230,18 @@ export function Top3Card({
   return (
     <Card>
       <CardHeading title={title} />
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {slots.map((row, idx) => (
           <Top3Row
             key={idx}
             slot={idx + 1}
             initial={row?.text ?? ""}
             done={row?.done ?? false}
+            placeholder={
+              period === "day"
+                ? "What is the highest leverage use of my time today?"
+                : "What is the highest leverage use of my time this week?"
+            }
             onSave={async (text) => {
               await api(`/command-center/top3/${period}/${idx + 1}`, {
                 method: "PUT",
@@ -1242,20 +1267,34 @@ function Top3Row({
   slot,
   initial,
   done,
+  placeholder,
   onSave,
   onToggleDone,
 }: {
   slot: number;
   initial: string;
   done: boolean;
+  placeholder: string;
   onSave: (text: string) => Promise<void>;
   onToggleDone: (done: boolean) => Promise<void>;
 }) {
   const [value, setValue] = useState(initial);
+  const [hover, setHover] = useState(false);
   useEffect(() => setValue(initial), [initial]);
   const hasText = value.trim().length > 0;
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 12,
+        padding: "6px 10px 6px 0",
+        borderBottom: `1px solid ${C.divider}`,
+        background: hover ? "#f8fafc" : "transparent",
+      }}
+    >
       <button
         type="button"
         onClick={() => hasText && onToggleDone(!done)}
@@ -1289,7 +1328,7 @@ function Top3Row({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
         }}
-        placeholder="What's the one thing…"
+        placeholder={placeholder}
         style={{
           ...inputStyle,
           textDecoration: done ? "line-through" : "none",
@@ -4102,13 +4141,16 @@ function PinStar({
 }
 
 function AsanaCheck({ done, onToggle }: { done: boolean; onToggle: () => void }) {
-  const ring = done ? "#1f8a55" : "#c8c2b6";
-  const fill = done ? "#1f8a55" : "#eeeae1";
-  const checkColor = done ? "#fff" : "#9a948c";
+  const [hover, setHover] = useState(false);
+  const ring = done ? "#1f6a3f" : hover ? "#1f6a3f" : "#cbd5e1";
+  const fill = done ? "#1f6a3f" : "transparent";
+  const checkColor = done ? "#fff" : hover ? "#94a3b8" : "transparent";
   return (
     <button
       type="button"
       onClick={onToggle}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       aria-label={done ? "Mark incomplete" : "Mark complete"}
       style={{
         background: "transparent",
