@@ -58,6 +58,8 @@ type LifeAreaGoal = {
   sortOrder: number;
 };
 type TaskStatus = "not_started" | "in_progress" | "completed";
+/* Badge-only priority — null means unset (no badge). Never affects ordering. */
+type TaskPriority = "high" | "medium" | "low";
 type Task = {
   id: number;
   parentType: ParentType;
@@ -68,6 +70,7 @@ type Task = {
   text: string;
   done: boolean;
   status: TaskStatus;
+  priority: TaskPriority | null;
   dueDate: string | null;
   nextSteps: string;
   sortOrder: number;
@@ -104,6 +107,7 @@ export type OnDeckItem = {
   dueDate: string | null;
   tag: OnDeckTag;
   status: TaskStatus;
+  priority: TaskPriority | null;
   sourceTaskId: number | null;
   sortOrder: number;
 };
@@ -1068,6 +1072,11 @@ function OnDeckRow({
             if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+        />
+        <PriorityFlag
+          priority={item.priority}
+          visible={hover || isMobile}
+          onChange={(next) => void onPatch(item.id, { priority: next })}
         />
         <PinStar taskText={text} visible onPinned={onDelete} />
         <button
@@ -2812,6 +2821,21 @@ const STATUS_OPTIONS: { value: TaskStatus; label: string; bg: string; fg: string
   { value: "completed", label: "Completed", bg: "#cfead8", fg: "#1f6a3f" },
 ];
 
+/* Base style for a native <select> rendered as a colored pill
+   (StatusPill, PriorityFlag). */
+const pillSelectStyle: React.CSSProperties = {
+  appearance: "none",
+  WebkitAppearance: "none",
+  MozAppearance: "none",
+  border: "none",
+  borderRadius: 999,
+  fontSize: 11,
+  fontFamily: SANS,
+  fontWeight: 600,
+  cursor: "pointer",
+  textAlign: "center",
+};
+
 function StatusPill({
   status,
   onChange,
@@ -2826,22 +2850,64 @@ function StatusPill({
         value={status}
         onChange={(e) => onChange(e.target.value as TaskStatus)}
         style={{
-          appearance: "none",
-          WebkitAppearance: "none",
-          MozAppearance: "none",
+          ...pillSelectStyle,
           background: opt.bg,
           color: opt.fg,
-          border: "none",
-          borderRadius: 999,
           padding: "3px 14px",
-          fontSize: 11,
-          fontFamily: SANS,
-          fontWeight: 600,
-          cursor: "pointer",
-          textAlign: "center",
         }}
       >
         {STATUS_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string; bg: string; fg: string }[] = [
+  { value: "high", label: "High", bg: "#fbdcdc", fg: "#a02020" },
+  { value: "medium", label: "Medium", bg: "#fdf4d3", fg: "#7a5b00" },
+  { value: "low", label: "Low", bg: "#e2e8f0", fg: "#475569" },
+];
+
+/* Badge + picker in one control. Set → colored pill, always visible.
+   Unset → muted "⚑" that only appears on row hover, so clean rows stay
+   clean (AE2) while priority remains settable in place (R4). */
+function PriorityFlag({
+  priority,
+  visible,
+  onChange,
+}: {
+  priority: TaskPriority | null;
+  visible: boolean;
+  onChange: (next: TaskPriority | null) => void;
+}) {
+  const opt = priority ? PRIORITY_OPTIONS.find((o) => o.value === priority) : null;
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "inline-block",
+        flexShrink: 0,
+        visibility: opt || visible ? "visible" : "hidden",
+      }}
+    >
+      <select
+        value={priority ?? ""}
+        onChange={(e) => onChange((e.target.value || null) as TaskPriority | null)}
+        aria-label="Priority"
+        title="Priority"
+        style={{
+          ...pillSelectStyle,
+          background: opt ? opt.bg : "transparent",
+          color: opt ? opt.fg : C.textSecondary,
+          padding: opt ? "3px 10px" : "3px 4px",
+        }}
+      >
+        <option value="">{priority ? "None" : "⚑"}</option>
+        {PRIORITY_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
@@ -2940,6 +3006,11 @@ function TaskRow({
             {originLabel}
           </span>
         )}
+        <PriorityFlag
+          priority={task.priority}
+          visible={hover || isMobile}
+          onChange={(next) => onUpdate({ priority: next })}
+        />
         <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button
@@ -3213,6 +3284,7 @@ function SendToOnDeck({
           ownerDirectReportId: task.ownerDirectReportId,
           ownerName: task.ownerName,
           dueDate: task.dueDate,
+          priority: task.priority,
         }),
       });
       flashAdded();
