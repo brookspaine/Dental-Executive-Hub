@@ -566,8 +566,9 @@ function buildScopedSections(
   };
 
   if (scope === "personal") {
-    const personal = tasks.filter((t) => t.parentType === "life_area");
-    return [{ title: "Life Areas", groups: groupByParent(personal) }];
+    // Personal renders the full Life Areas planner (goals, identity, tasks)
+    // via LifeAreasTab — handled directly in CommandTab, no task groups here.
+    return [];
   }
   const inBiz = tasks.filter(
     (t) => t.parentType !== "life_area" && t.businessIds.includes(scope),
@@ -713,24 +714,15 @@ function OnDeckMiniRow({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: "grid",
-        gridTemplateColumns: "1fr 130px",
+        display: "flex",
         alignItems: "center",
+        gap: 10,
+        padding: "7px 4px",
         borderBottom: `1px solid ${C.divider}`,
         fontSize: 13.5,
         background: hover ? "#f8fafc" : "transparent",
       }}
     >
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 10,
-          padding: "7px 10px 7px 0",
-          borderRight: `1px solid ${C.divider}`,
-          minWidth: 0,
-        }}
-      >
       {opt && (
         <span
           style={{
@@ -757,37 +749,37 @@ function OnDeckMiniRow({
       >
         {item.text}
       </span>
-        <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
-        <button
-          type="button"
-          onClick={() => void onRemove()}
-          aria-label="Remove from On Deck"
-          title="Remove from On Deck"
-          style={{
-            background: "transparent",
-            border: "none",
-            color: C.textSecondary,
-            cursor: "pointer",
-            fontSize: 15,
-            lineHeight: 1,
-            padding: "0 2px",
-            visibility: hover ? "visible" : "hidden",
-            flexShrink: 0,
-          }}
-        >
-          ×
-        </button>
-      </div>
       <span
         style={{
           color: "#94a3b8",
           fontSize: 12,
-          padding: "7px 10px",
-          textAlign: "center",
+          marginLeft: "auto",
+          flexShrink: 0,
+          textAlign: "right",
         }}
       >
         {owner}
       </span>
+      <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
+      <button
+        type="button"
+        onClick={() => void onRemove()}
+        aria-label="Remove from On Deck"
+        title="Remove from On Deck"
+        style={{
+          background: "transparent",
+          border: "none",
+          color: C.textSecondary,
+          cursor: "pointer",
+          fontSize: 15,
+          lineHeight: 1,
+          padding: "0 2px",
+          visibility: hover ? "visible" : "hidden",
+          flexShrink: 0,
+        }}
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -914,6 +906,8 @@ function CommandTab({
           Personal
         </button>
       </ViewControls>
+
+      {scope === "personal" && <LifeAreasTab businesses={businesses} />}
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {sections.map((sec) => (
@@ -1229,7 +1223,18 @@ export function Top3Card({
 
   return (
     <Card>
-      <CardHeading title={title} />
+      <div
+        style={{
+          fontSize: 12,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          color: C.textSecondary,
+          fontWeight: 600,
+          marginBottom: 8,
+        }}
+      >
+        {title}
+      </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {slots.map((row, idx) => (
           <Top3Row
