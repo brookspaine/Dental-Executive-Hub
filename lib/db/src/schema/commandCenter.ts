@@ -118,6 +118,8 @@ export const ccTasksTable = pgTable(
     text: text("text").notNull(),
     done: boolean("done").notNull().default(false),
     status: text("status").notNull().default("not_started"),
+    // high | medium | low | NULL (unset). Badge-only — never affects ordering.
+    priority: text("priority"),
     dueDate: date("due_date", { mode: "string" }),
     nextSteps: text("next_steps").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -196,6 +198,8 @@ export const ccOnDeckTable = pgTable("cc_on_deck", {
   // move_the_needle | maintenance | follow_up
   status: text("status").notNull().default("not_started"),
   // not_started | in_progress | completed
+  // high | medium | low | NULL (unset). Badge-only — never affects ordering.
+  priority: text("priority"),
   sourceTaskId: integer("source_task_id"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })

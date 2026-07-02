@@ -58,6 +58,8 @@ type LifeAreaGoal = {
   sortOrder: number;
 };
 type TaskStatus = "not_started" | "in_progress" | "completed";
+/* Badge-only priority — null means unset (no badge). Never affects ordering. */
+type TaskPriority = "high" | "medium" | "low";
 type Task = {
   id: number;
   parentType: ParentType;
@@ -68,6 +70,7 @@ type Task = {
   text: string;
   done: boolean;
   status: TaskStatus;
+  priority: TaskPriority | null;
   dueDate: string | null;
   nextSteps: string;
   sortOrder: number;
@@ -104,6 +107,7 @@ export type OnDeckItem = {
   dueDate: string | null;
   tag: OnDeckTag;
   status: TaskStatus;
+  priority: TaskPriority | null;
   sourceTaskId: number | null;
   sortOrder: number;
 };
@@ -1068,6 +1072,11 @@ function OnDeckRow({
             if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+        />
+        <PriorityFlag
+          priority={item.priority}
+          visible={hover || isMobile}
+          onChange={(next) => void onPatch(item.id, { priority: next })}
         />
         <PinStar taskText={text} visible onPinned={onDelete} />
         <button
@@ -2851,6 +2860,66 @@ function StatusPill({
   );
 }
 
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string; bg: string; fg: string }[] = [
+  { value: "high", label: "High", bg: "#fbdcdc", fg: "#a02020" },
+  { value: "medium", label: "Medium", bg: "#fdf4d3", fg: "#7a5b00" },
+  { value: "low", label: "Low", bg: "#e2e8f0", fg: "#475569" },
+];
+
+/* Badge + picker in one control. Set → colored pill, always visible.
+   Unset → muted "⚑" that only appears on row hover, so clean rows stay
+   clean (AE2) while priority remains settable in place (R4). */
+function PriorityFlag({
+  priority,
+  visible,
+  onChange,
+}: {
+  priority: TaskPriority | null;
+  visible: boolean;
+  onChange: (next: TaskPriority | null) => void;
+}) {
+  const opt = priority ? PRIORITY_OPTIONS.find((o) => o.value === priority) : null;
+  return (
+    <div
+      style={{
+        position: "relative",
+        display: "inline-block",
+        flexShrink: 0,
+        visibility: opt || visible ? "visible" : "hidden",
+      }}
+    >
+      <select
+        value={priority ?? ""}
+        onChange={(e) => onChange((e.target.value || null) as TaskPriority | null)}
+        aria-label="Priority"
+        title="Priority"
+        style={{
+          appearance: "none",
+          WebkitAppearance: "none",
+          MozAppearance: "none",
+          background: opt ? opt.bg : "transparent",
+          color: opt ? opt.fg : C.textSecondary,
+          border: "none",
+          borderRadius: 999,
+          padding: opt ? "3px 10px" : "3px 4px",
+          fontSize: 11,
+          fontFamily: SANS,
+          fontWeight: 600,
+          cursor: "pointer",
+          textAlign: "center",
+        }}
+      >
+        <option value="">{priority ? "None" : "⚑"}</option>
+        {PRIORITY_OPTIONS.map((o) => (
+          <option key={o.value} value={o.value}>
+            {o.label}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 function TaskRow({
   task,
   isMobile,
@@ -2940,6 +3009,11 @@ function TaskRow({
             {originLabel}
           </span>
         )}
+        <PriorityFlag
+          priority={task.priority}
+          visible={hover || isMobile}
+          onChange={(next) => onUpdate({ priority: next })}
+        />
         <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button

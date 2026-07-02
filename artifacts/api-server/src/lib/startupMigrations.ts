@@ -32,6 +32,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addWeeklyReviewTop3Bullet(client);
       await addWeeklyReviewRebuildOnDeckBullet(client);
       await createOnDeckTable(client);
+      await addTaskPriorityColumns(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
     }
@@ -761,4 +762,22 @@ async function createOnDeckTable(client: PgClient): Promise<void> {
   await client.query(
     `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'not_started'`,
   );
+}
+
+/**
+ * Add the optional `priority` column (high | medium | low | NULL) to
+ * cc_tasks and cc_on_deck. Badge-only metadata — no default, existing
+ * rows stay NULL (unset). Idempotent via ADD COLUMN IF NOT EXISTS.
+ */
+async function addTaskPriorityColumns(client: PgClient): Promise<void> {
+  for (const table of ["cc_tasks", "cc_on_deck"]) {
+    const tableExists = (await client.query(
+      `SELECT 1 FROM information_schema.tables
+       WHERE table_schema = 'public' AND table_name = '${table}'`,
+    )) as { rows: unknown[] };
+    if (tableExists.rows.length === 0) continue;
+    await client.query(
+      `ALTER TABLE ${table} ADD COLUMN IF NOT EXISTS priority text`,
+    );
+  }
 }

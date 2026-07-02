@@ -32,6 +32,9 @@ type ParentType = (typeof PARENT_TYPES)[number];
 
 const TASK_STATUSES = ["not_started", "in_progress", "completed"] as const;
 
+/* Optional badge-only priority for tasks and On Deck items. NULL = unset. */
+const TASK_PRIORITIES = ["high", "medium", "low"] as const;
+
 /* The 8 canonical life areas from the "Living Your Best Year Ever" planner.
    The startup migration enriches each row with Identity/Why/HowIPreserve/
    FeelsLike + structured goals from yearly_planning_sections — see
@@ -273,6 +276,7 @@ router.post("/on-deck", async (req, res): Promise<void> => {
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       tag: z.enum(ON_DECK_TAGS).optional(),
       status: z.enum(["not_started", "in_progress", "completed"]).optional(),
+      priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       sourceTaskId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
@@ -376,6 +380,7 @@ router.patch("/on-deck/:id", async (req, res): Promise<void> => {
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       tag: z.enum(ON_DECK_TAGS).optional(),
       status: z.enum(["not_started", "in_progress", "completed"]).optional(),
+      priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       sortOrder: z.number().int().optional(),
     })
     .safeParse(req.body);
@@ -911,6 +916,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
       ownerName: z.string().trim().max(120).nullable().optional(),
       text: z.string().min(1),
       status: z.enum(TASK_STATUSES).optional(),
+      priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       nextSteps: z.string().optional(),
     })
@@ -963,6 +969,7 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
       text: z.string().min(1).optional(),
       done: z.boolean().optional(),
       status: z.enum(TASK_STATUSES).optional(),
+      priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       sectionId: z.number().int().nullable().optional(),
       ownerDirectReportId: z.number().int().nullable().optional(),
