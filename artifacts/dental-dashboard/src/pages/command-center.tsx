@@ -662,18 +662,24 @@ function OnDeckMini({
     >
       <div
         style={{
-          fontSize: 12,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          color: C.textSecondary,
-          fontWeight: 600,
-          padding: "12px 16px 8px",
+          padding: "14px 16px 8px",
           display: "flex",
+          alignItems: "baseline",
           justifyContent: "space-between",
         }}
       >
-        <span>On Deck</span>
-        <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
+        <h2
+          style={{
+            margin: 0,
+            fontFamily: SERIF,
+            fontSize: 18,
+            fontWeight: 600,
+            color: C.textSecondary,
+          }}
+        >
+          On Deck
+        </h2>
+        <span style={{ fontSize: 12, color: "#94a3b8" }}>
           {items.length}/{ON_DECK_CAP} · this week
         </span>
       </div>
@@ -714,6 +720,7 @@ function OnDeckMiniRow({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
+        position: "relative",
         display: "flex",
         alignItems: "center",
         gap: 10,
@@ -760,26 +767,40 @@ function OnDeckMiniRow({
       >
         {owner}
       </span>
-      <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
-      <button
-        type="button"
-        onClick={() => void onRemove()}
-        aria-label="Remove from On Deck"
-        title="Remove from On Deck"
+      <div
         style={{
-          background: "transparent",
-          border: "none",
-          color: C.textSecondary,
-          cursor: "pointer",
-          fontSize: 15,
-          lineHeight: 1,
-          padding: "0 2px",
-          visibility: hover ? "visible" : "hidden",
-          flexShrink: 0,
+          position: "absolute",
+          right: 2,
+          top: "50%",
+          transform: "translateY(-50%)",
+          display: "flex",
+          alignItems: "center",
+          gap: 4,
+          background: hover ? "#f8fafc" : "transparent",
+          paddingLeft: 8,
         }}
       >
-        ×
-      </button>
+        <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
+        <button
+          type="button"
+          onClick={() => void onRemove()}
+          aria-label="Remove from On Deck"
+          title="Remove from On Deck"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 15,
+            lineHeight: 1,
+            padding: "0 2px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
     </div>
   );
 }
@@ -1223,18 +1244,17 @@ export function Top3Card({
 
   return (
     <Card>
-      <div
+      <h2
         style={{
-          fontSize: 12,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
-          color: C.textSecondary,
+          margin: "0 0 10px",
+          fontFamily: SERIF,
+          fontSize: 18,
           fontWeight: 600,
-          marginBottom: 8,
+          color: C.textSecondary,
         }}
       >
         {title}
-      </div>
+      </h2>
       <div style={{ display: "flex", flexDirection: "column" }}>
         {slots.map((row, idx) => (
           <Top3Row
