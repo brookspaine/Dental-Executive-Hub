@@ -505,8 +505,17 @@ function sortCommandTasks(list: AllTask[]): AllTask[] {
   });
 }
 
-/* Scope pill: a business id, or "personal" (life-area tasks). */
-type CommandScope = number | "personal";
+/* Container summaries returned by /tasks/all so empty projects/people
+   still render (e.g. a just-created Ideas project with no tasks yet). */
+type CommandContainer = {
+  id: number;
+  name: string;
+  businessIds: number[];
+  sortOrder: number;
+};
+
+/* Scope pill: everything, a business id, or "personal" (Life Areas). */
+type CommandScope = "all" | number | "personal";
 
 type CommandChunk = { sectionId: number | null; sectionName: string | null; tasks: AllTask[] };
 type CommandSection = {
@@ -517,72 +526,93 @@ type CommandSection = {
 function buildScopedSections(
   tasks: AllTask[],
   sections: TaskSection[],
+  projects: CommandContainer[],
+  directReports: CommandContainer[],
   scope: CommandScope,
 ): CommandSection[] {
-  const sectionById = new Map(sections.map((sec) => [sec.id, sec]));
-
-  const groupByParent = (list: AllTask[]) => {
-    const map = new Map<string, AllTask[]>();
-    for (const t of list) {
-      const label = t.parentName ?? "Untitled";
-      const cur = map.get(label);
-      if (cur) cur.push(t);
-      else map.set(label, [t]);
-    }
-    return [...map.entries()]
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([label, list2]) => {
-        // Unsectioned tasks first, then the parent's named sections in
-        // their manual order — matching the Projects / Direct Reports tabs.
-        const unsectioned = list2.filter(
-          (t) => t.sectionId === null || !sectionById.has(t.sectionId),
-        );
-        const bySection = new Map<number, AllTask[]>();
-        for (const t of list2) {
-          if (t.sectionId !== null && sectionById.has(t.sectionId)) {
-            const cur = bySection.get(t.sectionId);
-            if (cur) cur.push(t);
-            else bySection.set(t.sectionId, [t]);
-          }
-        }
-        const chunks: CommandChunk[] = [];
-        if (unsectioned.length > 0) {
-          chunks.push({ sectionId: null, sectionName: null, tasks: sortCommandTasks(unsectioned) });
-        }
-        const orderedSections = [...bySection.entries()].sort((a, b) => {
-          const sa = sectionById.get(a[0])!;
-          const sb = sectionById.get(b[0])!;
-          return sa.sortOrder - sb.sortOrder || sa.id - sb.id;
-        });
-        for (const [id, secTasks] of orderedSections) {
-          chunks.push({
-            sectionId: id,
-            sectionName: sectionById.get(id)!.name,
-            tasks: sortCommandTasks(secTasks),
-          });
-        }
-        return { key: label, label, chunks, count: list2.length };
-      });
-  };
-
   if (scope === "personal") {
-    // Personal renders the full Life Areas planner (goals, identity, tasks)
-    // via LifeAreasTab — handled directly in CommandTab, no task groups here.
+    // Personal renders the full Life Areas planner via LifeAreasTab —
+    // handled directly in CommandTab, no task groups here.
     return [];
   }
-  const inBiz = tasks.filter(
-    (t) => t.parentType !== "life_area" && t.businessIds.includes(scope),
-  );
-  return [
-    {
-      title: "Direct Reports",
-      groups: groupByParent(inBiz.filter((t) => t.parentType === "direct_report")),
-    },
-    {
-      title: "Projects",
-      groups: groupByParent(inBiz.filter((t) => t.parentType === "project")),
-    },
+  const sectionById = new Map(sections.map((sec) => [sec.id, sec]));
+  const inScope = (ids: number[]) => scope === "all" || ids.includes(scope);
+
+  const chunksFor = (list: AllTask[]): CommandChunk[] => {
+    const unsectioned = list.filter(
+      (t) => t.sectionId === null || !sectionById.has(t.sectionId),
+    );
+    const bySection = new Map<number, AllTask[]>();
+    for (const t of list) {
+      if (t.sectionId !== null && sectionById.has(t.sectionId)) {
+        const cur = bySection.get(t.sectionId);
+        if (cur) cur.push(t);
+        else bySection.set(t.sectionId, [t]);
+      }
+    }
+    const chunks: CommandChunk[] = [];
+    if (unsectioned.length > 0) {
+      chunks.push({ sectionId: null, sectionName: null, tasks: sortCommandTasks(unsectioned) });
+    }
+    const ordered = [...bySection.entries()].sort((a, b) => {
+      const sa = sectionById.get(a[0])!;
+      const sb = sectionById.get(b[0])!;
+      return sa.sortOrder - sb.sortOrder || sa.id - sb.id;
+    });
+    for (const [id, secTasks] of ordered) {
+      chunks.push({
+        sectionId: id,
+        sectionName: sectionById.get(id)!.name,
+        tasks: sortCommandTasks(secTasks),
+      });
+    }
+    return chunks;
+  };
+
+  const containerGroups = (
+    containers: CommandContainer[],
+    parentType: "project" | "direct_report",
+  ) =>
+    containers
+      .filter((c) => inScope(c.businessIds))
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+      .map((c) => {
+        const list = tasks.filter(
+          (t) => t.parentType === parentType && t.parentId === c.id,
+        );
+        return { key: `${parentType}-${c.id}`, label: c.name, chunks: chunksFor(list), count: list.length };
+      });
+
+  const result: CommandSection[] = [
+    { title: "Direct Reports", groups: containerGroups(directReports, "direct_report") },
+    { title: "Projects", groups: containerGroups(projects, "project") },
   ];
+
+  if (scope === "all") {
+    // Life-area tasks join the everything view as plain task tables.
+    const life = tasks.filter((t) => t.parentType === "life_area");
+    if (life.length > 0) {
+      const byArea = new Map<string, AllTask[]>();
+      for (const t of life) {
+        const label = t.parentName ?? "Untitled";
+        const cur = byArea.get(label);
+        if (cur) cur.push(t);
+        else byArea.set(label, [t]);
+      }
+      result.push({
+        title: "Life Areas",
+        groups: [...byArea.entries()]
+          .sort((a, b) => a[0].localeCompare(b[0]))
+          .map(([label, list]) => ({
+            key: `life-${label}`,
+            label,
+            chunks: chunksFor(list),
+            count: list.length,
+          })),
+      });
+    }
+  }
+  return result;
 }
 
 function ViewControls({
@@ -817,15 +847,19 @@ function CommandTab({
   const [data, setData] = useState<Overview | null>(null);
   const [tasks, setTasks] = useState<AllTask[] | null>(null);
   const [taskSections, setTaskSections] = useState<TaskSection[]>([]);
+  const [containers, setContainers] = useState<{
+    projects: CommandContainer[];
+    directReports: CommandContainer[];
+  }>({ projects: [], directReports: [] });
   const [error, setError] = useState<string | null>(null);
   const [scope, setScope] = useState<CommandScope>(() => {
     try {
       const raw = localStorage.getItem("cc-scope");
       if (raw === "personal") return "personal";
       const n = raw ? parseInt(raw, 10) : NaN;
-      return Number.isFinite(n) && n > 0 ? n : currentBusinessId;
+      return Number.isFinite(n) && n > 0 ? n : "all";
     } catch {
-      return currentBusinessId;
+      return "all";
     }
   });
   useEffect(() => {
@@ -840,13 +874,17 @@ function CommandTab({
     try {
       const [ov, all] = await Promise.all([
         api<Overview>("/command-center/overview"),
-        api<{ tasks: AllTask[]; sections: TaskSection[] }>(
-          "/command-center/tasks/all",
-        ),
+        api<{
+          tasks: AllTask[];
+          sections: TaskSection[];
+          projects: CommandContainer[];
+          directReports: CommandContainer[];
+        }>("/command-center/tasks/all"),
       ]);
       setData(ov);
       setTasks(all.tasks);
       setTaskSections(all.sections);
+      setContainers({ projects: all.projects ?? [], directReports: all.directReports ?? [] });
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -861,8 +899,17 @@ function CommandTab({
   }, []);
 
   const sections = useMemo(
-    () => (tasks ? buildScopedSections(tasks, taskSections, scope) : []),
-    [tasks, taskSections, scope],
+    () =>
+      tasks
+        ? buildScopedSections(
+            tasks,
+            taskSections,
+            containers.projects,
+            containers.directReports,
+            scope,
+          )
+        : [],
+    [tasks, taskSections, containers, scope],
   );
 
   if (error) return <ErrorBlock message={error} />;
@@ -909,6 +956,9 @@ function CommandTab({
 
       <ViewControls view={view} setView={setView}>
         <span style={{ width: 10 }} />
+        <button type="button" onClick={() => setScope("all")} style={pillStyle(scope === "all")}>
+          All
+        </button>
         {businesses.map((b) => (
           <button
             key={b.id}
@@ -1083,6 +1133,17 @@ function CommandGroup({
               Due
             </div>
             <div style={{ padding: "7px 12px", textAlign: "center" }}>Owner</div>
+          </div>
+        )}
+        {group.chunks.length === 0 && (
+          <div
+            style={{
+              padding: "10px 14px",
+              fontSize: 13,
+              color: "#94a3b8",
+            }}
+          >
+            No open tasks.
           </div>
         )}
         {group.chunks.map((chunk, ci) => (

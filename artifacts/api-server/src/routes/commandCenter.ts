@@ -869,7 +869,26 @@ router.get("/tasks/all", async (_req, res): Promise<void> => {
         : t.ownerName;
     return [{ ...t, parentName, businessIds, ownerLabel }];
   });
-  res.json({ tasks: rows, sections });
+  // Containers ride along so the Command view can render empty projects /
+  // direct reports (e.g. a just-created Ideas project with no tasks yet).
+  res.json({
+    tasks: rows,
+    sections,
+    projects: projects.map((p) => ({
+      id: p.id,
+      name: p.name,
+      businessIds: p.businessIds,
+      sortOrder: p.sortOrder,
+    })),
+    directReports: drs
+      .filter((d) => !d.hidden)
+      .map((d) => ({
+        id: d.id,
+        name: d.name,
+        businessIds: d.businessIds,
+        sortOrder: d.sortOrder,
+      })),
+  });
 });
 
 router.get("/tasks", async (req, res): Promise<void> => {
