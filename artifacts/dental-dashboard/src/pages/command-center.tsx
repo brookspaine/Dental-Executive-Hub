@@ -2125,7 +2125,7 @@ function OnDeckRow({
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
         />
-        <PinStar taskText={text} visible onPinned={onDelete} />
+        <PinStar taskText={text} visible={hover} onPinned={onDelete} />
         <button
           type="button"
           onClick={() => void onDelete()}
