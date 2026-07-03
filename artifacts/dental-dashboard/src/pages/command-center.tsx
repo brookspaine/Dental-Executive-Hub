@@ -196,14 +196,18 @@ function useBusiness(): [number, (id: number) => void] {
 }
 
 async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  // Merge headers explicitly: spreading `...init` after `headers` would let
+  // a caller-provided headers object REPLACE the defaults wholesale (losing
+  // content-type, so Express never parses the JSON body).
+  const { headers: initHeaders, ...rest } = init ?? {};
   const res = await fetch(`${BASE}${path}`, {
     credentials: "include",
+    ...rest,
     headers: {
       "content-type": "application/json",
       "x-business-id": String(currentBusinessId),
-      ...(init?.headers ?? {}),
+      ...(initHeaders ?? {}),
     },
-    ...init,
   });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   if (res.status === 204) return undefined as T;
