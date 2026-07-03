@@ -518,9 +518,13 @@ type CommandContainer = {
 type CommandScope = "all" | number | "personal";
 
 type CommandChunk = { sectionId: number | null; sectionName: string | null; tasks: AllTask[] };
+type CommandGroupData = { key: string; label: string; chunks: CommandChunk[]; count: number };
 type CommandSection = {
   title: string;
-  groups: Array<{ key: string; label: string; chunks: CommandChunk[]; count: number }>;
+  /* Direct-report groups render inside a collapsible "Direct Reports"
+     wrapper; each person collapses individually too. */
+  drGroups?: CommandGroupData[];
+  groups: CommandGroupData[];
 };
 
 function buildScopedSections(
@@ -606,8 +610,9 @@ function buildScopedSections(
     const inBiz = (ids: number[]) => ids.includes(scope);
     return [
       {
-        title: "Direct Reports",
-        groups: directReports.filter((d) => inBiz(d.businessIds)).sort(bySort).map((d) => groupOf(d, "direct_report")),
+        title: "",
+        drGroups: directReports.filter((d) => inBiz(d.businessIds)).sort(bySort).map((d) => groupOf(d, "direct_report")),
+        groups: [],
       },
       {
         title: "Projects",
@@ -635,10 +640,8 @@ function buildScopedSections(
     const projs = projects.filter((p) => p.businessIds.length === 1 && p.businessIds[0] === b.id).sort(bySort);
     result.push({
       title: b.name,
-      groups: [
-        ...drs.map((d) => groupOf(d, "direct_report")),
-        ...projs.map((p) => groupOf(p, "project")),
-      ],
+      drGroups: drs.map((d) => groupOf(d, "direct_report")),
+      groups: projs.map((p) => groupOf(p, "project")),
     });
   }
   const personalProjects = projects.filter((p) => p.businessIds.length === 0).sort(bySort).map((p) => groupOf(p, "project"));
@@ -1030,13 +1033,25 @@ function CommandTab({
                 {sec.title}
               </div>
             )}
-            {sec.groups.length === 0 && (
+            {sec.drGroups && sec.drGroups.length > 0 && (
+              <DirectReportsCluster
+                clusterKey={sec.title || "scoped"}
+                groups={sec.drGroups}
+                onChanged={reload}
+              />
+            )}
+            {(sec.drGroups?.length ?? 0) === 0 && sec.groups.length === 0 && (
               <div style={{ color: C.textSecondary, fontSize: 13, padding: "4px 2px 16px" }}>
                 No open tasks.
               </div>
             )}
             {sec.groups.map((g) => (
-              <CommandGroup key={g.key} group={g} onChanged={reload} />
+              <CommandGroup
+                key={g.key}
+                group={g}
+                hideLabel={g.label === sec.title}
+                onChanged={reload}
+              />
             ))}
           </div>
         ))}
@@ -1112,31 +1127,148 @@ function SectionHeaderRow({
   );
 }
 
-function CommandGroup({
-  group,
+/* Persisted collapse state helper (localStorage-backed). */
+function useCollapsed(key: string): [boolean, () => void] {
+  const [collapsed, setCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(`cc-collapse:${key}`) === "1";
+    } catch {
+      return false;
+    }
+  });
+  const toggle = () => {
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem(`cc-collapse:${key}`, c ? "0" : "1");
+      } catch {
+        /* ignore */
+      }
+      return !c;
+    });
+  };
+  return [collapsed, toggle];
+}
+
+function Chevron({ open }: { open: boolean }) {
+  return (
+    <span
+      style={{
+        fontSize: 10,
+        color: "#94a3b8",
+        display: "inline-block",
+        width: 12,
+        transform: open ? "rotate(0deg)" : "rotate(-90deg)",
+        transition: "transform 120ms ease",
+      }}
+    >
+      ▼
+    </span>
+  );
+}
+
+/* All of a business's people under one collapsible "Direct Reports"
+   sub-heading; each person collapses individually inside it. */
+function DirectReportsCluster({
+  clusterKey,
+  groups,
   onChanged,
 }: {
-  group: { key: string; label: string; chunks: CommandChunk[]; count: number };
+  clusterKey: string;
+  groups: CommandGroupData[];
+  onChanged: () => void;
+}) {
+  const [collapsed, toggle] = useCollapsed(`drs-${clusterKey}`);
+  return (
+    <div style={{ marginBottom: 18 }}>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: SANS,
+          fontSize: 16,
+          fontWeight: 600,
+          color: C.textPrimary,
+          padding: "4px 2px 8px",
+        }}
+      >
+        <Chevron open={!collapsed} />
+        Direct Reports
+      </button>
+      {!collapsed && (
+        <div style={{ paddingLeft: 4 }}>
+          {groups.map((g) => (
+            <CommandGroup key={g.key} group={g} onChanged={onChanged} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommandGroup({
+  group,
+  hideLabel = false,
+  onChanged,
+}: {
+  group: CommandGroupData;
+  hideLabel?: boolean;
   onChanged: () => void;
 }) {
   const isMobile = useIsMobile();
+  const [collapsed, toggle] = useCollapsed(`g-${group.key}`);
+  if (hideLabel) {
+    return (
+      <div style={{ marginBottom: 18 }}>
+        <CommandGroupTable group={group} isMobile={isMobile} onChanged={onChanged} />
+      </div>
+    );
+  }
   return (
     <div style={{ marginBottom: 18 }}>
-      {group.label && (
-        <div
-          style={{
-            fontSize: 16,
-            fontWeight: 600,
-            color: C.textPrimary,
-            padding: "4px 2px 8px",
-          }}
-        >
-          {group.label}{" "}
-          <span style={{ color: C.textSecondary, fontWeight: 400 }}>
-            ({group.count})
-          </span>
-        </div>
+      <button
+        type="button"
+        onClick={toggle}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: SANS,
+          fontSize: 16,
+          fontWeight: 600,
+          color: C.textPrimary,
+          padding: "4px 2px 8px",
+        }}
+      >
+        <Chevron open={!collapsed} />
+        {group.label}
+      </button>
+      {!collapsed && (
+        <CommandGroupTable group={group} isMobile={isMobile} onChanged={onChanged} />
       )}
+    </div>
+  );
+}
+
+function CommandGroupTable({
+  group,
+  isMobile,
+  onChanged,
+}: {
+  group: CommandGroupData;
+  isMobile: boolean;
+  onChanged: () => void;
+}) {
+  return (
+    <div>
       <div
         style={{
           background: C.card,
