@@ -726,179 +726,6 @@ function ViewControls({
   );
 }
 
-/* Compact On Deck card for the Command top strip (v3.2 mockup style):
-   priority pill + text + owner, hover reveals ★ pin and × remove. */
-function OnDeckMini({
-  items,
-  onChange,
-}: {
-  items: OnDeckItem[];
-  onChange: () => void | Promise<void>;
-}) {
-  const [drs, setDrs] = useState<DirectReport[]>([]);
-  useEffect(() => {
-    api<DirectReport[]>("/command-center/direct-reports")
-      .then(setDrs)
-      .catch(() => setDrs([]));
-  }, []);
-  const ownerOf = (it: OnDeckItem): string =>
-    it.ownerDirectReportId != null
-      ? (drs.find((d) => d.id === it.ownerDirectReportId)?.name ?? "")
-      : (it.ownerName ?? "");
-  const remove = async (id: number) => {
-    await api(`/command-center/on-deck/${id}`, { method: "DELETE" });
-    await onChange();
-  };
-  return (
-    <div
-      style={{
-        background: C.card,
-        border: `1px solid ${C.divider}`,
-        borderRadius: 10,
-        overflow: "hidden",
-      }}
-    >
-      <div
-        style={{
-          padding: "8px 14px",
-          background: "#faf7f1",
-          borderBottom: `1px solid ${C.divider}`,
-          display: "flex",
-          alignItems: "baseline",
-          justifyContent: "space-between",
-          fontSize: 13,
-          fontWeight: 600,
-          letterSpacing: 0.3,
-          color: C.textSecondary,
-        }}
-      >
-        <span>On Deck</span>
-        <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
-          {items.length}/{ON_DECK_CAP} · this week
-        </span>
-      </div>
-      <div style={{ padding: "0 14px 10px" }}>
-        {items.length === 0 && (
-          <div style={{ color: C.textSecondary, fontSize: 13, padding: "6px 0" }}>
-            Nothing on deck yet.
-          </div>
-        )}
-        {items.map((it) => (
-          <OnDeckMiniRow
-            key={it.id}
-            item={it}
-            owner={ownerOf(it)}
-            onRemove={() => remove(it.id)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function OnDeckMiniRow({
-  item,
-  owner,
-  onRemove,
-}: {
-  item: OnDeckItem;
-  owner: string;
-  onRemove: () => void | Promise<void>;
-}) {
-  const [hover, setHover] = useState(false);
-  const opt = item.priority
-    ? PRIORITY_OPTIONS.find((o) => o.value === item.priority)
-    : null;
-  return (
-    <div
-      onMouseEnter={() => setHover(true)}
-      onMouseLeave={() => setHover(false)}
-      style={{
-        position: "relative",
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        padding: "7px 4px",
-        borderBottom: `1px solid ${C.divider}`,
-        fontSize: 13.5,
-        background: hover ? "#f8fafc" : "transparent",
-      }}
-    >
-      {opt && (
-        <span
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            padding: "2px 8px",
-            borderRadius: 999,
-            background: opt.bg,
-            color: opt.fg,
-            flexShrink: 0,
-          }}
-        >
-          {opt.label}
-        </span>
-      )}
-      <span
-        style={{
-          minWidth: 0,
-          overflow: "hidden",
-          textOverflow: "ellipsis",
-          whiteSpace: "nowrap",
-          flex: 1,
-        }}
-      >
-        {item.text}
-      </span>
-      <span
-        style={{
-          color: "#94a3b8",
-          fontSize: 12,
-          marginLeft: "auto",
-          flexShrink: 0,
-          textAlign: "right",
-        }}
-      >
-        {owner}
-      </span>
-      <div
-        style={{
-          position: "absolute",
-          right: 2,
-          top: "50%",
-          transform: "translateY(-50%)",
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          background: hover ? "#f8fafc" : "transparent",
-          paddingLeft: 8,
-        }}
-      >
-        <PinStar taskText={item.text} visible={hover} onPinned={onRemove} />
-        <button
-          type="button"
-          onClick={() => void onRemove()}
-          aria-label="Remove from On Deck"
-          title="Remove from On Deck"
-          style={{
-            background: "transparent",
-            border: "none",
-            color: C.textSecondary,
-            cursor: "pointer",
-            fontSize: 15,
-            lineHeight: 1,
-            padding: "0 2px",
-            visibility: hover ? "visible" : "hidden",
-            flexShrink: 0,
-          }}
-        >
-          ×
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function CommandTab({
   businesses,
   view,
@@ -1002,22 +829,20 @@ function CommandTab({
           alignItems: "start",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <Top3Card
-            title="Today's Top 3"
-            period="day"
-            top3={data.top3}
-            onChange={reload}
-          />
-          <Top3Card
-            title="This Week's Top 3"
-            period="week"
-            top3={data.weekTop3 ?? []}
-            onChange={reload}
-          />
-        </div>
-        <OnDeckMini items={data.onDeck ?? []} onChange={reload} />
+        <Top3Card
+          title="Today's Top 3"
+          period="day"
+          top3={data.top3}
+          onChange={reload}
+        />
+        <Top3Card
+          title="This Week's Top 3"
+          period="week"
+          top3={data.weekTop3 ?? []}
+          onChange={reload}
+        />
       </div>
+      <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
 
       <ViewControls view={view} setView={setView}>
         <span style={{ width: 10 }} />
@@ -1064,6 +889,7 @@ function CommandTab({
               <DirectReportsCluster
                 clusterKey={sec.title || "scoped"}
                 groups={sec.drGroups}
+                drs={containers.directReports}
                 onChanged={reload}
               />
             )}
@@ -1077,6 +903,7 @@ function CommandTab({
                 key={g.key}
                 group={g}
                 hideLabel={g.label === sec.title}
+                drs={containers.directReports}
                 onChanged={reload}
               />
             ))}
@@ -1250,10 +1077,12 @@ function Chevron({ open }: { open: boolean }) {
 function DirectReportsCluster({
   clusterKey,
   groups,
+  drs,
   onChanged,
 }: {
   clusterKey: string;
   groups: CommandGroupData[];
+  drs: CommandContainer[];
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`drs-${clusterKey}`);
@@ -1282,7 +1111,7 @@ function DirectReportsCluster({
       {!collapsed && (
         <div style={{ paddingLeft: 4 }}>
           {groups.map((g) => (
-            <CommandGroup key={g.key} group={g} onChanged={onChanged} />
+            <CommandGroup key={g.key} group={g} drs={drs} onChanged={onChanged} />
           ))}
         </div>
       )}
@@ -1293,10 +1122,12 @@ function DirectReportsCluster({
 function CommandGroup({
   group,
   hideLabel = false,
+  drs,
   onChanged,
 }: {
   group: CommandGroupData;
   hideLabel?: boolean;
+  drs: CommandContainer[];
   onChanged: () => void;
 }) {
   const isMobile = useIsMobile();
@@ -1304,7 +1135,7 @@ function CommandGroup({
   if (hideLabel) {
     return (
       <div style={{ marginBottom: 18 }}>
-        <CommandGroupTable group={group} isMobile={isMobile} onChanged={onChanged} />
+        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} onChanged={onChanged} />
       </div>
     );
   }
@@ -1331,7 +1162,7 @@ function CommandGroup({
         {group.label}
       </button>
       {!collapsed && (
-        <CommandGroupTable group={group} isMobile={isMobile} onChanged={onChanged} />
+        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} onChanged={onChanged} />
       )}
     </div>
   );
@@ -1340,10 +1171,12 @@ function CommandGroup({
 function CommandGroupTable({
   group,
   isMobile,
+  drs,
   onChanged,
 }: {
   group: CommandGroupData;
   isMobile: boolean;
+  drs: CommandContainer[];
   onChanged: () => void;
 }) {
   return (
@@ -1391,6 +1224,7 @@ function CommandGroupTable({
             chunk={chunk}
             group={group}
             isMobile={isMobile}
+            drs={drs}
             onChanged={onChanged}
           />
         ))}
@@ -1597,11 +1431,13 @@ function SectionChunk({
   chunk,
   group,
   isMobile,
+  drs,
   onChanged,
 }: {
   chunk: CommandChunk;
   group: CommandGroupData;
   isMobile: boolean;
+  drs: CommandContainer[];
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`sec-${chunk.sectionId ?? `u-${group.key}`}`);
@@ -1620,7 +1456,7 @@ function SectionChunk({
       )}
       {!hidden &&
         chunk.tasks.map((t) => (
-          <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
+          <CommandRow key={t.id} task={t} isMobile={isMobile} drs={drs} onChanged={onChanged} />
         ))}
       {!hidden && (
         <AddTaskRow group={group} sectionId={chunk.sectionId} onChanged={onChanged} />
@@ -1632,16 +1468,26 @@ function SectionChunk({
 function CommandRow({
   task,
   isMobile,
+  drs,
   onChanged,
 }: {
   task: AllTask;
   isMobile: boolean;
+  drs: CommandContainer[];
   onChanged: () => void;
 }) {
   const [text, setText] = useState(task.text);
   const [hover, setHover] = useState(false);
   useEffect(() => setText(task.text), [task.text]);
   const dueInfo = formatDueDate(task.dueDate, task.done);
+
+  // Owner choices: people sharing a business with the task (personal tasks
+  // can go to anyone). Shape adapted to OwnerPicker's DirectReport prop.
+  const ownerOptions = (
+    task.businessIds.length === 0
+      ? drs
+      : drs.filter((d) => d.businessIds.some((b) => task.businessIds.includes(b)))
+  ).map((d) => ({ id: d.id, name: d.name, sortOrder: d.sortOrder, collapsed: false }));
 
   const patch = async (body: Record<string, unknown>) => {
     await api(`/command-center/tasks/${task.id}`, {
@@ -1752,7 +1598,38 @@ function CommandRow({
           color: C.textSecondary,
         }}
       >
-        {task.ownerLabel ?? "—"}
+        <OwnerPicker
+          directReportId={task.ownerDirectReportId}
+          ownerName={task.ownerName}
+          options={ownerOptions}
+          onChange={(next) => {
+            // Header must name a business shared by the task AND the new
+            // owner, or the API's cross-business guard rejects the change.
+            let headers = taskBizHeaders(task);
+            if (next.directReportId != null) {
+              const owner = drs.find((d) => d.id === next.directReportId);
+              const shared =
+                task.businessIds.length === 0
+                  ? (owner?.businessIds ?? [])
+                  : task.businessIds.filter((b) => owner?.businessIds.includes(b));
+              if (shared.length > 0) {
+                headers = {
+                  "x-business-id": String(
+                    shared.includes(currentBusinessId) ? currentBusinessId : shared[0],
+                  ),
+                };
+              }
+            }
+            void api(`/command-center/tasks/${task.id}`, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({
+                ownerDirectReportId: next.directReportId,
+                ownerName: next.ownerName,
+              }),
+            }).then(onChanged);
+          }}
+        />
       </div>
     </div>
   );
@@ -1988,22 +1865,32 @@ export function OnDeckCard({
   };
 
   return (
-    <Card>
-      <div style={{ marginBottom: 14 }}>
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: SERIF,
-            fontSize: 18,
-            fontWeight: 600,
-            color: C.textPrimary,
-          }}
-        >
-          On Deck
-        </h2>
-        <div style={{ marginTop: 2, fontSize: 12, color: C.textSecondary }}>
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 10,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          padding: "8px 14px",
+          background: "#faf7f1",
+          borderBottom: `1px solid ${C.divider}`,
+          display: "flex",
+          alignItems: "baseline",
+          justifyContent: "space-between",
+          fontSize: 13,
+          fontWeight: 600,
+          letterSpacing: 0.3,
+          color: C.textSecondary,
+        }}
+      >
+        <span>On Deck</span>
+        <span style={{ fontWeight: 400, fontSize: 12, color: "#94a3b8" }}>
           {items.length}/{ON_DECK_CAP} · this week's shortlist
-        </div>
+        </span>
       </div>
 
       <div
@@ -2178,7 +2065,7 @@ export function OnDeckCard({
           )}
         </div>
       </div>
-    </Card>
+    </div>
   );
 }
 
