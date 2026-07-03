@@ -528,15 +528,10 @@ function buildScopedSections(
   sections: TaskSection[],
   projects: CommandContainer[],
   directReports: CommandContainer[],
+  businesses: Business[],
   scope: CommandScope,
 ): CommandSection[] {
-  if (scope === "personal") {
-    // Personal renders the full Life Areas planner via LifeAreasTab —
-    // handled directly in CommandTab, no task groups here.
-    return [];
-  }
   const sectionById = new Map(sections.map((sec) => [sec.id, sec]));
-  const inScope = (ids: number[]) => scope === "all" || ids.includes(scope);
 
   const chunksFor = (list: AllTask[]): CommandChunk[] => {
     const unsectioned = list.filter(
@@ -569,48 +564,87 @@ function buildScopedSections(
     return chunks;
   };
 
-  const containerGroups = (
-    containers: CommandContainer[],
-    parentType: "project" | "direct_report",
-  ) =>
-    containers
-      .filter((c) => inScope(c.businessIds))
-      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
-      .map((c) => {
-        const list = tasks.filter(
-          (t) => t.parentType === parentType && t.parentId === c.id,
-        );
-        return { key: `${parentType}-${c.id}`, label: c.name, chunks: chunksFor(list), count: list.length };
-      });
+  const groupOf = (c: CommandContainer, parentType: "project" | "direct_report") => {
+    const list = tasks.filter((t) => t.parentType === parentType && t.parentId === c.id);
+    return { key: `${parentType}-${c.id}`, label: c.name, chunks: chunksFor(list), count: list.length };
+  };
+  const bySort = (a: CommandContainer, b: CommandContainer) =>
+    a.sortOrder - b.sortOrder || a.id - b.id;
 
-  const result: CommandSection[] = [
-    { title: "Direct Reports", groups: containerGroups(directReports, "direct_report") },
-    { title: "Projects", groups: containerGroups(projects, "project") },
-  ];
-
-  if (scope === "all") {
-    // Life-area tasks join the everything view as plain task tables.
+  const lifeAreaGroups = () => {
     const life = tasks.filter((t) => t.parentType === "life_area");
-    if (life.length > 0) {
-      const byArea = new Map<string, AllTask[]>();
-      for (const t of life) {
-        const label = t.parentName ?? "Untitled";
-        const cur = byArea.get(label);
-        if (cur) cur.push(t);
-        else byArea.set(label, [t]);
-      }
-      result.push({
-        title: "Life Areas",
-        groups: [...byArea.entries()]
-          .sort((a, b) => a[0].localeCompare(b[0]))
-          .map(([label, list]) => ({
-            key: `life-${label}`,
-            label,
-            chunks: chunksFor(list),
-            count: list.length,
-          })),
-      });
+    const byArea = new Map<string, AllTask[]>();
+    for (const t of life) {
+      const label = t.parentName ?? "Untitled";
+      const cur = byArea.get(label);
+      if (cur) cur.push(t);
+      else byArea.set(label, [t]);
     }
+    return [...byArea.entries()]
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([label, list]) => ({
+        key: `life-${label}`,
+        label,
+        chunks: chunksFor(list),
+        count: list.length,
+      }));
+  };
+
+  if (scope === "personal") {
+    // Personal projects (empty businessIds) render as task tables; the full
+    // Life Areas planner renders after them (LifeAreasTab in CommandTab).
+    const personalProjects = projects
+      .filter((p) => p.businessIds.length === 0)
+      .sort(bySort)
+      .map((p) => groupOf(p, "project"));
+    return personalProjects.length > 0
+      ? [{ title: "Projects", groups: personalProjects }]
+      : [];
+  }
+
+  if (scope !== "all") {
+    const inBiz = (ids: number[]) => ids.includes(scope);
+    return [
+      {
+        title: "Direct Reports",
+        groups: directReports.filter((d) => inBiz(d.businessIds)).sort(bySort).map((d) => groupOf(d, "direct_report")),
+      },
+      {
+        title: "Projects",
+        groups: projects.filter((p) => inBiz(p.businessIds)).sort(bySort).map((p) => groupOf(p, "project")),
+      },
+    ];
+  }
+
+  // Scope: All — cross-business items (me + Ideas) on top, then a section
+  // per business with its own people and projects, then Personal.
+  const result: CommandSection[] = [];
+  const crossDRs = directReports.filter((d) => d.businessIds.length > 1).sort(bySort);
+  const crossProjects = projects.filter((p) => p.businessIds.length > 1).sort(bySort);
+  if (crossDRs.length + crossProjects.length > 0) {
+    result.push({
+      title: "",
+      groups: [
+        ...crossDRs.map((d) => groupOf(d, "direct_report")),
+        ...crossProjects.map((p) => groupOf(p, "project")),
+      ],
+    });
+  }
+  for (const b of [...businesses].sort((x, y) => x.sortOrder - y.sortOrder || x.id - y.id)) {
+    const drs = directReports.filter((d) => d.businessIds.length === 1 && d.businessIds[0] === b.id).sort(bySort);
+    const projs = projects.filter((p) => p.businessIds.length === 1 && p.businessIds[0] === b.id).sort(bySort);
+    result.push({
+      title: b.name,
+      groups: [
+        ...drs.map((d) => groupOf(d, "direct_report")),
+        ...projs.map((p) => groupOf(p, "project")),
+      ],
+    });
+  }
+  const personalProjects = projects.filter((p) => p.businessIds.length === 0).sort(bySort).map((p) => groupOf(p, "project"));
+  const life = lifeAreaGroups();
+  if (personalProjects.length + life.length > 0) {
+    result.push({ title: "Personal", groups: [...personalProjects, ...life] });
   }
   return result;
 }
@@ -906,10 +940,11 @@ function CommandTab({
             taskSections,
             containers.projects,
             containers.directReports,
+            businesses,
             scope,
           )
         : [],
-    [tasks, taskSections, containers, scope],
+    [tasks, taskSections, containers, businesses, scope],
   );
 
   if (error) return <ErrorBlock message={error} />;
@@ -978,23 +1013,23 @@ function CommandTab({
         </button>
       </ViewControls>
 
-      {scope === "personal" && <LifeAreasTab businesses={businesses} />}
-
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {sections.map((sec) => (
-          <div key={sec.title}>
-            <div
-              style={{
-                fontFamily: SERIF,
-                fontSize: 18,
-                fontWeight: 600,
-                padding: "8px 2px 10px",
-                borderBottom: `1px solid ${C.divider}`,
-                marginBottom: 12,
-              }}
-            >
-              {sec.title}
-            </div>
+        {sections.map((sec, si) => (
+          <div key={sec.title || `top-${si}`}>
+            {sec.title && (
+              <div
+                style={{
+                  fontFamily: SERIF,
+                  fontSize: 18,
+                  fontWeight: 600,
+                  padding: "8px 2px 10px",
+                  borderBottom: `1px solid ${C.divider}`,
+                  marginBottom: 12,
+                }}
+              >
+                {sec.title}
+              </div>
+            )}
             {sec.groups.length === 0 && (
               <div style={{ color: C.textSecondary, fontSize: 13, padding: "4px 2px 16px" }}>
                 No open tasks.
@@ -1005,6 +1040,7 @@ function CommandTab({
             ))}
           </div>
         ))}
+        {scope === "personal" && <LifeAreasTab businesses={businesses} />}
       </div>
     </div>
   );

@@ -125,10 +125,17 @@ async function parentInBusiness(
     return rows.length > 0;
   }
   const table = parentType === "direct_report" ? ccDirectReportsTable : ccProjectsTable;
+  // An empty businessIds array marks a PERSONAL container (e.g. the
+  // Best Year Ever project) — reachable from any business context.
   const rows = await db
     .select({ id: table.id })
     .from(table)
-    .where(and(eq(table.id, parentId), sql`${businessId} = ANY(${table.businessIds})`))
+    .where(
+      and(
+        eq(table.id, parentId),
+        sql`(${businessId} = ANY(${table.businessIds}) OR cardinality(${table.businessIds}) = 0)`,
+      ),
+    )
     .limit(1);
   return rows.length > 0;
 }
