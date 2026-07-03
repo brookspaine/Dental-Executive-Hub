@@ -756,13 +756,13 @@ function OnDeckMini({
     >
       <div
         style={{
-          padding: "7px 14px",
+          padding: "8px 14px",
           background: "#faf7f1",
           borderBottom: `1px solid ${C.divider}`,
           display: "flex",
           alignItems: "baseline",
           justifyContent: "space-between",
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: 0.5,
@@ -1758,10 +1758,10 @@ export function Top3Card({
     >
       <div
         style={{
-          padding: "7px 14px",
+          padding: "8px 14px",
           background: "#faf7f1",
           borderBottom: `1px solid ${C.divider}`,
-          fontSize: 11,
+          fontSize: 13,
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: 0.5,
