@@ -15,6 +15,7 @@ import {
   futureTodosTable,
 } from "@workspace/db";
 import { getBusinessId } from "../lib/businessScope";
+import { logger } from "../lib/logger";
 
 /**
  * Shared Command Center router. Mounted under both `/command-center`
@@ -999,6 +1000,10 @@ router.post("/tasks", async (req, res): Promise<void> => {
     })
     .safeParse(req.body);
   if (!body.success) {
+    logger.warn(
+      { body: req.body, issues: body.error.issues },
+      "POST /tasks rejected — invalid input",
+    );
     res.status(400).json({ error: "invalid input" });
     return;
   }
