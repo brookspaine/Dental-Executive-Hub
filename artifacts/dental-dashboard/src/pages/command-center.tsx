@@ -751,32 +751,30 @@ function OnDeckMini({
         background: C.card,
         border: `1px solid ${C.divider}`,
         borderRadius: 10,
+        overflow: "hidden",
       }}
     >
       <div
         style={{
-          padding: "14px 16px 8px",
+          padding: "7px 14px",
+          background: "#faf7f1",
+          borderBottom: `1px solid ${C.divider}`,
           display: "flex",
           alignItems: "baseline",
           justifyContent: "space-between",
+          fontSize: 11,
+          fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
+          color: C.textSecondary,
         }}
       >
-        <h2
-          style={{
-            margin: 0,
-            fontFamily: SERIF,
-            fontSize: 18,
-            fontWeight: 600,
-            color: C.textSecondary,
-          }}
-        >
-          On Deck
-        </h2>
-        <span style={{ fontSize: 12, color: "#94a3b8" }}>
+        <span>On Deck</span>
+        <span style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
           {items.length}/{ON_DECK_CAP} · this week
         </span>
       </div>
-      <div style={{ padding: "0 16px 14px" }}>
+      <div style={{ padding: "0 14px 10px" }}>
         {items.length === 0 && (
           <div style={{ color: C.textSecondary, fontSize: 13, padding: "6px 0" }}>
             Nothing on deck yet.
@@ -1091,10 +1089,14 @@ function CommandTab({
 function SectionHeaderRow({
   chunk,
   group,
+  collapsed,
+  onToggle,
   onChanged,
 }: {
   chunk: CommandChunk;
   group: CommandGroupData;
+  collapsed: boolean;
+  onToggle: () => void;
   onChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
@@ -1142,6 +1144,20 @@ function SectionHeaderRow({
         color: C.textSecondary,
       }}
     >
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label={collapsed ? "Expand section" : "Collapse section"}
+        style={{
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          padding: "0 6px 0 0",
+          lineHeight: 1,
+        }}
+      >
+        <Chevron open={!collapsed} />
+      </button>
       {editing ? (
         <input
           autoFocus
@@ -1155,13 +1171,13 @@ function SectionHeaderRow({
               setEditing(false);
             }
           }}
-          style={{ ...inputStyle, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, width: "60%" }}
+          style={{ ...inputStyle, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, flex: 1 }}
         />
       ) : (
         <span
           onClick={() => setEditing(true)}
           title="Click to rename section"
-          style={{ cursor: "text" }}
+          style={{ cursor: "text", flex: 1, textAlign: "left" }}
         >
           {chunk.sectionName}
         </span>
@@ -1368,15 +1384,13 @@ function CommandGroupTable({
           <AddTaskRow group={group} sectionId={null} onChanged={onChanged} />
         )}
         {group.chunks.map((chunk, ci) => (
-          <Fragment key={chunk.sectionName ?? `__none-${ci}`}>
-            {chunk.sectionName && (
-              <SectionHeaderRow chunk={chunk} group={group} onChanged={onChanged} />
-            )}
-            {chunk.tasks.map((t) => (
-              <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
-            ))}
-            <AddTaskRow group={group} sectionId={chunk.sectionId} onChanged={onChanged} />
-          </Fragment>
+          <SectionChunk
+            key={chunk.sectionId ?? `__none-${ci}`}
+            chunk={chunk}
+            group={group}
+            isMobile={isMobile}
+            onChanged={onChanged}
+          />
         ))}
         {(group.parentType === "project" || group.parentType === "direct_report") && (
           <AddSectionRow group={group} onChanged={onChanged} />
@@ -1552,6 +1566,45 @@ function AddSectionRow({
   );
 }
 
+/* One section cluster inside a group table: header (collapsible), its
+   tasks, and the add-task row. Unsectioned clusters have no header and
+   never collapse. */
+function SectionChunk({
+  chunk,
+  group,
+  isMobile,
+  onChanged,
+}: {
+  chunk: CommandChunk;
+  group: CommandGroupData;
+  isMobile: boolean;
+  onChanged: () => void;
+}) {
+  const [collapsed, toggle] = useCollapsed(`sec-${chunk.sectionId ?? `u-${group.key}`}`);
+  const isCollapsible = chunk.sectionName !== null;
+  const hidden = isCollapsible && collapsed;
+  return (
+    <Fragment>
+      {chunk.sectionName && (
+        <SectionHeaderRow
+          chunk={chunk}
+          group={group}
+          collapsed={collapsed}
+          onToggle={toggle}
+          onChanged={onChanged}
+        />
+      )}
+      {!hidden &&
+        chunk.tasks.map((t) => (
+          <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
+        ))}
+      {!hidden && (
+        <AddTaskRow group={group} sectionId={chunk.sectionId} onChanged={onChanged} />
+      )}
+    </Fragment>
+  );
+}
+
 function CommandRow({
   task,
   isMobile,
@@ -1695,19 +1748,29 @@ export function Top3Card({
   const slots = [1, 2, 3].map((slot) => top3.find((r) => r.slot === slot) ?? null);
 
   return (
-    <Card>
-      <h2
+    <div
+      style={{
+        background: C.card,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 10,
+        overflow: "hidden",
+      }}
+    >
+      <div
         style={{
-          margin: "0 0 10px",
-          fontFamily: SERIF,
-          fontSize: 18,
+          padding: "7px 14px",
+          background: "#faf7f1",
+          borderBottom: `1px solid ${C.divider}`,
+          fontSize: 11,
           fontWeight: 600,
+          textTransform: "uppercase",
+          letterSpacing: 0.5,
           color: C.textSecondary,
         }}
       >
         {title}
-      </h2>
-      <div style={{ display: "flex", flexDirection: "column" }}>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", padding: "6px 14px 10px" }}>
         {slots.map((row, idx) => (
           <Top3Row
             key={idx}
@@ -1736,7 +1799,7 @@ export function Top3Card({
           />
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
