@@ -1862,6 +1862,7 @@ function Top3Row({
       </button>
       <input
         type="text"
+        className="cc-placeholder-light"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={() => value !== initial && onSave(value)}

@@ -248,3 +248,8 @@
     opacity: 0;
   }
 }
+
+/* Top 3 empty-slot prompts stay quiet until needed. */
+.cc-placeholder-light::placeholder {
+  color: #cbd5e1;
+}
