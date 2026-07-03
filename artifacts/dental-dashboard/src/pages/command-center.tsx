@@ -1089,10 +1089,10 @@ function CommandGroup({
       {group.label && (
         <div
           style={{
-            fontSize: 13,
+            fontSize: 16,
             fontWeight: 600,
             color: C.textPrimary,
-            padding: "2px 2px 8px",
+            padding: "4px 2px 8px",
           }}
         >
           {group.label}{" "}
