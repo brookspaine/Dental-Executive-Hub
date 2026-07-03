@@ -1410,23 +1410,34 @@ function AddTaskRow({
 }) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
+  const busyRef = useRef(false);
 
   const save = async () => {
     const text = draft.trim();
     if (!text || group.parentType === null || group.parentId === null) return;
-    await api("/command-center/tasks", {
-      method: "POST",
-      headers: groupBizHeaders(group),
-      body: JSON.stringify({
-        parentType: group.parentType,
-        parentId: group.parentId,
-        sectionId,
-        text,
-      }),
-    });
-    setDraft("");
-    setAdding(false);
-    onChanged();
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      await api("/command-center/tasks", {
+        method: "POST",
+        headers: groupBizHeaders(group),
+        body: JSON.stringify({
+          parentType: group.parentType,
+          parentId: group.parentId,
+          sectionId,
+          text,
+        }),
+      });
+      setDraft("");
+      setAdding(false);
+      onChanged();
+    } catch (e) {
+      window.alert(
+        `Couldn't save the task (${e instanceof Error ? e.message : "unknown error"}). Please try again.`,
+      );
+    } finally {
+      busyRef.current = false;
+    }
   };
 
   if (!adding) {
@@ -1499,22 +1510,33 @@ function AddSectionRow({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
 
+  const busyRef = useRef(false);
   const save = async () => {
     const name = draft.trim();
     if (!name || group.parentType === null || group.parentId === null) return;
-    await api("/command-center/task-sections", {
-      method: "POST",
-      headers: groupBizHeaders(group),
-      body: JSON.stringify({
-        parentType: group.parentType,
-        parentId: group.parentId,
-        name,
-        sortOrder: group.chunks.length,
-      }),
-    });
-    setDraft("");
-    setAdding(false);
-    onChanged();
+    if (busyRef.current) return;
+    busyRef.current = true;
+    try {
+      await api("/command-center/task-sections", {
+        method: "POST",
+        headers: groupBizHeaders(group),
+        body: JSON.stringify({
+          parentType: group.parentType,
+          parentId: group.parentId,
+          name,
+          sortOrder: group.chunks.length,
+        }),
+      });
+      setDraft("");
+      setAdding(false);
+      onChanged();
+    } catch (e) {
+      window.alert(
+        `Couldn't save the section (${e instanceof Error ? e.message : "unknown error"}). Please try again.`,
+      );
+    } finally {
+      busyRef.current = false;
+    }
   };
 
   if (!adding) {
