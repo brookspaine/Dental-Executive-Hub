@@ -764,8 +764,7 @@ function OnDeckMini({
           justifyContent: "space-between",
           fontSize: 13,
           fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
+          letterSpacing: 0.3,
           color: C.textSecondary,
         }}
       >
@@ -1137,10 +1136,9 @@ function SectionHeaderRow({
         padding: "6px 12px",
         background: "#faf7f1",
         borderBottom: `1px solid ${C.divider}`,
-        fontSize: 11,
+        fontSize: 12,
         fontWeight: 600,
-        textTransform: "uppercase",
-        letterSpacing: 0.5,
+        letterSpacing: 0.3,
         color: C.textSecondary,
       }}
     >
@@ -1171,7 +1169,7 @@ function SectionHeaderRow({
               setEditing(false);
             }
           }}
-          style={{ ...inputStyle, fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, flex: 1 }}
+          style={{ ...inputStyle, fontSize: 12, fontWeight: 600, letterSpacing: 0.3, flex: 1 }}
         />
       ) : (
         <span
@@ -1763,8 +1761,7 @@ export function Top3Card({
           borderBottom: `1px solid ${C.divider}`,
           fontSize: 13,
           fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: 0.5,
+          letterSpacing: 0.3,
           color: C.textSecondary,
         }}
       >
