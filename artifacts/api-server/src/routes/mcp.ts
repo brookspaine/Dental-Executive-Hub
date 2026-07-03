@@ -93,7 +93,9 @@ async function ensureIdeasContainers(): Promise<{
         .values({
           name: IDEAS_PROJECT_NAME,
           businessIds: [1, 2],
-          sortOrder: 99,
+          // Sorts above the regular projects — captures are the first thing
+          // to triage when scanning the Projects section.
+          sortOrder: -1,
         })
         .returning();
     }
