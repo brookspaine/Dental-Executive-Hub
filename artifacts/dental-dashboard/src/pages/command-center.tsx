@@ -484,6 +484,13 @@ const COMMAND_GRID_COLS = "1fr 96px 96px 110px";
 /* The business header each cross-business task action must carry: prefer the
    currently selected business when the task's parent belongs to it, else the
    task's own (first) business. */
+function groupBizHeaders(g: CommandGroupData): Record<string, string> {
+  const id = g.businessIds.includes(currentBusinessId)
+    ? currentBusinessId
+    : (g.businessIds[0] ?? currentBusinessId);
+  return { "x-business-id": String(id) };
+}
+
 function taskBizHeaders(t: AllTask): Record<string, string> {
   const id = t.businessIds.includes(currentBusinessId)
     ? currentBusinessId
@@ -518,7 +525,15 @@ type CommandContainer = {
 type CommandScope = "all" | number | "personal";
 
 type CommandChunk = { sectionId: number | null; sectionName: string | null; tasks: AllTask[] };
-type CommandGroupData = { key: string; label: string; chunks: CommandChunk[]; count: number };
+type CommandGroupData = {
+  key: string;
+  label: string;
+  chunks: CommandChunk[];
+  count: number;
+  parentType: ParentType | null;
+  parentId: number | null;
+  businessIds: number[];
+};
 type CommandSection = {
   title: string;
   /* Direct-report groups render inside a collapsible "Direct Reports"
@@ -570,7 +585,15 @@ function buildScopedSections(
 
   const groupOf = (c: CommandContainer, parentType: "project" | "direct_report") => {
     const list = tasks.filter((t) => t.parentType === parentType && t.parentId === c.id);
-    return { key: `${parentType}-${c.id}`, label: c.name, chunks: chunksFor(list), count: list.length };
+    return {
+      key: `${parentType}-${c.id}`,
+      label: c.name,
+      chunks: chunksFor(list),
+      count: list.length,
+      parentType,
+      parentId: c.id,
+      businessIds: c.businessIds,
+    };
   };
   const bySort = (a: CommandContainer, b: CommandContainer) =>
     a.sortOrder - b.sortOrder || a.id - b.id;
@@ -591,6 +614,9 @@ function buildScopedSections(
         label,
         chunks: chunksFor(list),
         count: list.length,
+        parentType: "life_area" as ParentType,
+        parentId: list[0]?.parentId ?? null,
+        businessIds: list[0]?.businessIds ?? [],
       }));
   };
 
@@ -1064,12 +1090,15 @@ function CommandTab({
 /* Click-to-edit section name inside a Command group table. */
 function SectionHeaderRow({
   chunk,
+  group,
   onChanged,
 }: {
   chunk: CommandChunk;
+  group: CommandGroupData;
   onChanged: () => void;
 }) {
   const [editing, setEditing] = useState(false);
+  const [hover, setHover] = useState(false);
   const [draft, setDraft] = useState(chunk.sectionName ?? "");
   useEffect(() => setDraft(chunk.sectionName ?? ""), [chunk.sectionName]);
 
@@ -1077,18 +1106,32 @@ function SectionHeaderRow({
     setEditing(false);
     const name = draft.trim();
     if (!name || name === chunk.sectionName || chunk.sectionId === null) return;
-    const anchor = chunk.tasks[0];
     await api(`/command-center/task-sections/${chunk.sectionId}`, {
       method: "PATCH",
-      headers: anchor ? taskBizHeaders(anchor) : undefined,
+      headers: groupBizHeaders(group),
       body: JSON.stringify({ name }),
+    });
+    onChanged();
+  };
+
+  const remove = async () => {
+    if (chunk.sectionId === null) return;
+    if (!window.confirm(`Delete section "${chunk.sectionName}"? Its tasks stay, unsectioned.`)) return;
+    await api(`/command-center/task-sections/${chunk.sectionId}`, {
+      method: "DELETE",
+      headers: groupBizHeaders(group),
     });
     onChanged();
   };
 
   return (
     <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
       style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         padding: "6px 12px",
         background: "#f8fafc",
         borderBottom: `1px solid ${C.divider}`,
@@ -1123,6 +1166,24 @@ function SectionHeaderRow({
           {chunk.sectionName}
         </span>
       )}
+      <button
+        type="button"
+        onClick={() => void remove()}
+        aria-label="Delete section"
+        title="Delete section (tasks stay, unsectioned)"
+        style={{
+          background: "transparent",
+          border: "none",
+          color: C.textSecondary,
+          cursor: "pointer",
+          fontSize: 13,
+          lineHeight: 1,
+          padding: "0 2px",
+          visibility: hover && !editing ? "visible" : "hidden",
+        }}
+      >
+        ×
+      </button>
     </div>
   );
 }
@@ -1304,27 +1365,189 @@ function CommandGroupTable({
           </div>
         )}
         {group.chunks.length === 0 && (
-          <div
-            style={{
-              padding: "10px 14px",
-              fontSize: 13,
-              color: "#94a3b8",
-            }}
-          >
-            No open tasks.
-          </div>
+          <AddTaskRow group={group} sectionId={null} onChanged={onChanged} />
         )}
         {group.chunks.map((chunk, ci) => (
           <Fragment key={chunk.sectionName ?? `__none-${ci}`}>
             {chunk.sectionName && (
-              <SectionHeaderRow chunk={chunk} onChanged={onChanged} />
+              <SectionHeaderRow chunk={chunk} group={group} onChanged={onChanged} />
             )}
             {chunk.tasks.map((t) => (
               <CommandRow key={t.id} task={t} isMobile={isMobile} onChanged={onChanged} />
             ))}
+            <AddTaskRow group={group} sectionId={chunk.sectionId} onChanged={onChanged} />
           </Fragment>
         ))}
+        {(group.parentType === "project" || group.parentType === "direct_report") && (
+          <AddSectionRow group={group} onChanged={onChanged} />
+        )}
       </div>
+    </div>
+  );
+}
+
+/* "+ Add task" row at the bottom of a section cluster (or empty group). */
+function AddTaskRow({
+  group,
+  sectionId,
+  onChanged,
+}: {
+  group: CommandGroupData;
+  sectionId: number | null;
+  onChanged: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const save = async () => {
+    const text = draft.trim();
+    if (!text || group.parentType === null || group.parentId === null) return;
+    await api("/command-center/tasks", {
+      method: "POST",
+      headers: groupBizHeaders(group),
+      body: JSON.stringify({
+        parentType: group.parentType,
+        parentId: group.parentId,
+        sectionId,
+        text,
+      }),
+    });
+    setDraft("");
+    setAdding(false);
+    onChanged();
+  };
+
+  if (!adding) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          background: "transparent",
+          border: "none",
+          color: C.textSecondary,
+          fontFamily: SANS,
+          fontSize: 12,
+          fontWeight: 500,
+          padding: "6px 12px",
+          cursor: "pointer",
+          width: "100%",
+          textAlign: "left",
+          borderBottom: `1px solid ${C.divider}`,
+        }}
+      >
+        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+      </button>
+    );
+  }
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        padding: "6px 12px",
+        borderBottom: `1px solid ${C.divider}`,
+      }}
+    >
+      <input
+        autoFocus
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft.trim()) void save();
+          else setAdding(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void save();
+          if (e.key === "Escape") {
+            setDraft("");
+            setAdding(false);
+          }
+        }}
+        placeholder="Task name — Enter to save"
+        style={{ ...inputStyle, fontSize: 14, flex: 1 }}
+      />
+    </div>
+  );
+}
+
+/* "+ Section" affordance at the bottom of a project/person table. */
+function AddSectionRow({
+  group,
+  onChanged,
+}: {
+  group: CommandGroupData;
+  onChanged: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const save = async () => {
+    const name = draft.trim();
+    if (!name || group.parentType === null || group.parentId === null) return;
+    await api("/command-center/task-sections", {
+      method: "POST",
+      headers: groupBizHeaders(group),
+      body: JSON.stringify({
+        parentType: group.parentType,
+        parentId: group.parentId,
+        name,
+        sortOrder: group.chunks.length,
+      }),
+    });
+    setDraft("");
+    setAdding(false);
+    onChanged();
+  };
+
+  if (!adding) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#94a3b8",
+          fontFamily: SANS,
+          fontSize: 11,
+          fontWeight: 500,
+          padding: "6px 12px",
+          cursor: "pointer",
+          width: "100%",
+          textAlign: "left",
+        }}
+      >
+        + Section
+      </button>
+    );
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 12px" }}>
+      <input
+        autoFocus
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft.trim()) void save();
+          else setAdding(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void save();
+          if (e.key === "Escape") {
+            setDraft("");
+            setAdding(false);
+          }
+        }}
+        placeholder="Section name — Enter to save"
+        style={{ ...inputStyle, fontSize: 12, flex: 1 }}
+      />
     </div>
   );
 }
