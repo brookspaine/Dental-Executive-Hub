@@ -3070,7 +3070,7 @@ export function IdealWeek() {
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
           <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex flex-col gap-4">
               <Top3Card
                 title="Today's Top 3"
                 period="day"
