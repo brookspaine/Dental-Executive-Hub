@@ -545,6 +545,8 @@ type CommandGroupData = {
 };
 type CommandSection = {
   title: string;
+  /* Set for business sections — enables the add-person / add-project rows. */
+  businessId?: number;
   /* Direct-report groups render inside a collapsible "Direct Reports"
      wrapper; each person collapses individually too. */
   drGroups?: CommandGroupData[];
@@ -646,11 +648,13 @@ function buildScopedSections(
     return [
       {
         title: "",
+        businessId: scope,
         drGroups: directReports.filter((d) => inBiz(d.businessIds)).sort(bySort).map((d) => groupOf(d, "direct_report")),
         groups: [],
       },
       {
         title: "Projects",
+        businessId: scope,
         groups: projects.filter((p) => inBiz(p.businessIds)).sort(bySort).map((p) => groupOf(p, "project")),
       },
     ];
@@ -675,6 +679,7 @@ function buildScopedSections(
     const projs = projects.filter((p) => p.businessIds.length === 1 && p.businessIds[0] === b.id).sort(bySort);
     result.push({
       title: b.name,
+      businessId: b.id,
       drGroups: drs.map((d) => groupOf(d, "direct_report")),
       groups: projs.map((p) => groupOf(p, "project")),
     });
@@ -1040,6 +1045,90 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
+/* Inline "+ Add person" / "+ Add project" for a business section. */
+function AddContainerRow({
+  label,
+  endpoint,
+  businessId,
+  onChanged,
+}: {
+  label: string;
+  endpoint: "/command-center/direct-reports" | "/command-center/projects";
+  businessId: number;
+  onChanged: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const busyRef = useRef(false);
+
+  const save = async () => {
+    const name = draft.trim();
+    if (!name || busyRef.current) return;
+    busyRef.current = true;
+    try {
+      await api(endpoint, {
+        method: "POST",
+        headers: { "x-business-id": String(businessId) },
+        body: JSON.stringify({ name }),
+      });
+      setDraft("");
+      setAdding(false);
+      onChanged();
+    } catch (e) {
+      window.alert(
+        `Couldn't save (${e instanceof Error ? e.message : "unknown error"}). Please try again.`,
+      );
+    } finally {
+      busyRef.current = false;
+    }
+  };
+
+  if (!adding) {
+    return (
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        style={{
+          background: "transparent",
+          border: "none",
+          color: "#94a3b8",
+          fontFamily: SANS,
+          fontSize: 12,
+          fontWeight: 500,
+          padding: "4px 2px 14px",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
+      >
+        + {label}
+      </button>
+    );
+  }
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 2px 14px" }}>
+      <input
+        autoFocus
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={() => {
+          if (draft.trim()) void save();
+          else setAdding(false);
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") void save();
+          if (e.key === "Escape") {
+            setDraft("");
+            setAdding(false);
+          }
+        }}
+        placeholder={`${label} name — Enter to save`}
+        style={{ ...inputStyle, fontSize: 13, maxWidth: 320 }}
+      />
+    </div>
+  );
+}
+
 /* A top-level section (a business, Personal, or the untitled cross-
    business strip). Titled sections collapse as a whole. */
 function CommandSectionBlock({
@@ -1091,6 +1180,14 @@ function CommandSectionBlock({
               onChanged={onChanged}
             />
           )}
+          {section.businessId !== undefined && section.drGroups && (
+            <AddContainerRow
+              label="Add person"
+              endpoint="/command-center/direct-reports"
+              businessId={section.businessId}
+              onChanged={onChanged}
+            />
+          )}
           {(section.drGroups?.length ?? 0) === 0 && section.groups.length === 0 && (
             <div style={{ color: C.textSecondary, fontSize: 13, padding: "4px 2px 16px" }}>
               No open tasks.
@@ -1105,6 +1202,22 @@ function CommandSectionBlock({
               onChanged={onChanged}
             />
           ))}
+          {section.businessId !== undefined && !section.drGroups && (
+            <AddContainerRow
+              label="Add project"
+              endpoint="/command-center/projects"
+              businessId={section.businessId}
+              onChanged={onChanged}
+            />
+          )}
+          {section.businessId !== undefined && section.drGroups && section.groups.length > 0 && (
+            <AddContainerRow
+              label="Add project"
+              endpoint="/command-center/projects"
+              businessId={section.businessId}
+              onChanged={onChanged}
+            />
+          )}
         </>
       )}
     </div>
