@@ -1713,26 +1713,36 @@ function CommandRow({
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
           }}
-          style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+          style={
+            originLabel
+              ? {
+                  ...inputStyle,
+                  fontSize: 14,
+                  flex: "0 1 auto",
+                  width: `${Math.max(text.length + 2, 10)}ch`,
+                  maxWidth: "70%",
+                  minWidth: 60,
+                }
+              : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
+          }
         />
         {originLabel && (
           <span
             title={`Lives in: ${originLabel}`}
             style={{
-              fontSize: 10,
+              fontSize: 11,
               fontFamily: SANS,
-              fontWeight: 600,
-              color: C.accent,
-              background: C.accentSoft,
-              padding: "2px 6px",
-              borderRadius: 8,
+              color: "#b0bdcb",
               whiteSpace: "nowrap",
-              flexShrink: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              minWidth: 0,
             }}
           >
             {originLabel}
           </span>
         )}
+        {originLabel && <span style={{ flex: 1 }} />}
         <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button
