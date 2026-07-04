@@ -1656,6 +1656,16 @@ function CommandRow({
   useEffect(() => setText(task.text), [task.text]);
   const dueInfo = formatDueDate(task.dueDate, task.done);
 
+  // Mirror span measures the rendered text so the origin hint can sit
+  // immediately after the last word (ch-units overshoot in proportional fonts).
+  const mirrorRef = useRef<HTMLSpanElement | null>(null);
+  const [textWidth, setTextWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (originLabel && mirrorRef.current) {
+      setTextWidth(mirrorRef.current.offsetWidth);
+    }
+  }, [text, originLabel]);
+
   // Owner choices: people sharing a business with the task (personal tasks
   // can go to anyone). Shape adapted to OwnerPicker's DirectReport prop.
   const ownerOptions = (
@@ -1719,13 +1729,29 @@ function CommandRow({
                   ...inputStyle,
                   fontSize: 14,
                   flex: "0 1 auto",
-                  width: `${Math.max(text.length + 2, 10)}ch`,
+                  width: textWidth !== null ? textWidth + 10 : `${Math.max(text.length + 2, 10)}ch`,
                   maxWidth: "70%",
                   minWidth: 60,
                 }
               : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
           }
         />
+        {originLabel && (
+          <span
+            ref={mirrorRef}
+            aria-hidden
+            style={{
+              position: "absolute",
+              visibility: "hidden",
+              whiteSpace: "pre",
+              fontFamily: SANS,
+              fontSize: 14,
+              padding: 0,
+            }}
+          >
+            {text}
+          </span>
+        )}
         {originLabel && (
           <span
             title={`Lives in: ${originLabel}`}
