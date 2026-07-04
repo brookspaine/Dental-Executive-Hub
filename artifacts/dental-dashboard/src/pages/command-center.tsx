@@ -870,44 +870,12 @@ function CommandTab({
 
       <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
         {sections.map((sec, si) => (
-          <div key={sec.title || `top-${si}`}>
-            {sec.title && (
-              <div
-                style={{
-                  fontFamily: SERIF,
-                  fontSize: 18,
-                  fontWeight: 600,
-                  padding: "8px 2px 10px",
-                  borderBottom: `1px solid ${C.divider}`,
-                  marginBottom: 12,
-                }}
-              >
-                {sec.title}
-              </div>
-            )}
-            {sec.drGroups && sec.drGroups.length > 0 && (
-              <DirectReportsCluster
-                clusterKey={sec.title || "scoped"}
-                groups={sec.drGroups}
-                drs={containers.directReports}
-                onChanged={reload}
-              />
-            )}
-            {(sec.drGroups?.length ?? 0) === 0 && sec.groups.length === 0 && (
-              <div style={{ color: C.textSecondary, fontSize: 13, padding: "4px 2px 16px" }}>
-                No open tasks.
-              </div>
-            )}
-            {sec.groups.map((g) => (
-              <CommandGroup
-                key={g.key}
-                group={g}
-                hideLabel={g.label === sec.title}
-                drs={containers.directReports}
-                onChanged={reload}
-              />
-            ))}
-          </div>
+          <CommandSectionBlock
+            key={sec.title || `top-${si}`}
+            section={sec}
+            drs={containers.directReports}
+            onChanged={reload}
+          />
         ))}
         {scope === "personal" && <LifeAreasTab businesses={businesses} />}
       </div>
@@ -1069,6 +1037,77 @@ function Chevron({ open }: { open: boolean }) {
     >
       ▼
     </span>
+  );
+}
+
+/* A top-level section (a business, Personal, or the untitled cross-
+   business strip). Titled sections collapse as a whole. */
+function CommandSectionBlock({
+  section,
+  drs,
+  onChanged,
+}: {
+  section: CommandSection;
+  drs: CommandContainer[];
+  onChanged: () => void;
+}) {
+  const [collapsed, toggle] = useCollapsed(`biz-${section.title || "__top"}`);
+  const hidden = Boolean(section.title) && collapsed;
+  return (
+    <div>
+      {section.title && (
+        <button
+          type="button"
+          onClick={toggle}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            width: "100%",
+            background: "transparent",
+            border: "none",
+            borderBottom: `1px solid ${C.divider}`,
+            cursor: "pointer",
+            textAlign: "left",
+            fontFamily: SERIF,
+            fontSize: 18,
+            fontWeight: 600,
+            color: C.textPrimary,
+            padding: "8px 2px 10px",
+            marginBottom: hidden ? 4 : 12,
+          }}
+        >
+          <Chevron open={!hidden} />
+          {section.title}
+        </button>
+      )}
+      {!hidden && (
+        <>
+          {section.drGroups && section.drGroups.length > 0 && (
+            <DirectReportsCluster
+              clusterKey={section.title || "scoped"}
+              groups={section.drGroups}
+              drs={drs}
+              onChanged={onChanged}
+            />
+          )}
+          {(section.drGroups?.length ?? 0) === 0 && section.groups.length === 0 && (
+            <div style={{ color: C.textSecondary, fontSize: 13, padding: "4px 2px 16px" }}>
+              No open tasks.
+            </div>
+          )}
+          {section.groups.map((g) => (
+            <CommandGroup
+              key={g.key}
+              group={g}
+              hideLabel={g.label === section.title}
+              drs={drs}
+              onChanged={onChanged}
+            />
+          ))}
+        </>
+      )}
+    </div>
   );
 }
 
