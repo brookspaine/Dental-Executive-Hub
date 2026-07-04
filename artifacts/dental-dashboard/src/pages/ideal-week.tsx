@@ -172,6 +172,7 @@ type CcTop3Row = {
   priority: "high" | "medium" | "low" | null;
   dueDate: string | null;
   status: "not_started" | "in_progress" | "completed";
+  sourceBusinessId: number | null;
 };
 
 // Mirror the Command Center's business scoping so reads on this page line up

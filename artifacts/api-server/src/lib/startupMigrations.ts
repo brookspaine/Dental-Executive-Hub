@@ -34,6 +34,7 @@ export async function runStartupMigrations(): Promise<void> {
       await createOnDeckTable(client);
       await addTaskPriorityColumns(client);
       await addTop3MetaColumns(client);
+      await addSourceBusinessColumns(client);
       await seedBusinesses(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
@@ -779,6 +780,20 @@ async function addTaskPriorityColumns(client: PgClient): Promise<void> {
   );
   await client.query(
     `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS priority text`,
+  );
+}
+
+/**
+ * Track which business a pinned task resides in, so Top 3 / On Deck rows
+ * can badge themselves with the task's home business rather than the scope
+ * they were pinned into. NULL for hand-typed rows. Additive and idempotent.
+ */
+async function addSourceBusinessColumns(client: PgClient): Promise<void> {
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS source_business_id integer`,
+  );
+  await client.query(
+    `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS source_business_id integer`,
   );
 }
 

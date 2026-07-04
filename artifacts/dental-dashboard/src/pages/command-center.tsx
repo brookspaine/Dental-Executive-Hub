@@ -23,6 +23,7 @@ type Top3Row = {
   priority: TaskPriority | null;
   dueDate: string | null;
   status: TaskStatus;
+  sourceBusinessId: number | null;
 };
 type DirectReport = {
   id: number;
@@ -115,6 +116,7 @@ export type OnDeckItem = {
   status: TaskStatus;
   priority: TaskPriority | null;
   sourceTaskId: number | null;
+  sourceBusinessId: number | null;
   sortOrder: number;
 };
 type Overview = {
@@ -506,6 +508,15 @@ function taskBizHeaders(t: AllTask): Record<string, string> {
     ? currentBusinessId
     : (t.businessIds[0] ?? currentBusinessId);
   return { "x-business-id": String(id) };
+}
+
+/* Business a task resides in — stamped onto Top 3 / On Deck rows when the
+   task is pinned, so those rows can badge the task's home business. NULL
+   for personal tasks (no business). */
+function taskSourceBusinessId(t: AllTask): number | null {
+  return t.businessIds.includes(currentBusinessId)
+    ? currentBusinessId
+    : (t.businessIds[0] ?? null);
 }
 
 function sortCommandTasks(list: AllTask[]): AllTask[] {
@@ -1770,8 +1781,8 @@ function CommandRow({
           </span>
         )}
         {originLabel && <span style={{ flex: 1 }} />}
-        <SendToOnDeck task={task} visible={hover} />
-        <PinStar taskText={task.text} visible={hover} />
+        <SendToOnDeck task={task} sourceBusinessId={taskSourceBusinessId(task)} visible={hover} />
+        <PinStar taskText={task.text} sourceBusinessId={taskSourceBusinessId(task)} visible={hover} />
         <button
           type="button"
           onClick={() => void del()}
@@ -2026,7 +2037,7 @@ export function Top3Card({
           row={row}
           isMobile={isMobile}
           directReports={directReports}
-          originLabel={row ? businessName(row.businessId) : null}
+          originLabel={row ? businessName(row.sourceBusinessId ?? row.businessId) : null}
           placeholder={
             period === "day"
               ? "What is the highest leverage use of my time today?"
@@ -2405,7 +2416,7 @@ export function OnDeckCard({
               item={it}
               isMobile={isMobile}
               directReports={directReports}
-              originLabel={businessName(it.businessId)}
+              originLabel={businessName(it.sourceBusinessId ?? it.businessId)}
               onPatch={patch}
               onDelete={() => remove(it.id)}
             />
@@ -2598,7 +2609,12 @@ function OnDeckRow({
         {originLabel && (
           <OriginHint label={originLabel} text={text} mirrorRef={mirrorRef} />
         )}
-        <PinStar taskText={text} visible={hover} onPinned={onDelete} />
+        <PinStar
+          taskText={text}
+          sourceBusinessId={item.sourceBusinessId ?? item.businessId}
+          visible={hover}
+          onPinned={onDelete}
+        />
         <button
           type="button"
           onClick={() => void onDelete()}
@@ -4804,10 +4820,12 @@ function OwnerPicker({
 
 function SendToOnDeck({
   task,
+  sourceBusinessId = null,
   apiPrefix = "/command-center",
   visible,
 }: {
   task: Task;
+  sourceBusinessId?: number | null;
   apiPrefix?: string;
   visible: boolean;
 }) {
@@ -4841,6 +4859,7 @@ function SendToOnDeck({
         body: JSON.stringify({
           text,
           sourceTaskId: task.id,
+          sourceBusinessId,
           ownerDirectReportId: task.ownerDirectReportId,
           ownerName: task.ownerName,
           dueDate: task.dueDate,
@@ -4889,11 +4908,13 @@ function SendToOnDeck({
 
 function PinStar({
   taskText,
+  sourceBusinessId = null,
   apiPrefix = "/command-center",
   visible,
   onPinned,
 }: {
   taskText: string;
+  sourceBusinessId?: number | null;
   apiPrefix?: string;
   visible: boolean;
   onPinned?: () => void | Promise<void>;
@@ -4931,7 +4952,7 @@ function PinStar({
     try {
       await api(`${apiPrefix}/top3/${period}/${slot}`, {
         method: "PUT",
-        body: JSON.stringify({ text, done: false }),
+        body: JSON.stringify({ text, done: false, sourceBusinessId }),
       });
       setSlots((cur) =>
         (cur ?? []).map((r) =>

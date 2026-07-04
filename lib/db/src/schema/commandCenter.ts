@@ -171,6 +171,9 @@ export const ccTop3Table = pgTable(
     priority: text("priority"),
     dueDate: date("due_date", { mode: "string" }),
     status: text("status").notNull().default("not_started"),
+    // Business the pinned task resides in (may differ from businessId, the
+    // scope the slot belongs to). NULL for hand-typed entries.
+    sourceBusinessId: integer("source_business_id"),
     date: date("date", { mode: "string" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()
@@ -207,6 +210,9 @@ export const ccOnDeckTable = pgTable("cc_on_deck", {
   // high | medium | low | NULL (unset). Badge-only — never affects ordering.
   priority: text("priority"),
   sourceTaskId: integer("source_task_id"),
+  // Business the source task resides in (may differ from businessId, the
+  // scope the list belongs to). NULL for quick-added entries.
+  sourceBusinessId: integer("source_business_id"),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
     .notNull()

@@ -208,6 +208,7 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
       priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       status: z.enum(TASK_STATUSES).optional(),
+      sourceBusinessId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
   if (!period.success || !slot.success || !body.success) {
@@ -219,6 +220,11 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
     ...body.data,
     date: todayDateString(),
   };
+  // The source business travels with the text: pinning sends both together,
+  // and re-typing a slot by hand clears the now-stale source.
+  if (body.data.sourceBusinessId === undefined && body.data.text !== undefined) {
+    patch["sourceBusinessId"] = null;
+  }
   // Owner is either a direct report OR a free-form name, never both.
   if (body.data.ownerDirectReportId != null) {
     patch["ownerName"] = null;
@@ -305,6 +311,7 @@ router.post("/on-deck", async (req, res): Promise<void> => {
       status: z.enum(["not_started", "in_progress", "completed"]).optional(),
       priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       sourceTaskId: z.number().int().nullable().optional(),
+      sourceBusinessId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
   if (!body.success) {
@@ -354,6 +361,7 @@ router.post("/on-deck", async (req, res): Promise<void> => {
         status: body.data.status ?? "not_started",
         priority: body.data.priority ?? null,
         sourceTaskId: body.data.sourceTaskId ?? null,
+        sourceBusinessId: body.data.sourceBusinessId ?? null,
         sortOrder: nextSort,
       })
       .returning();
