@@ -1801,31 +1801,7 @@ function Top3Row({
           minWidth: 0,
         }}
       >
-        <button
-          type="button"
-          onClick={() => hasText && void put({ done: !done })}
-          disabled={!hasText}
-          title={done ? "Mark as not done" : "Mark as done"}
-          style={{
-            width: 24,
-            height: 24,
-            borderRadius: "50%",
-            background: done ? "#1f6a3f" : C.accent,
-            color: "#fff",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontFamily: SERIF,
-            fontSize: 12,
-            fontWeight: 600,
-            flexShrink: 0,
-            border: "none",
-            cursor: hasText ? "pointer" : "default",
-            padding: 0,
-          }}
-        >
-          {done ? "✓" : slot}
-        </button>
+        <AsanaCheck done={done} onToggle={() => hasText && void put({ done: !done })} />
         <input
           type="text"
           className="cc-placeholder-light"
