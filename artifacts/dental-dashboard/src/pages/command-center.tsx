@@ -1821,6 +1821,36 @@ function Top3Row({
             minWidth: 0,
           }}
         />
+        <button
+          type="button"
+          onClick={() =>
+            hasText &&
+            void put({
+              text: "",
+              done: false,
+              ownerDirectReportId: null,
+              ownerName: null,
+              priority: null,
+              dueDate: null,
+              status: "not_started",
+            })
+          }
+          aria-label="Clear slot"
+          title="Clear this Top 3 slot"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 16,
+            lineHeight: 1,
+            padding: "2px 6px",
+            visibility: hover && hasText ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
       </div>
       <div style={cell}>
         <OwnerPicker
