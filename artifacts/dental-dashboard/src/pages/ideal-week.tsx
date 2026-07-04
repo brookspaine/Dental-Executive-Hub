@@ -166,6 +166,11 @@ type CcTop3Row = {
   text: string;
   done: boolean;
   date: string;
+  ownerDirectReportId: number | null;
+  ownerName: string | null;
+  priority: "high" | "medium" | "low" | null;
+  dueDate: string | null;
+  status: "not_started" | "in_progress" | "completed";
 };
 
 // Mirror the Command Center's business scoping so reads on this page line up

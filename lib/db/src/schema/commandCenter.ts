@@ -165,6 +165,12 @@ export const ccTop3Table = pgTable(
     slot: integer("slot").notNull(),
     text: text("text").notNull().default(""),
     done: boolean("done").notNull().default(false),
+    ownerDirectReportId: integer("owner_direct_report_id"),
+    ownerName: text("owner_name"),
+    // high | medium | low | NULL (unset). Badge-only.
+    priority: text("priority"),
+    dueDate: date("due_date", { mode: "string" }),
+    status: text("status").notNull().default("not_started"),
     date: date("date", { mode: "string" }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true })
       .notNull()

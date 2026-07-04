@@ -17,6 +17,11 @@ type Top3Row = {
   text: string;
   done: boolean;
   date: string;
+  ownerDirectReportId: number | null;
+  ownerName: string | null;
+  priority: TaskPriority | null;
+  dueDate: string | null;
+  status: TaskStatus;
 };
 type DirectReport = {
   id: number;
@@ -1641,6 +1646,22 @@ export function Top3Card({
   top3: Top3Row[];
   onChange: () => void;
 }) {
+  const isMobile = useIsMobile();
+  const [directReports, setDirectReports] = useState<DirectReport[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api<DirectReport[]>("/command-center/direct-reports")
+      .then((dr) => {
+        if (!cancelled) setDirectReports(dr);
+      })
+      .catch(() => {
+        /* owner picker just stays empty */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const slots = [1, 2, 3].map((slot) => top3.find((r) => r.slot === slot) ?? null);
 
   return (
@@ -1665,112 +1686,199 @@ export function Top3Card({
       >
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        {slots.map((row, idx) => (
-          <Top3Row
-            key={idx}
-            slot={idx + 1}
-            initial={row?.text ?? ""}
-            done={row?.done ?? false}
-            placeholder={
-              period === "day"
-                ? "What is the highest leverage use of my time today?"
-                : "What is the highest leverage use of my time this week?"
-            }
-            onSave={async (text) => {
-              await api(`/command-center/top3/${period}/${idx + 1}`, {
-                method: "PUT",
-                body: JSON.stringify({ text }),
-              });
-              onChange();
-            }}
-            onToggleDone={async (done) => {
-              await api(`/command-center/top3/${period}/${idx + 1}`, {
-                method: "PUT",
-                body: JSON.stringify({ done }),
-              });
-              onChange();
-            }}
-          />
-        ))}
-      </div>
+      {!isMobile && (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: ON_DECK_GRID_COLS,
+            background: "#faf7f1",
+            borderBottom: `1px solid ${C.divider}`,
+            fontSize: 11,
+            fontWeight: 600,
+            color: C.textSecondary,
+            textTransform: "uppercase",
+            letterSpacing: 0.5,
+          }}
+        >
+          <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
+            Task
+          </div>
+          <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
+            Owner
+          </div>
+          <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
+            Priority
+          </div>
+          <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
+            Due
+          </div>
+          <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
+        </div>
+      )}
+      {slots.map((row, idx) => (
+        <Top3Row
+          key={idx}
+          slot={idx + 1}
+          period={period}
+          row={row}
+          isMobile={isMobile}
+          directReports={directReports}
+          placeholder={
+            period === "day"
+              ? "What is the highest leverage use of my time today?"
+              : "What is the highest leverage use of my time this week?"
+          }
+          onChange={onChange}
+        />
+      ))}
     </div>
   );
 }
 
 function Top3Row({
   slot,
-  initial,
-  done,
+  period,
+  row,
+  isMobile,
+  directReports,
   placeholder,
-  onSave,
-  onToggleDone,
+  onChange,
 }: {
   slot: number;
-  initial: string;
-  done: boolean;
+  period: "day" | "week";
+  row: Top3Row | null;
+  isMobile: boolean;
+  directReports: DirectReport[];
   placeholder: string;
-  onSave: (text: string) => Promise<void>;
-  onToggleDone: (done: boolean) => Promise<void>;
+  onChange: () => void;
 }) {
+  const initial = row?.text ?? "";
+  const done = row?.done ?? false;
   const [value, setValue] = useState(initial);
   const [hover, setHover] = useState(false);
   useEffect(() => setValue(initial), [initial]);
   const hasText = value.trim().length > 0;
+  const dueInfo = formatDueDate(row?.dueDate ?? null, done);
+
+  const put = async (body: Record<string, unknown>) => {
+    await api(`/command-center/top3/${period}/${slot}`, {
+      method: "PUT",
+      body: JSON.stringify(body),
+    });
+    window.dispatchEvent(new CustomEvent("cc:top3-changed"));
+    onChange();
+  };
+
+  const cell: React.CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: isMobile ? "flex-start" : "center",
+    padding: "6px 8px",
+    borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+  };
+
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        padding: "6px 12px",
+        display: "grid",
+        gridTemplateColumns: isMobile ? MOBILE_META_COLS : ON_DECK_GRID_COLS,
+        alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
         background: hover ? "#f8fafc" : "transparent",
       }}
     >
-      <button
-        type="button"
-        onClick={() => hasText && onToggleDone(!done)}
-        disabled={!hasText}
-        title={done ? "Mark as not done" : "Mark as done"}
+      <div
         style={{
-          width: 28,
-          height: 28,
-          borderRadius: "50%",
-          background: done ? "#1f6a3f" : C.accent,
-          color: "#fff",
+          gridColumn: isMobile ? "1 / -1" : "auto",
           display: "flex",
           alignItems: "center",
-          justifyContent: "center",
-          fontFamily: SERIF,
-          fontSize: 14,
-          fontWeight: 600,
-          flexShrink: 0,
-          border: "none",
-          cursor: hasText ? "pointer" : "default",
-          padding: 0,
+          gap: 10,
+          padding: "8px 12px",
+          borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
+          borderBottom: isMobile ? `1px solid ${C.divider}` : "none",
+          minWidth: 0,
         }}
       >
-        {done ? "✓" : slot}
-      </button>
-      <input
-        type="text"
-        className="cc-placeholder-light"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={() => value !== initial && onSave(value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-        }}
-        placeholder={placeholder}
-        style={{
-          ...inputStyle,
-          textDecoration: done ? "line-through" : "none",
-          color: done ? C.textSecondary : C.textPrimary,
-        }}
-      />
+        <button
+          type="button"
+          onClick={() => hasText && void put({ done: !done })}
+          disabled={!hasText}
+          title={done ? "Mark as not done" : "Mark as done"}
+          style={{
+            width: 24,
+            height: 24,
+            borderRadius: "50%",
+            background: done ? "#1f6a3f" : C.accent,
+            color: "#fff",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontFamily: SERIF,
+            fontSize: 12,
+            fontWeight: 600,
+            flexShrink: 0,
+            border: "none",
+            cursor: hasText ? "pointer" : "default",
+            padding: 0,
+          }}
+        >
+          {done ? "✓" : slot}
+        </button>
+        <input
+          type="text"
+          className="cc-placeholder-light"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={() => value !== initial && void put({ text: value })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+          }}
+          placeholder={placeholder}
+          style={{
+            ...inputStyle,
+            fontSize: 14,
+            textDecoration: done ? "line-through" : "none",
+            color: done ? C.textSecondary : C.textPrimary,
+            flex: 1,
+            minWidth: 0,
+          }}
+        />
+      </div>
+      <div style={cell}>
+        <OwnerPicker
+          directReportId={row?.ownerDirectReportId ?? null}
+          ownerName={row?.ownerName ?? null}
+          options={directReports}
+          onChange={(next) =>
+            void put({
+              ownerDirectReportId: next.directReportId,
+              ownerName: next.ownerName,
+            })
+          }
+        />
+      </div>
+      <div style={cell}>
+        <PriorityFlag
+          priority={row?.priority ?? null}
+          onChange={(next) => void put({ priority: next })}
+        />
+      </div>
+      <div style={cell}>
+        <DueDateField
+          value={row?.dueDate ?? null}
+          tone={dueInfo.tone}
+          label={dueInfo.label}
+          onChange={(next) => void put({ dueDate: next })}
+        />
+      </div>
+      <div style={{ ...cell, borderRight: "none" }}>
+        <StatusPill
+          status={row?.status ?? "not_started"}
+          onChange={(next) => void put({ status: next })}
+        />
+      </div>
     </div>
   );
 }

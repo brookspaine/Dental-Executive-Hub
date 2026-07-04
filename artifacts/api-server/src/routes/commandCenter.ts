@@ -200,18 +200,37 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
   const period = periodSchema.safeParse(req.params.period);
   const slot = z.coerce.number().int().min(1).max(3).safeParse(req.params.slot);
   const body = z
-    .object({ text: z.string().optional(), done: z.boolean().optional() })
+    .object({
+      text: z.string().optional(),
+      done: z.boolean().optional(),
+      ownerDirectReportId: z.number().int().nullable().optional(),
+      ownerName: z.string().trim().max(120).nullable().optional(),
+      priority: z.enum(TASK_PRIORITIES).nullable().optional(),
+      dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
+      status: z.enum(TASK_STATUSES).optional(),
+    })
     .safeParse(req.body);
   if (!period.success || !slot.success || !body.success) {
     res.status(400).json({ error: "invalid input" });
     return;
   }
   await ensureTop3Slots(businessId);
-  const patch: { text?: string; done?: boolean; date: string } = {
+  const patch: Record<string, unknown> = {
+    ...body.data,
     date: todayDateString(),
   };
-  if (body.data.text !== undefined) patch.text = body.data.text;
-  if (body.data.done !== undefined) patch.done = body.data.done;
+  // Owner is either a direct report OR a free-form name, never both.
+  if (body.data.ownerDirectReportId != null) {
+    patch["ownerName"] = null;
+  } else if (typeof body.data.ownerName === "string") {
+    patch["ownerName"] = body.data.ownerName.trim() || null;
+    patch["ownerDirectReportId"] = null;
+  }
+  // Keep the done flag and status vocabulary in sync, like tasks.
+  if (patch["status"] === "completed") patch["done"] = true;
+  else if (patch["status"] !== undefined) patch["done"] = false;
+  else if (patch["done"] === true) patch["status"] = "completed";
+  else if (patch["done"] === false) patch["status"] = "not_started";
   const [row] = await db
     .update(ccTop3Table)
     .set(patch)

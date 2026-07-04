@@ -33,6 +33,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addWeeklyReviewRebuildOnDeckBullet(client);
       await createOnDeckTable(client);
       await addTaskPriorityColumns(client);
+      await addTop3MetaColumns(client);
       await seedBusinesses(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
@@ -796,5 +797,27 @@ async function seedBusinesses(client: PgClient): Promise<void> {
   await client.query(
     `SELECT setval(pg_get_serial_sequence('businesses','id'),
        (SELECT COALESCE(MAX(id),0)+1 FROM businesses), false)`,
+  );
+}
+
+/**
+ * Give Top 3 slots the same metadata as On Deck items (owner, priority,
+ * due date, status). Additive and idempotent.
+ */
+async function addTop3MetaColumns(client: PgClient): Promise<void> {
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS owner_direct_report_id integer`,
+  );
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS owner_name text`,
+  );
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS priority text`,
+  );
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS due_date date`,
+  );
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'not_started'`,
   );
 }
