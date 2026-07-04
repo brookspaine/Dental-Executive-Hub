@@ -821,14 +821,9 @@ function CommandTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
-          gap: 16,
-          alignItems: "start",
-        }}
-      >
+      {/* Focus stack — Today, This Week, On Deck as one section of
+          stacked tables, mirroring how a business section reads. */}
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         <Top3Card
           title="Today's Top 3"
           period="day"
@@ -841,8 +836,8 @@ function CommandTab({
           top3={data.weekTop3 ?? []}
           onChange={reload}
         />
+        <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
       </div>
-      <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
 
       <ViewControls view={view} setView={setView}>
         <span style={{ width: 10 }} />
@@ -1670,7 +1665,7 @@ export function Top3Card({
       >
         {title}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", padding: "6px 14px 10px" }}>
+      <div style={{ display: "flex", flexDirection: "column" }}>
         {slots.map((row, idx) => (
           <Top3Row
             key={idx}
@@ -1730,7 +1725,7 @@ function Top3Row({
         display: "flex",
         alignItems: "center",
         gap: 12,
-        padding: "6px 10px 6px 0",
+        padding: "6px 12px",
         borderBottom: `1px solid ${C.divider}`,
         background: hover ? "#f8fafc" : "transparent",
       }}
