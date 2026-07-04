@@ -4393,6 +4393,8 @@ const pillSelectStyle: React.CSSProperties = {
   fontWeight: 600,
   cursor: "pointer",
   textAlign: "center",
+  // <select> renders its chosen option via text-align-last, not text-align.
+  textAlignLast: "center",
 };
 
 function StatusPill({
