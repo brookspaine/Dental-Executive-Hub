@@ -595,7 +595,17 @@ function buildScopedSections(
   };
 
   const groupOf = (c: CommandContainer, parentType: "project" | "direct_report") => {
-    const list = tasks.filter((t) => t.parentType === parentType && t.parentId === c.id);
+    // A person's group holds their own tasks PLUS tasks anywhere in the app
+    // assigned to them as owner (rendered with an origin hint).
+    const list =
+      parentType === "direct_report"
+        ? tasks.filter(
+            (t) =>
+              (t.parentType === "direct_report" && t.parentId === c.id) ||
+              (t.ownerDirectReportId === c.id &&
+                !(t.parentType === "direct_report" && t.parentId === c.id)),
+          )
+        : tasks.filter((t) => t.parentType === parentType && t.parentId === c.id);
     return {
       key: `${parentType}-${c.id}`,
       label: c.name,
@@ -1608,7 +1618,18 @@ function SectionChunk({
       )}
       {!hidden &&
         chunk.tasks.map((t) => (
-          <CommandRow key={t.id} task={t} isMobile={isMobile} drs={drs} onChanged={onChanged} />
+          <CommandRow
+            key={t.id}
+            task={t}
+            isMobile={isMobile}
+            drs={drs}
+            originLabel={
+              t.parentType === group.parentType && t.parentId === group.parentId
+                ? null
+                : t.parentName
+            }
+            onChanged={onChanged}
+          />
         ))}
       {!hidden && (
         <AddTaskRow group={group} sectionId={chunk.sectionId} onChanged={onChanged} />
@@ -1621,11 +1642,13 @@ function CommandRow({
   task,
   isMobile,
   drs,
+  originLabel = null,
   onChanged,
 }: {
   task: AllTask;
   isMobile: boolean;
   drs: CommandContainer[];
+  originLabel?: string | null;
   onChanged: () => void;
 }) {
   const [text, setText] = useState(task.text);
@@ -1692,6 +1715,24 @@ function CommandRow({
           }}
           style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
         />
+        {originLabel && (
+          <span
+            title={`Lives in: ${originLabel}`}
+            style={{
+              fontSize: 10,
+              fontFamily: SANS,
+              fontWeight: 600,
+              color: C.accent,
+              background: C.accentSoft,
+              padding: "2px 6px",
+              borderRadius: 8,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {originLabel}
+          </span>
+        )}
         <SendToOnDeck task={task} visible={hover} />
         <PinStar taskText={task.text} visible={hover} />
         <button
@@ -4323,6 +4364,24 @@ function TaskRow({
         {originLabel && (
           <span
             title={`From project: ${originLabel}`}
+            style={{
+              fontSize: 10,
+              fontFamily: SANS,
+              fontWeight: 600,
+              color: C.accent,
+              background: C.accentSoft,
+              padding: "2px 6px",
+              borderRadius: 8,
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            {originLabel}
+          </span>
+        )}
+        {originLabel && (
+          <span
+            title={`Lives in: ${originLabel}`}
             style={{
               fontSize: 10,
               fontFamily: SANS,
