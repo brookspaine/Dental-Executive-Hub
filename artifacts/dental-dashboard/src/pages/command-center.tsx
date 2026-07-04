@@ -1690,7 +1690,7 @@ export function Top3Card({
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: ON_DECK_GRID_COLS,
+            gridTemplateColumns: period === "day" ? TOP3_DAY_GRID_COLS : ON_DECK_GRID_COLS,
             background: "#faf7f1",
             borderBottom: `1px solid ${C.divider}`,
             fontSize: 11,
@@ -1709,9 +1709,11 @@ export function Top3Card({
           <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
             Priority
           </div>
-          <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
-            Due
-          </div>
+          {period === "week" && (
+            <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
+              Due
+            </div>
+          )}
           <div style={{ padding: "7px 12px", textAlign: "center" }}>Status</div>
         </div>
       )}
@@ -1783,7 +1785,11 @@ function Top3Row({
       onMouseLeave={() => setHover(false)}
       style={{
         display: "grid",
-        gridTemplateColumns: isMobile ? MOBILE_META_COLS : ON_DECK_GRID_COLS,
+        gridTemplateColumns: isMobile
+          ? MOBILE_META_COLS
+          : period === "day"
+            ? TOP3_DAY_GRID_COLS
+            : ON_DECK_GRID_COLS,
         alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
         background: hover ? "#f8fafc" : "transparent",
@@ -1871,14 +1877,16 @@ function Top3Row({
           onChange={(next) => void put({ priority: next })}
         />
       </div>
-      <div style={cell}>
-        <DueDateField
-          value={row?.dueDate ?? null}
-          tone={dueInfo.tone}
-          label={dueInfo.label}
-          onChange={(next) => void put({ dueDate: next })}
-        />
-      </div>
+      {period === "week" && (
+        <div style={cell}>
+          <DueDateField
+            value={row?.dueDate ?? null}
+            tone={dueInfo.tone}
+            label={dueInfo.label}
+            onChange={(next) => void put({ dueDate: next })}
+          />
+        </div>
+      )}
       <div style={{ ...cell, borderRight: "none" }}>
         <StatusPill
           status={row?.status ?? "not_started"}
@@ -2179,6 +2187,8 @@ export function OnDeckCard({
 }
 
 const ON_DECK_GRID_COLS = "1fr 104px 80px 96px 108px";
+/* Today's Top 3 has no Due column — everything in it is due today. */
+const TOP3_DAY_GRID_COLS = "1fr 104px 80px 108px";
 
 function OnDeckRow({
   item,
