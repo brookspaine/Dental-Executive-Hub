@@ -559,34 +559,34 @@ function buildScopedSections(
   businesses: Business[],
   scope: CommandScope,
 ): CommandSection[] {
-  const sectionById = new Map(sections.map((sec) => [sec.id, sec]));
 
-  const chunksFor = (list: AllTask[]): CommandChunk[] => {
+  /* Chunks come from the parent's OWN section list (not just sections that
+     happen to hold tasks) so a freshly created, still-empty section renders
+     immediately with its add-task row. */
+  const chunksFor = (
+    list: AllTask[],
+    parentType: ParentType | null,
+    parentId: number | null,
+  ): CommandChunk[] => {
+    const parentSections =
+      parentType !== null && parentId !== null
+        ? sections
+            .filter((sec) => sec.parentType === parentType && sec.parentId === parentId)
+            .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)
+        : [];
+    const parentSectionIds = new Set(parentSections.map((sec) => sec.id));
     const unsectioned = list.filter(
-      (t) => t.sectionId === null || !sectionById.has(t.sectionId),
+      (t) => t.sectionId === null || !parentSectionIds.has(t.sectionId),
     );
-    const bySection = new Map<number, AllTask[]>();
-    for (const t of list) {
-      if (t.sectionId !== null && sectionById.has(t.sectionId)) {
-        const cur = bySection.get(t.sectionId);
-        if (cur) cur.push(t);
-        else bySection.set(t.sectionId, [t]);
-      }
-    }
     const chunks: CommandChunk[] = [];
     if (unsectioned.length > 0) {
       chunks.push({ sectionId: null, sectionName: null, tasks: sortCommandTasks(unsectioned) });
     }
-    const ordered = [...bySection.entries()].sort((a, b) => {
-      const sa = sectionById.get(a[0])!;
-      const sb = sectionById.get(b[0])!;
-      return sa.sortOrder - sb.sortOrder || sa.id - sb.id;
-    });
-    for (const [id, secTasks] of ordered) {
+    for (const sec of parentSections) {
       chunks.push({
-        sectionId: id,
-        sectionName: sectionById.get(id)!.name,
-        tasks: sortCommandTasks(secTasks),
+        sectionId: sec.id,
+        sectionName: sec.name,
+        tasks: sortCommandTasks(list.filter((t) => t.sectionId === sec.id)),
       });
     }
     return chunks;
@@ -597,7 +597,7 @@ function buildScopedSections(
     return {
       key: `${parentType}-${c.id}`,
       label: c.name,
-      chunks: chunksFor(list),
+      chunks: chunksFor(list, parentType, c.id),
       count: list.length,
       parentType,
       parentId: c.id,
@@ -621,7 +621,7 @@ function buildScopedSections(
       .map(([label, list]) => ({
         key: `life-${label}`,
         label,
-        chunks: chunksFor(list),
+        chunks: chunksFor(list, "life_area", list[0]?.parentId ?? null),
         count: list.length,
         parentType: "life_area" as ParentType,
         parentId: list[0]?.parentId ?? null,
