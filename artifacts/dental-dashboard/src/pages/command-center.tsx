@@ -821,6 +821,11 @@ function CommandTab({
     return () => window.removeEventListener("cc:top3-changed", onChanged);
   }, []);
 
+  const sectionsById = useMemo(
+    () => new Map(taskSections.map((sec) => [sec.id, sec.name])),
+    [taskSections],
+  );
+
   const sections = useMemo(
     () =>
       tasks
@@ -901,6 +906,7 @@ function CommandTab({
             key={sec.title || `top-${si}`}
             section={sec}
             drs={containers.directReports}
+            sectionsById={sectionsById}
             onChanged={reload}
           />
         ))}
@@ -1156,10 +1162,12 @@ function AddContainerRow({
 function CommandSectionBlock({
   section,
   drs,
+  sectionsById,
   onChanged,
 }: {
   section: CommandSection;
   drs: CommandContainer[];
+  sectionsById: Map<number, string>;
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`biz-${section.title || "__top"}`);
@@ -1199,6 +1207,7 @@ function CommandSectionBlock({
               clusterKey={section.title || "scoped"}
               groups={section.drGroups}
               drs={drs}
+              sectionsById={sectionsById}
               onChanged={onChanged}
             />
           )}
@@ -1221,6 +1230,7 @@ function CommandSectionBlock({
               group={g}
               hideLabel={g.label === section.title}
               drs={drs}
+              sectionsById={sectionsById}
               onChanged={onChanged}
             />
           ))}
@@ -1252,11 +1262,13 @@ function DirectReportsCluster({
   clusterKey,
   groups,
   drs,
+  sectionsById,
   onChanged,
 }: {
   clusterKey: string;
   groups: CommandGroupData[];
   drs: CommandContainer[];
+  sectionsById: Map<number, string>;
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`drs-${clusterKey}`);
@@ -1285,7 +1297,7 @@ function DirectReportsCluster({
       {!collapsed && (
         <div style={{ paddingLeft: 4 }}>
           {groups.map((g) => (
-            <CommandGroup key={g.key} group={g} drs={drs} onChanged={onChanged} />
+            <CommandGroup key={g.key} group={g} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
           ))}
         </div>
       )}
@@ -1297,11 +1309,13 @@ function CommandGroup({
   group,
   hideLabel = false,
   drs,
+  sectionsById,
   onChanged,
 }: {
   group: CommandGroupData;
   hideLabel?: boolean;
   drs: CommandContainer[];
+  sectionsById: Map<number, string>;
   onChanged: () => void;
 }) {
   const isMobile = useIsMobile();
@@ -1309,7 +1323,7 @@ function CommandGroup({
   if (hideLabel) {
     return (
       <div style={{ marginBottom: 18 }}>
-        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} onChanged={onChanged} />
+        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
       </div>
     );
   }
@@ -1336,7 +1350,7 @@ function CommandGroup({
         {group.label}
       </button>
       {!collapsed && (
-        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} onChanged={onChanged} />
+        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
       )}
     </div>
   );
@@ -1346,11 +1360,13 @@ function CommandGroupTable({
   group,
   isMobile,
   drs,
+  sectionsById,
   onChanged,
 }: {
   group: CommandGroupData;
   isMobile: boolean;
   drs: CommandContainer[];
+  sectionsById: Map<number, string>;
   onChanged: () => void;
 }) {
   return (
@@ -1399,6 +1415,7 @@ function CommandGroupTable({
             group={group}
             isMobile={isMobile}
             drs={drs}
+            sectionsById={sectionsById}
             onChanged={onChanged}
           />
         ))}
@@ -1606,12 +1623,14 @@ function SectionChunk({
   group,
   isMobile,
   drs,
+  sectionsById,
   onChanged,
 }: {
   chunk: CommandChunk;
   group: CommandGroupData;
   isMobile: boolean;
   drs: CommandContainer[];
+  sectionsById: Map<number, string>;
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`sec-${chunk.sectionId ?? `u-${group.key}`}`);
@@ -1638,7 +1657,8 @@ function SectionChunk({
             originLabel={
               t.parentType === group.parentType && t.parentId === group.parentId
                 ? null
-                : t.parentName
+                : (t.sectionId !== null ? sectionsById.get(t.sectionId) : null) ??
+                  t.parentName
             }
             onChanged={onChanged}
           />
