@@ -161,6 +161,7 @@ type WeeklyItem = {
 
 type CcTop3Row = {
   id: number;
+  businessId: number;
   slot: number;
   period: "day" | "week";
   text: string;

@@ -12,6 +12,7 @@ type ProjectStatus = "active" | "on_hold" | "complete";
 
 type Top3Row = {
   id: number;
+  businessId: number;
   slot: number;
   period: "day" | "week";
   text: string;
@@ -1864,6 +1865,76 @@ function CommandRow({
   );
 }
 
+/* Fetches the businesses list once so rows can label themselves with the
+   business they live in (EDGE, Urgent Dental, …) — same muted origin hint
+   as the Action Items tables. */
+function useBusinessName() {
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    api<Business[]>("/businesses")
+      .then((b) => {
+        if (!cancelled) setBusinesses(b);
+      })
+      .catch(() => {
+        /* rows just render without a business tag */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return useCallback(
+    (id: number) => businesses.find((b) => b.id === id)?.name ?? null,
+    [businesses],
+  );
+}
+
+/* Mirror span + muted business tag, so the tag hugs the exact end of the
+   editable task text — the same pattern CommandRow uses for origin hints. */
+function OriginHint({
+  label,
+  text,
+  mirrorRef,
+}: {
+  label: string;
+  text: string;
+  mirrorRef: { current: HTMLSpanElement | null };
+}) {
+  return (
+    <>
+      <span
+        ref={mirrorRef}
+        aria-hidden
+        style={{
+          position: "absolute",
+          visibility: "hidden",
+          whiteSpace: "pre",
+          fontFamily: SANS,
+          fontSize: 14,
+          padding: 0,
+        }}
+      >
+        {text}
+      </span>
+      <span
+        title={`Lives in: ${label}`}
+        style={{
+          fontSize: 11,
+          fontFamily: SANS,
+          color: "#b0bdcb",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          minWidth: 0,
+        }}
+      >
+        {label}
+      </span>
+      <span style={{ flex: 1 }} />
+    </>
+  );
+}
+
 export function Top3Card({
   title,
   period,
@@ -1876,6 +1947,7 @@ export function Top3Card({
   onChange: () => void;
 }) {
   const isMobile = useIsMobile();
+  const businessName = useBusinessName();
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
   useEffect(() => {
     let cancelled = false;
@@ -1954,6 +2026,7 @@ export function Top3Card({
           row={row}
           isMobile={isMobile}
           directReports={directReports}
+          originLabel={row ? businessName(row.businessId) : null}
           placeholder={
             period === "day"
               ? "What is the highest leverage use of my time today?"
@@ -1972,6 +2045,7 @@ function Top3Row({
   row,
   isMobile,
   directReports,
+  originLabel = null,
   placeholder,
   onChange,
 }: {
@@ -1980,6 +2054,7 @@ function Top3Row({
   row: Top3Row | null;
   isMobile: boolean;
   directReports: DirectReport[];
+  originLabel?: string | null;
   placeholder: string;
   onChange: () => void;
 }) {
@@ -1989,7 +2064,16 @@ function Top3Row({
   const [hover, setHover] = useState(false);
   useEffect(() => setValue(initial), [initial]);
   const hasText = value.trim().length > 0;
+  const showOrigin = Boolean(originLabel) && hasText;
   const dueInfo = formatDueDate(row?.dueDate ?? null, done);
+
+  const mirrorRef = useRef<HTMLSpanElement | null>(null);
+  const [textWidth, setTextWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (showOrigin && mirrorRef.current) {
+      setTextWidth(mirrorRef.current.offsetWidth);
+    }
+  }, [value, showOrigin]);
 
   const put = async (body: Record<string, unknown>) => {
     await api(`/command-center/top3/${period}/${slot}`, {
@@ -2052,10 +2136,22 @@ function Top3Row({
             fontSize: 14,
             textDecoration: done ? "line-through" : "none",
             color: done ? C.textSecondary : C.textPrimary,
-            flex: 1,
-            minWidth: 0,
+            ...(showOrigin
+              ? {
+                  flex: "0 1 auto" as const,
+                  width:
+                    textWidth !== null
+                      ? textWidth + 10
+                      : `${Math.max(value.length + 2, 10)}ch`,
+                  maxWidth: "70%",
+                  minWidth: 60,
+                }
+              : { flex: 1, minWidth: 0 }),
           }}
         />
+        {showOrigin && originLabel && (
+          <OriginHint label={originLabel} text={value} mirrorRef={mirrorRef} />
+        )}
         <button
           type="button"
           onClick={() =>
@@ -2155,6 +2251,7 @@ export function OnDeckCard({
   onChange: () => void;
 }) {
   const isMobile = useIsMobile();
+  const businessName = useBusinessName();
   const [adding, setAdding] = useState(false);
   const [quickText, setQuickText] = useState("");
   const [directReports, setDirectReports] = useState<DirectReport[]>([]);
@@ -2308,6 +2405,7 @@ export function OnDeckCard({
               item={it}
               isMobile={isMobile}
               directReports={directReports}
+              originLabel={businessName(it.businessId)}
               onPatch={patch}
               onDelete={() => remove(it.id)}
             />
@@ -2423,12 +2521,14 @@ function OnDeckRow({
   item,
   isMobile,
   directReports,
+  originLabel = null,
   onPatch,
   onDelete,
 }: {
   item: OnDeckItem;
   isMobile: boolean;
   directReports: DirectReport[];
+  originLabel?: string | null;
   onPatch: (id: number, body: Partial<OnDeckItem>) => Promise<void>;
   onDelete: () => void | Promise<void>;
 }) {
@@ -2437,6 +2537,14 @@ function OnDeckRow({
   useEffect(() => setText(item.text), [item.text]);
 
   const dueInfo = formatDueDate(item.dueDate, false);
+
+  const mirrorRef = useRef<HTMLSpanElement | null>(null);
+  const [textWidth, setTextWidth] = useState<number | null>(null);
+  useEffect(() => {
+    if (originLabel && mirrorRef.current) {
+      setTextWidth(mirrorRef.current.offsetWidth);
+    }
+  }, [text, originLabel]);
 
   return (
     <div
@@ -2471,8 +2579,25 @@ function OnDeckRow({
           onKeyDown={(e) => {
             if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
           }}
-          style={{ ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }}
+          style={
+            originLabel
+              ? {
+                  ...inputStyle,
+                  fontSize: 14,
+                  flex: "0 1 auto",
+                  width:
+                    textWidth !== null
+                      ? textWidth + 10
+                      : `${Math.max(text.length + 2, 10)}ch`,
+                  maxWidth: "70%",
+                  minWidth: 60,
+                }
+              : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
+          }
         />
+        {originLabel && (
+          <OriginHint label={originLabel} text={text} mirrorRef={mirrorRef} />
+        )}
         <PinStar taskText={text} visible={hover} onPinned={onDelete} />
         <button
           type="button"
