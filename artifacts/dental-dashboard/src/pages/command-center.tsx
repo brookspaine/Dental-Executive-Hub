@@ -5158,15 +5158,15 @@ function DueDateField({
   label: string;
   onChange: (next: string | null) => void;
 }) {
-  const colors: Record<typeof tone, { fg: string; bg: string }> = {
-    none: { fg: C.textSecondary, bg: "transparent" },
-    overdue: { fg: "#b1361e", bg: "#fdecea" },
-    today: { fg: "#7a5b00", bg: "#fdf4d3" },
-    soon: { fg: "#4a4036", bg: "#f1ebdf" },
-    future: { fg: C.textSecondary, bg: "transparent" },
-    done: { fg: "#9a948c", bg: "transparent" },
+  // Tone carries only the text color — no pill background.
+  const colors: Record<typeof tone, string> = {
+    none: C.textSecondary,
+    overdue: "#b1361e",
+    today: "#7a5b00",
+    soon: "#4a4036",
+    future: C.textSecondary,
+    done: "#9a948c",
   };
-  const c = colors[tone];
   return (
     <label
       style={{
@@ -5174,12 +5174,10 @@ function DueDateField({
         display: "inline-flex",
         alignItems: "center",
         gap: 4,
-        fontSize: 12,
+        fontSize: 13,
         fontFamily: SANS,
-        color: c.fg,
-        background: c.bg,
-        padding: value ? "3px 8px" : "3px 4px",
-        borderRadius: 10,
+        color: colors[tone],
+        padding: "3px 4px",
         cursor: "pointer",
         whiteSpace: "nowrap",
         minWidth: 56,
