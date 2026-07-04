@@ -4624,22 +4624,21 @@ function OwnerPicker({
         position: "relative",
         display: "inline-flex",
         alignItems: "center",
-        gap: 4,
-        fontSize: 12,
+        fontSize: 13,
         fontFamily: SANS,
-        color: hasOwner ? C.textPrimary : C.textSecondary,
-        background: hasOwner ? "#eef2f7" : "transparent",
-        padding: "3px 10px",
-        borderRadius: 10,
+        color: hasOwner ? C.textSecondary : "#cbd5e1",
+        padding: "3px 4px",
         cursor: "pointer",
         whiteSpace: "nowrap",
         maxWidth: "100%",
         overflow: "hidden",
         textOverflow: "ellipsis",
       }}
-      title={hasOwner ? `Owner: ${label}` : "Assign owner"}
+      title={hasOwner ? `Owner: ${label} — click to change` : "Assign owner"}
     >
-      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{label}</span>
+      <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>
+        {hasOwner ? label : "—"}
+      </span>
       <select
         value={current ? String(current.id) : customName != null ? "__custom__" : ""}
         onChange={(e) => {
