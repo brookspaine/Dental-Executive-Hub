@@ -544,15 +544,19 @@ function FocusSnapshot({
         background: "#fff",
         border: `1px solid ${FOCUS.cardBorder}`,
         borderRadius: 10,
-        overflow: "hidden",
       }}
     >
+      {/* Clip only the columns (for the rounded top corners) — the chip
+          slot-picker popover below must be free to overflow the card. */}
       <div
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
           gap: 1,
           background: FOCUS.divider,
+          borderTopLeftRadius: 9,
+          borderTopRightRadius: 9,
+          overflow: "hidden",
         }}
       >
         {column("Today's Top 3", "day", dayRows)}
