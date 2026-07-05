@@ -322,6 +322,7 @@ function FocusSlotPicker({
   onClose: () => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const [hovered, setHovered] = useState<string | null>(null);
   useEffect(() => {
     const onDoc = (e: MouseEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
@@ -346,28 +347,41 @@ function FocusSlotPicker({
       </div>
       {[1, 2, 3].map((slot) => {
         const preview = rows.find((r) => r.slot === slot)?.text?.trim() ?? "";
+        const key = `${period}-${slot}`;
+        const isHover = hovered === key;
         return (
           <button
             key={slot}
             type="button"
             onClick={() => onPick(period, slot)}
+            onMouseEnter={() => setHovered(key)}
+            onMouseLeave={() => setHovered((cur) => (cur === key ? null : cur))}
             style={{
               display: "flex",
               alignItems: "center",
               gap: 6,
-              border: `1px solid ${FOCUS.cardBorder}`,
+              border: `1px solid ${isHover ? FOCUS.text : FOCUS.cardBorder}`,
               borderRadius: 6,
-              background: "#fff",
+              background: isHover ? FOCUS.text : "#fff",
               padding: "4px 8px",
               fontSize: 11.5,
               fontFamily: FOCUS_SANS,
-              color: preview ? FOCUS.text : FOCUS.faint,
+              color: isHover ? "#fff" : preview ? FOCUS.text : FOCUS.faint,
               cursor: "pointer",
               minWidth: 0,
               textAlign: "left",
+              transition: "background 0.1s ease, border-color 0.1s ease",
             }}
           >
-            <span style={{ fontWeight: 700, color: FOCUS.numeral, flexShrink: 0 }}>{slot}</span>
+            <span
+              style={{
+                fontWeight: 700,
+                color: isHover ? "rgba(255,255,255,0.65)" : FOCUS.numeral,
+                flexShrink: 0,
+              }}
+            >
+              {slot}
+            </span>
             <span
               style={{
                 overflow: "hidden",
@@ -376,7 +390,7 @@ function FocusSlotPicker({
                 minWidth: 0,
               }}
             >
-              {preview || "Open"}
+              {isHover && !preview ? "Place here" : preview || "Open"}
             </span>
           </button>
         );
@@ -423,6 +437,7 @@ function FocusSnapshot({
   const base = import.meta.env.BASE_URL || "/";
   const businessName = useBusinessName();
   const [pickerFor, setPickerFor] = useState<number | null>(null);
+  const [hoverChip, setHoverChip] = useState<number | null>(null);
 
   const putSlot = async (period: "day" | "week", slot: number, body: Record<string, unknown>) => {
     await fetch(`${base}api/command-center/top3/${period}/${slot}`, {
@@ -582,13 +597,17 @@ function FocusSnapshot({
               <button
                 type="button"
                 onClick={() => setPickerFor(pickerFor === item.id ? null : item.id)}
+                onMouseEnter={() => setHoverChip(item.id)}
+                onMouseLeave={() => setHoverChip((cur) => (cur === item.id ? null : cur))}
                 title="Move into a Top 3 slot"
                 style={{
                   display: "inline-flex",
                   alignItems: "center",
                   gap: 7,
-                  border: `1px solid ${pickerFor === item.id ? FOCUS.muted : FOCUS.cardBorder}`,
-                  background: "#fff",
+                  border: `1px solid ${
+                    pickerFor === item.id || hoverChip === item.id ? "#94a3b8" : FOCUS.cardBorder
+                  }`,
+                  background: pickerFor === item.id || hoverChip === item.id ? "#f1f5f9" : "#fff",
                   borderRadius: 999,
                   padding: "4px 11px",
                   fontSize: 12,
@@ -596,6 +615,11 @@ function FocusSnapshot({
                   color: FOCUS.text,
                   whiteSpace: "nowrap",
                   cursor: "pointer",
+                  boxShadow:
+                    pickerFor === item.id || hoverChip === item.id
+                      ? "0 1px 4px rgba(15,42,71,0.12)"
+                      : "none",
+                  transition: "background 0.1s ease, border-color 0.1s ease, box-shadow 0.1s ease",
                 }}
               >
                 <span
