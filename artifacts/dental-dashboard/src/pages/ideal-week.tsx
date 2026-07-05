@@ -577,13 +577,25 @@ function FocusSnapshot({
   };
 
   return (
-    <div
-      style={{
-        background: "#fff",
-        border: `1px solid ${FOCUS.cardBorder}`,
-        borderRadius: 10,
-      }}
-    >
+    <div>
+      <div
+        style={{
+          fontFamily: "Georgia, 'Times New Roman', serif",
+          fontStyle: "italic",
+          fontSize: 15,
+          color: "#8b9bad",
+          padding: "0 2px 10px",
+        }}
+      >
+        What is the highest leverage use of my time?
+      </div>
+      <div
+        style={{
+          background: "#fff",
+          border: `1px solid ${FOCUS.cardBorder}`,
+          borderRadius: 10,
+        }}
+      >
       {/* Clip only the columns (for the rounded top corners) — the chip
           slot-picker popover below must be free to overflow the card. */}
       <div
@@ -673,6 +685,7 @@ function FocusSnapshot({
             </span>
           );
         })}
+      </div>
       </div>
     </div>
   );
