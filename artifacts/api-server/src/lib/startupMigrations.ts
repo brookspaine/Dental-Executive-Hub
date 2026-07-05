@@ -34,6 +34,7 @@ export async function runStartupMigrations(): Promise<void> {
       await createOnDeckTable(client);
       await addTaskPriorityColumns(client);
       await addTop3MetaColumns(client);
+      await createObjectivesTables(client);
       await addSourceBusinessColumns(client);
       await createStoredObjectsTable(client);
       await seedBusinesses(client);
@@ -853,4 +854,23 @@ async function addTop3MetaColumns(client: PgClient): Promise<void> {
   await client.query(
     `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS status text NOT NULL DEFAULT 'not_started'`,
   );
+}
+
+/** Objectives + key results (OKR-lite). Idempotent. */
+async function createObjectivesTables(client: PgClient): Promise<void> {
+  await client.query(`CREATE TABLE IF NOT EXISTS cc_objectives (
+    id serial PRIMARY KEY,
+    business_ids integer[] NOT NULL,
+    text text NOT NULL,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`);
+  await client.query(`CREATE TABLE IF NOT EXISTS cc_key_results (
+    id serial PRIMARY KEY,
+    objective_id integer NOT NULL REFERENCES cc_objectives(id) ON DELETE CASCADE,
+    text text NOT NULL,
+    done boolean NOT NULL DEFAULT false,
+    sort_order integer NOT NULL DEFAULT 0,
+    created_at timestamptz NOT NULL DEFAULT now()
+  )`);
 }

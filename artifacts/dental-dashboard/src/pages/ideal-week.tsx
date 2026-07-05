@@ -310,6 +310,398 @@ function FocusCheck({ done, onToggle }: { done: boolean; onToggle: () => void })
   );
 }
 
+type KeyResult = { id: number; objectiveId: number; text: string; done: boolean; sortOrder: number };
+type Objective = { id: number; businessIds: number[]; text: string; sortOrder: number; keyResults: KeyResult[] };
+
+/* Calendar-quarter math for the pace tick. */
+function quarterInfo(now = new Date()) {
+  const q = Math.floor(now.getMonth() / 3);
+  const start = new Date(now.getFullYear(), q * 3, 1);
+  const end = new Date(now.getFullYear(), q * 3 + 3, 1);
+  const total = end.getTime() - start.getTime();
+  const elapsed = Math.min(Math.max(now.getTime() - start.getTime(), 0), total);
+  const week = Math.max(1, Math.ceil((now.getTime() - start.getTime()) / (7 * 86_400_000)));
+  const totalWeeks = Math.round(total / (7 * 86_400_000));
+  return { label: `Q${q + 1}`, week, totalWeeks, paceFrac: elapsed / total };
+}
+
+function ObjectivesCard() {
+  const base = import.meta.env.BASE_URL || "/";
+  const queryClient = useQueryClient();
+  const businessName = useBusinessName();
+  const { data: objectives = [] } = useQuery<Objective[]>({
+    queryKey: ["cc-objectives"],
+    queryFn: async () => {
+      const res = await fetch(`${base}api/command-center/objectives`, {
+        headers: ccBusinessHeaders(),
+      });
+      if (!res.ok) throw new Error(`objectives ${res.status}`);
+      return res.json();
+    },
+  });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["cc-objectives"] });
+  const [expanded, setExpanded] = useState<Set<number>>(new Set());
+  const [addingObj, setAddingObj] = useState(false);
+  const [objDraft, setObjDraft] = useState("");
+  const [objScope, setObjScope] = useState<string>("1");
+  const qi = quarterInfo();
+
+  const call = async (path: string, method: string, body?: unknown) => {
+    const res = await fetch(`${base}api/command-center${path}`, {
+      method,
+      headers: { "Content-Type": "application/json", ...ccBusinessHeaders() },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!res.ok) window.alert(`Couldn't save (${res.status}). Please try again.`);
+    refresh();
+  };
+
+  const scopeToIds = (v: string): number[] => (v === "personal" ? [] : [parseInt(v, 10)]);
+  const scopeLabel = (ids: number[]) =>
+    ids.length === 0 ? "Personal" : ids.map((id) => businessName(id) ?? `#${id}`).join(" + ");
+
+  const addObjective = async () => {
+    const text = objDraft.trim();
+    if (!text) return;
+    await call("/objectives", "POST", {
+      text,
+      businessIds: scopeToIds(objScope),
+      sortOrder: objectives.length,
+    });
+    setObjDraft("");
+    setAddingObj(false);
+  };
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: `1px solid ${FOCUS.cardBorder}`,
+        borderRadius: 10,
+        overflow: "hidden",
+        marginBottom: 14,
+      }}
+    >
+      <div style={focusSubhead}>
+        <span>{qi.label} Objectives</span>
+        <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
+          week {qi.week} of {qi.totalWeeks}
+        </span>
+      </div>
+      {objectives.map((o) => (
+        <ObjectiveRow
+          key={o.id}
+          objective={o}
+          scopeLabel={scopeLabel(o.businessIds)}
+          paceFrac={qi.paceFrac}
+          expanded={expanded.has(o.id)}
+          onToggle={() =>
+            setExpanded((cur) => {
+              const next = new Set(cur);
+              if (next.has(o.id)) next.delete(o.id);
+              else next.add(o.id);
+              return next;
+            })
+          }
+          call={call}
+        />
+      ))}
+      <div style={{ padding: "6px 14px 10px" }}>
+        {addingObj ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              autoFocus
+              type="text"
+              value={objDraft}
+              onChange={(e) => setObjDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void addObjective();
+                if (e.key === "Escape") {
+                  setObjDraft("");
+                  setAddingObj(false);
+                }
+              }}
+              placeholder="Objective (outcome, not activity) — Enter to save"
+              style={{
+                flex: 1,
+                border: `1px solid ${FOCUS.cardBorder}`,
+                borderRadius: 6,
+                padding: "5px 9px",
+                fontSize: 12.5,
+                fontFamily: FOCUS_SANS,
+                color: FOCUS.text,
+                outline: "none",
+              }}
+            />
+            <select
+              value={objScope}
+              onChange={(e) => setObjScope(e.target.value)}
+              style={{
+                border: `1px solid ${FOCUS.cardBorder}`,
+                borderRadius: 6,
+                padding: "5px 6px",
+                fontSize: 12,
+                fontFamily: FOCUS_SANS,
+                color: FOCUS.text,
+              }}
+            >
+              <option value="1">EDGE</option>
+              <option value="2">Urgent Dental</option>
+              <option value="personal">Personal</option>
+            </select>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAddingObj(true)}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: FOCUS.faint,
+              fontFamily: FOCUS_SANS,
+              fontSize: 11.5,
+              cursor: "pointer",
+              padding: 0,
+            }}
+          >
+            + Objective
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ObjectiveRow({
+  objective,
+  scopeLabel,
+  paceFrac,
+  expanded,
+  onToggle,
+  call,
+}: {
+  objective: Objective;
+  scopeLabel: string;
+  paceFrac: number;
+  expanded: boolean;
+  onToggle: () => void;
+  call: (path: string, method: string, body?: unknown) => Promise<void>;
+}) {
+  const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(objective.text);
+  const [krDraft, setKrDraft] = useState("");
+  const [addingKr, setAddingKr] = useState(false);
+  useEffect(() => setDraft(objective.text), [objective.text]);
+
+  const total = objective.keyResults.length;
+  const done = objective.keyResults.filter((k) => k.done).length;
+  const frac = total > 0 ? done / total : 0;
+
+  return (
+    <div style={{ borderBottom: `1px solid ${FOCUS.divider}` }}>
+      <div
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px", fontSize: 13 }}
+      >
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={expanded ? "Collapse" : "Expand"}
+          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 0, fontSize: 9, color: "#94a3b8", width: 12 }}
+        >
+          {expanded ? "▼" : "▶"}
+        </button>
+        <span
+          style={{
+            fontSize: 10,
+            fontWeight: 700,
+            letterSpacing: 0.5,
+            textTransform: "uppercase",
+            color: "#94a3b8",
+            width: 92,
+            flexShrink: 0,
+            textAlign: "right",
+            fontFamily: FOCUS_SANS,
+          }}
+        >
+          {scopeLabel}
+        </span>
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+              setEditing(false);
+              const t = draft.trim();
+              if (t && t !== objective.text) void call(`/objectives/${objective.id}`, "PATCH", { text: t });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setDraft(objective.text);
+                setEditing(false);
+              }
+            }}
+            style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 13, fontFamily: FOCUS_SANS, color: "#475569" }}
+          />
+        ) : (
+          <span
+            onClick={() => setEditing(true)}
+            title="Click to edit"
+            style={{ color: "#475569", fontFamily: FOCUS_SANS, cursor: "text", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0, flex: 1 }}
+          >
+            {objective.text}
+          </span>
+        )}
+        <span style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+          <span style={{ position: "relative", width: 110, height: 5, borderRadius: 3, background: "#eef2f7", display: "inline-block" }}>
+            <span style={{ position: "absolute", left: 0, top: 0, height: "100%", borderRadius: 3, background: "#0F2A47", width: `${Math.round(frac * 100)}%` }} />
+            <span style={{ position: "absolute", top: -2.5, width: 1.5, height: 10, background: "#D62828", left: `${Math.round(paceFrac * 100)}%` }} />
+          </span>
+          <span style={{ fontSize: 11, color: "#94a3b8", width: 32, fontFamily: FOCUS_SANS, fontVariantNumeric: "tabular-nums" }}>
+            {total > 0 ? `${done}/${total}` : "—"}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Delete objective "${objective.text}" and its key results?`)) {
+                void call(`/objectives/${objective.id}`, "DELETE");
+              }
+            }}
+            aria-label="Delete objective"
+            style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 14, lineHeight: 1, padding: "0 2px", visibility: hover ? "visible" : "hidden" }}
+          >
+            ×
+          </button>
+        </span>
+      </div>
+      {expanded && (
+        <div style={{ padding: "0 14px 8px 128px" }}>
+          {objective.keyResults.map((k) => (
+            <KeyResultRow key={k.id} kr={k} call={call} />
+          ))}
+          {addingKr ? (
+            <input
+              autoFocus
+              type="text"
+              value={krDraft}
+              onChange={(e) => setKrDraft(e.target.value)}
+              onBlur={() => {
+                const t = krDraft.trim();
+                if (t) {
+                  void call(`/objectives/${objective.id}/key-results`, "POST", { text: t, sortOrder: objective.keyResults.length });
+                }
+                setKrDraft("");
+                setAddingKr(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+                if (e.key === "Escape") {
+                  setKrDraft("");
+                  setAddingKr(false);
+                }
+              }}
+              placeholder="Key result (checkable) — Enter to save"
+              style={{ width: "100%", border: `1px solid ${FOCUS.cardBorder}`, borderRadius: 6, padding: "4px 8px", fontSize: 12, fontFamily: FOCUS_SANS, color: FOCUS.text, outline: "none", margin: "3px 0" }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingKr(true)}
+              style={{ background: "transparent", border: "none", color: FOCUS.faint, fontFamily: FOCUS_SANS, fontSize: 11, cursor: "pointer", padding: "3px 0" }}
+            >
+              + Key result
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KeyResultRow({
+  kr,
+  call,
+}: {
+  kr: KeyResult;
+  call: (path: string, method: string, body?: unknown) => Promise<void>;
+}) {
+  const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(kr.text);
+  useEffect(() => setDraft(kr.text), [kr.text]);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 0", fontSize: 12, color: kr.done ? "#a4b2c0" : "#64748b", fontFamily: FOCUS_SANS }}
+    >
+      <button
+        type="button"
+        onClick={() => void call(`/key-results/${kr.id}`, "PATCH", { done: !kr.done })}
+        aria-label={kr.done ? "Mark not done" : "Mark done"}
+        style={{
+          width: 13,
+          height: 13,
+          borderRadius: "50%",
+          border: `1.5px solid ${kr.done ? "#1f6a3f" : "#cbd5e1"}`,
+          background: kr.done ? "#1f6a3f" : "transparent",
+          color: "#fff",
+          fontSize: 8,
+          lineHeight: 1,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          cursor: "pointer",
+          flexShrink: 0,
+          padding: 0,
+        }}
+      >
+        {kr.done ? "✓" : ""}
+      </button>
+      {editing ? (
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            setEditing(false);
+            const t = draft.trim();
+            if (t && t !== kr.text) void call(`/key-results/${kr.id}`, "PATCH", { text: t });
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+            if (e.key === "Escape") {
+              setDraft(kr.text);
+              setEditing(false);
+            }
+          }}
+          style={{ flex: 1, minWidth: 0, border: "none", outline: "none", background: "transparent", fontSize: 12, fontFamily: FOCUS_SANS, color: "#64748b" }}
+        />
+      ) : (
+        <span
+          onClick={() => setEditing(true)}
+          title="Click to edit"
+          style={{ cursor: "text", textDecoration: kr.done ? "line-through" : "none", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+        >
+          {kr.text}
+        </span>
+      )}
+      <button
+        type="button"
+        onClick={() => void call(`/key-results/${kr.id}`, "DELETE")}
+        aria-label="Delete key result"
+        style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer", fontSize: 12, lineHeight: 1, padding: "0 2px", visibility: hover ? "visible" : "hidden" }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 function FocusSlotText({
   row,
   onCommit,
@@ -612,6 +1004,7 @@ export function FocusSnapshot({
       >
         What is the highest leverage use of my time?
       </div>
+      <ObjectivesCard />
       <div
         style={{
           background: "#fff",

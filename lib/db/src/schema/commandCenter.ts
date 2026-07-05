@@ -223,3 +223,31 @@ export const ccOnDeckTable = pgTable("cc_on_deck", {
     .$onUpdate(() => new Date()),
 });
 export type CcOnDeck = typeof ccOnDeckTable.$inferSelect;
+
+/* Quarterly Objectives (OKR-lite). businessIds follows the shared convention:
+   [1] EDGE, [2] Urgent Dental, [] personal. Progress is DERIVED from key
+   results — never stored. */
+export const ccObjectivesTable = pgTable("cc_objectives", {
+  id: serial("id").primaryKey(),
+  businessIds: integer("business_ids").array().notNull(),
+  text: text("text").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type CcObjective = typeof ccObjectivesTable.$inferSelect;
+
+export const ccKeyResultsTable = pgTable("cc_key_results", {
+  id: serial("id").primaryKey(),
+  objectiveId: integer("objective_id")
+    .notNull()
+    .references(() => ccObjectivesTable.id, { onDelete: "cascade" }),
+  text: text("text").notNull(),
+  done: boolean("done").notNull().default(false),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+export type CcKeyResult = typeof ccKeyResultsTable.$inferSelect;

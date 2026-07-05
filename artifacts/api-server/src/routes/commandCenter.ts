@@ -12,6 +12,8 @@ import {
   ccBrainDumpTable,
   ccTop3Table,
   ccOnDeckTable,
+  ccObjectivesTable,
+  ccKeyResultsTable,
   futureTodosTable,
 } from "@workspace/db";
 import { getBusinessId } from "../lib/businessScope";
@@ -1706,6 +1708,142 @@ router.get("/overview", async (req, res): Promise<void> => {
     },
     snapshot: Array.from(grouped.values()),
   });
+});
+
+
+/* -------------------------------------------------------------------------- */
+/* Objectives (OKR-lite) — cross-business, no business-header scoping.        */
+/* -------------------------------------------------------------------------- */
+
+router.get("/objectives", async (_req, res): Promise<void> => {
+  const [objectives, krs] = await Promise.all([
+    db.select().from(ccObjectivesTable).orderBy(asc(ccObjectivesTable.sortOrder), asc(ccObjectivesTable.id)),
+    db.select().from(ccKeyResultsTable).orderBy(asc(ccKeyResultsTable.sortOrder), asc(ccKeyResultsTable.id)),
+  ]);
+  res.json(
+    objectives.map((o) => ({
+      ...o,
+      keyResults: krs.filter((k) => k.objectiveId === o.id),
+    })),
+  );
+});
+
+router.post("/objectives", async (req, res): Promise<void> => {
+  const body = z
+    .object({
+      text: z.string().trim().min(1).max(300),
+      businessIds: z.array(z.number().int()).max(4).default([]),
+      sortOrder: z.number().int().optional(),
+    })
+    .safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const [row] = await db
+    .insert(ccObjectivesTable)
+    .values({
+      text: body.data.text,
+      businessIds: body.data.businessIds,
+      sortOrder: body.data.sortOrder ?? 0,
+    })
+    .returning();
+  res.status(201).json({ ...row, keyResults: [] });
+});
+
+router.patch("/objectives/:id", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      text: z.string().trim().min(1).max(300).optional(),
+      businessIds: z.array(z.number().int()).max(4).optional(),
+      sortOrder: z.number().int().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success || Object.keys(body.data).length === 0) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const [row] = await db
+    .update(ccObjectivesTable)
+    .set(body.data)
+    .where(eq(ccObjectivesTable.id, id.data))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  res.json(row);
+});
+
+router.delete("/objectives/:id", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  await db.delete(ccObjectivesTable).where(eq(ccObjectivesTable.id, id.data));
+  res.sendStatus(204);
+});
+
+router.post("/objectives/:id/key-results", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({ text: z.string().trim().min(1).max(300), sortOrder: z.number().int().optional() })
+    .safeParse(req.body);
+  if (!id.success || !body.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const parent = await db
+    .select({ id: ccObjectivesTable.id })
+    .from(ccObjectivesTable)
+    .where(eq(ccObjectivesTable.id, id.data))
+    .limit(1);
+  if (parent.length === 0) {
+    res.status(404).json({ error: "objective not found" });
+    return;
+  }
+  const [row] = await db
+    .insert(ccKeyResultsTable)
+    .values({ objectiveId: id.data, text: body.data.text, sortOrder: body.data.sortOrder ?? 0 })
+    .returning();
+  res.status(201).json(row);
+});
+
+router.patch("/key-results/:id", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  const body = z
+    .object({
+      text: z.string().trim().min(1).max(300).optional(),
+      done: z.boolean().optional(),
+      sortOrder: z.number().int().optional(),
+    })
+    .safeParse(req.body);
+  if (!id.success || !body.success || Object.keys(body.data).length === 0) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  const [row] = await db
+    .update(ccKeyResultsTable)
+    .set(body.data)
+    .where(eq(ccKeyResultsTable.id, id.data))
+    .returning();
+  if (!row) {
+    res.status(404).json({ error: "not found" });
+    return;
+  }
+  res.json(row);
+});
+
+router.delete("/key-results/:id", async (req, res): Promise<void> => {
+  const id = z.coerce.number().int().safeParse(req.params.id);
+  if (!id.success) {
+    res.status(400).json({ error: "invalid input" });
+    return;
+  }
+  await db.delete(ccKeyResultsTable).where(eq(ccKeyResultsTable.id, id.data));
+  res.sendStatus(204);
 });
 
 export default router;
