@@ -83,7 +83,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
-import { Top3Card, OnDeckCard, type OnDeckItem } from "@/pages/command-center";
+import { useBusinessName, type OnDeckItem } from "@/pages/command-center";
 import {
   categoryColors,
   categoryLabels,
@@ -214,6 +214,417 @@ function useOnDeck() {
       return res.json();
     },
   });
+}
+
+/* ---- Focus snapshot (Top 3 + On Deck) ------------------------------------
+   Read-first panel that replaces the editable Command Center tables on this
+   page: Today / This Week side by side under big slot numerals, On Deck as
+   pick-me chips. Checking a circle toggles done; clicking a chip opens a
+   slot picker that moves the item into a Top 3 slot (same behavior as the
+   ★ Top 3 pin on Action Items). Full editing lives on Action Items. */
+
+const FOCUS = {
+  cardBorder: "#e2e8f0",
+  divider: "#eef2f6",
+  headBg: "#faf7f1",
+  text: "#0F2A47",
+  muted: "#64748b",
+  faint: "#b0bdcb",
+  numeral: "#d9dee5",
+} as const;
+
+const FOCUS_SANS = "Inter, -apple-system, system-ui, sans-serif";
+
+const FOCUS_PRIORITY_PILL: Record<string, { bg: string; fg: string; label: string }> = {
+  high: { bg: "#fbdcdc", fg: "#a02020", label: "High" },
+  medium: { bg: "#fdf4d3", fg: "#7a5b00", label: "Medium" },
+  low: { bg: "#e2e8f0", fg: "#475569", label: "Low" },
+};
+const FOCUS_PRIORITY_DOT: Record<string, string> = {
+  high: "#d62828",
+  medium: "#c8a14a",
+  low: "#94a3b8",
+};
+
+const focusSubhead: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "6px 14px",
+  background: FOCUS.headBg,
+  borderBottom: `1px solid ${FOCUS.cardBorder}`,
+  fontSize: 11,
+  fontWeight: 600,
+  letterSpacing: 0.5,
+  textTransform: "uppercase",
+  color: FOCUS.muted,
+  fontFamily: FOCUS_SANS,
+};
+
+const focusPill = (bg: string, fg: string): React.CSSProperties => ({
+  borderRadius: 999,
+  fontSize: 11,
+  fontWeight: 600,
+  padding: "2px 9px",
+  whiteSpace: "nowrap",
+  background: bg,
+  color: fg,
+  fontFamily: FOCUS_SANS,
+});
+
+function focusShortDue(dueDate: string | null): { label: string; overdue: boolean } | null {
+  if (!dueDate) return null;
+  const d = new Date(`${dueDate}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return null;
+  const label = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return { label, overdue: d.getTime() < today.getTime() };
+}
+
+function FocusCheck({ done, onToggle }: { done: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      aria-label={done ? "Mark not done" : "Mark done"}
+      style={{
+        width: 16,
+        height: 16,
+        borderRadius: "50%",
+        border: `1.5px solid ${done ? "#5b8a5a" : "#cbd5e1"}`,
+        background: done ? "#5b8a5a" : "transparent",
+        color: "#fff",
+        fontSize: 10,
+        lineHeight: 1,
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        padding: 0,
+        flexShrink: 0,
+      }}
+    >
+      {done ? "✓" : ""}
+    </button>
+  );
+}
+
+function FocusSlotPicker({
+  dayRows,
+  weekRows,
+  onPick,
+  onClose,
+}: {
+  dayRows: CcTop3Row[];
+  weekRows: CcTop3Row[];
+  onPick: (period: "day" | "week", slot: number) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose();
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [onClose]);
+
+  const col = (title: string, period: "day" | "week", rows: CcTop3Row[]) => (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0, flex: 1 }}>
+      <div
+        style={{
+          fontSize: 10,
+          fontWeight: 700,
+          textTransform: "uppercase",
+          letterSpacing: 0.6,
+          color: FOCUS.muted,
+          fontFamily: FOCUS_SANS,
+        }}
+      >
+        {title}
+      </div>
+      {[1, 2, 3].map((slot) => {
+        const preview = rows.find((r) => r.slot === slot)?.text?.trim() ?? "";
+        return (
+          <button
+            key={slot}
+            type="button"
+            onClick={() => onPick(period, slot)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 6,
+              border: `1px solid ${FOCUS.cardBorder}`,
+              borderRadius: 6,
+              background: "#fff",
+              padding: "4px 8px",
+              fontSize: 11.5,
+              fontFamily: FOCUS_SANS,
+              color: preview ? FOCUS.text : FOCUS.faint,
+              cursor: "pointer",
+              minWidth: 0,
+              textAlign: "left",
+            }}
+          >
+            <span style={{ fontWeight: 700, color: FOCUS.numeral, flexShrink: 0 }}>{slot}</span>
+            <span
+              style={{
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+                minWidth: 0,
+              }}
+            >
+              {preview || "Open"}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  return (
+    <div
+      ref={ref}
+      onMouseDown={(e) => e.stopPropagation()}
+      style={{
+        position: "absolute",
+        top: "calc(100% + 4px)",
+        left: 0,
+        zIndex: 50,
+        background: "#fff",
+        border: `1px solid ${FOCUS.cardBorder}`,
+        borderRadius: 8,
+        boxShadow: "0 6px 20px rgba(0,0,0,0.12)",
+        padding: 10,
+        width: 300,
+        display: "flex",
+        gap: 10,
+      }}
+    >
+      {col("Today", "day", dayRows)}
+      {col("This Week", "week", weekRows)}
+    </div>
+  );
+}
+
+function FocusSnapshot({
+  dayRows,
+  weekRows,
+  onDeck,
+  onChange,
+}: {
+  dayRows: CcTop3Row[];
+  weekRows: CcTop3Row[];
+  onDeck: OnDeckItem[];
+  onChange: () => void;
+}) {
+  const base = import.meta.env.BASE_URL || "/";
+  const businessName = useBusinessName();
+  const [pickerFor, setPickerFor] = useState<number | null>(null);
+
+  const putSlot = async (period: "day" | "week", slot: number, body: Record<string, unknown>) => {
+    await fetch(`${base}api/command-center/top3/${period}/${slot}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", ...ccBusinessHeaders() },
+      body: JSON.stringify(body),
+    });
+    window.dispatchEvent(new CustomEvent("cc:top3-changed"));
+    onChange();
+  };
+
+  /* Moving a chip into a slot mirrors the ★ Top 3 pin on Action Items:
+     the slot takes the task (with its source business, priority, due date
+     and owner) and the item leaves On Deck. */
+  const pinChip = async (item: OnDeckItem, period: "day" | "week", slot: number) => {
+    setPickerFor(null);
+    await putSlot(period, slot, {
+      text: item.text,
+      done: false,
+      sourceBusinessId: item.sourceBusinessId ?? item.businessId,
+      priority: item.priority,
+      dueDate: item.dueDate,
+      ownerDirectReportId: item.ownerDirectReportId,
+      ownerName: item.ownerName,
+    });
+    await fetch(`${base}api/command-center/on-deck/${item.id}`, {
+      method: "DELETE",
+      headers: ccBusinessHeaders(),
+    });
+    onChange();
+  };
+
+  const column = (title: string, period: "day" | "week", rows: CcTop3Row[]) => {
+    const slots = [1, 2, 3].map((s) => rows.find((r) => r.slot === s) ?? null);
+    return (
+      <div style={{ minWidth: 0, background: "#fff" }}>
+        <div style={focusSubhead}>{title}</div>
+        {slots.map((row, i) => {
+          const filled = Boolean(row && row.text.trim());
+          const due = period === "week" && filled ? focusShortDue(row!.dueDate) : null;
+          const biz = filled ? businessName(row!.sourceBusinessId ?? row!.businessId) : null;
+          const pr = filled && row!.priority ? FOCUS_PRIORITY_PILL[row!.priority] : null;
+          return (
+            <div
+              key={i}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 9,
+                padding: "9px 14px",
+                borderBottom: i < 2 ? `1px solid ${FOCUS.divider}` : "none",
+                minWidth: 0,
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: FOCUS.numeral,
+                  width: 20,
+                  textAlign: "center",
+                  flexShrink: 0,
+                  fontVariantNumeric: "tabular-nums",
+                  fontFamily: FOCUS_SANS,
+                }}
+              >
+                {i + 1}
+              </span>
+              <FocusCheck
+                done={Boolean(row?.done)}
+                onToggle={() => filled && void putSlot(period, i + 1, { done: !row!.done })}
+              />
+              {filled ? (
+                <>
+                  <span
+                    style={{
+                      fontSize: 13.5,
+                      fontFamily: FOCUS_SANS,
+                      color: row!.done ? FOCUS.muted : FOCUS.text,
+                      textDecoration: row!.done ? "line-through" : "none",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      minWidth: 0,
+                    }}
+                  >
+                    {row!.text}
+                  </span>
+                  {biz && (
+                    <span
+                      title={`Lives in: ${biz}`}
+                      style={{ fontSize: 11, color: FOCUS.faint, whiteSpace: "nowrap", fontFamily: FOCUS_SANS }}
+                    >
+                      {biz}
+                    </span>
+                  )}
+                  <span style={{ marginLeft: "auto", display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
+                    {pr && <span style={focusPill(pr.bg, pr.fg)}>{pr.label}</span>}
+                    {due && (
+                      <span style={focusPill(due.overdue ? "#fbdcdc" : "#fdf4d3", due.overdue ? "#a02020" : "#7a5b00")}>
+                        {due.label}
+                      </span>
+                    )}
+                  </span>
+                </>
+              ) : (
+                <span style={{ fontSize: 12, color: FOCUS.faint, fontFamily: FOCUS_SANS }}>Open slot</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div
+      style={{
+        background: "#fff",
+        border: `1px solid ${FOCUS.cardBorder}`,
+        borderRadius: 10,
+        overflow: "hidden",
+      }}
+    >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: 1,
+          background: FOCUS.divider,
+        }}
+      >
+        {column("Today's Top 3", "day", dayRows)}
+        {column("This Week's Top 3", "week", weekRows)}
+      </div>
+      <div style={{ ...focusSubhead, borderTop: `1px solid ${FOCUS.cardBorder}` }}>
+        <span>On Deck</span>
+        <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
+          {onDeck.length}/7 · pick from here to fill a slot
+        </span>
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 14px" }}>
+        {onDeck.length === 0 && (
+          <span style={{ fontSize: 12, color: FOCUS.faint, fontFamily: FOCUS_SANS }}>
+            Nothing on deck — add items from Action Items.
+          </span>
+        )}
+        {onDeck.map((item) => {
+          const due = focusShortDue(item.dueDate);
+          const biz = businessName(item.sourceBusinessId ?? item.businessId);
+          return (
+            <span key={item.id} style={{ position: "relative", display: "inline-flex" }}>
+              <button
+                type="button"
+                onClick={() => setPickerFor(pickerFor === item.id ? null : item.id)}
+                title="Move into a Top 3 slot"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 7,
+                  border: `1px solid ${pickerFor === item.id ? FOCUS.muted : FOCUS.cardBorder}`,
+                  background: "#fff",
+                  borderRadius: 999,
+                  padding: "4px 11px",
+                  fontSize: 12,
+                  fontFamily: FOCUS_SANS,
+                  color: FOCUS.text,
+                  whiteSpace: "nowrap",
+                  cursor: "pointer",
+                }}
+              >
+                <span
+                  style={{
+                    width: 7,
+                    height: 7,
+                    borderRadius: "50%",
+                    flexShrink: 0,
+                    background: item.priority ? FOCUS_PRIORITY_DOT[item.priority] : "#d9dee5",
+                  }}
+                />
+                {item.text}
+                {biz && <span style={{ fontSize: 11, color: FOCUS.faint }}>{biz}</span>}
+                {due && (
+                  <span style={{ fontSize: 11, fontWeight: 600, color: due.overdue ? "#a02020" : "#7a5b00" }}>
+                    {due.label}
+                  </span>
+                )}
+              </button>
+              {pickerFor === item.id && (
+                <FocusSlotPicker
+                  dayRows={dayRows}
+                  weekRows={weekRows}
+                  onPick={(period, slot) => void pinChip(item, period, slot)}
+                  onClose={() => setPickerFor(null)}
+                />
+              )}
+            </span>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 const MORNING_RITUAL_ITEMS = [
@@ -3071,28 +3482,15 @@ export function IdealWeek() {
         <div className="space-y-4">
           <WeeklyScheduleTemplate weekStart={weekStart} />
 
-          <div className="rounded-xl border border-slate-200 bg-slate-50/50 p-4 space-y-4">
-            <div className="flex flex-col gap-4">
-              <Top3Card
-                title="Today's Top 3"
-                period="day"
-                top3={ccDailyRows}
-                onChange={invalidateCcTop3}
-              />
-              <Top3Card
-                title="This Week's Top 3"
-                period="week"
-                top3={ccWeeklyRows}
-                onChange={invalidateCcTop3}
-              />
-            </div>
-
-            <p className="text-center text-sm font-medium italic text-slate-500">
-              What is the highest leverage use of my time right now?
-            </p>
-
-            <OnDeckCard items={onDeckItems} onChange={invalidateOnDeck} />
-          </div>
+          <FocusSnapshot
+            dayRows={ccDailyRows}
+            weekRows={ccWeeklyRows}
+            onDeck={onDeckItems}
+            onChange={() => {
+              invalidateCcTop3();
+              invalidateOnDeck();
+            }}
+          />
 
           <AutomaticRulesForSuccess />
 

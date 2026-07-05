@@ -1899,7 +1899,7 @@ function CommandRow({
 /* Fetches the businesses list once so rows can label themselves with the
    business they live in (EDGE, Urgent Dental, …) — same muted origin hint
    as the Action Items tables. */
-function useBusinessName() {
+export function useBusinessName() {
   const [businesses, setBusinesses] = useState<Business[]>([]);
   useEffect(() => {
     let cancelled = false;
