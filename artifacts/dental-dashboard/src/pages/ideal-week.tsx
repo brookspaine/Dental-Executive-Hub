@@ -475,6 +475,29 @@ export function FocusSnapshot({
   const businessName = useBusinessName();
   const [pickerFor, setPickerFor] = useState<number | null>(null);
   const [hoverChip, setHoverChip] = useState<number | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  const addOnDeck = async () => {
+    const text = draft.trim();
+    if (!text) return;
+    if (onDeck.length >= 7) {
+      window.alert("On Deck is full (7/7 — this week's shortlist). Remove an item before adding another.");
+      return;
+    }
+    const res = await fetch(`${base}api/command-center/on-deck`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", ...ccBusinessHeaders() },
+      body: JSON.stringify({ text }),
+    });
+    if (!res.ok) {
+      window.alert(`Couldn't add to On Deck (${res.status}). Please try again.`);
+      return;
+    }
+    setDraft("");
+    setAdding(false);
+    onChange();
+  };
 
   const putSlot = async (period: "day" | "week", slot: number, body: Record<string, unknown>) => {
     await fetch(`${base}api/command-center/top3/${period}/${slot}`, {
@@ -619,11 +642,7 @@ export function FocusSnapshot({
         </span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 14px" }}>
-        {onDeck.length === 0 && (
-          <span style={{ fontSize: 12, color: FOCUS.faint, fontFamily: FOCUS_SANS }}>
-            Nothing on deck — add items from Action Items.
-          </span>
-        )}
+
         {onDeck.map((item) => {
           const due = focusShortDue(item.dueDate);
           const biz = businessName(item.sourceBusinessId ?? item.businessId);
@@ -685,6 +704,57 @@ export function FocusSnapshot({
             </span>
           );
         })}
+        {adding ? (
+          <input
+            autoFocus
+            type="text"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+              if (draft.trim()) void addOnDeck();
+              else setAdding(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void addOnDeck();
+              if (e.key === "Escape") {
+                setDraft("");
+                setAdding(false);
+              }
+            }}
+            placeholder="Task — Enter to add"
+            style={{
+              border: `1px solid ${FOCUS.cardBorder}`,
+              borderRadius: 999,
+              padding: "4px 11px",
+              fontSize: 12,
+              fontFamily: FOCUS_SANS,
+              color: FOCUS.text,
+              outline: "none",
+              minWidth: 220,
+            }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 5,
+              border: `1px dashed ${FOCUS.cardBorder}`,
+              background: "transparent",
+              borderRadius: 999,
+              padding: "4px 11px",
+              fontSize: 12,
+              fontFamily: FOCUS_SANS,
+              color: FOCUS.faint,
+              whiteSpace: "nowrap",
+              cursor: "pointer",
+            }}
+          >
+            <span style={{ fontSize: 13, lineHeight: 1 }}>+</span> Add
+          </button>
+        )}
       </div>
       </div>
     </div>
