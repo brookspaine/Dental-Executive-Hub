@@ -1,131 +1,140 @@
-import { Router, type IRouter, type Request, type Response } from "express";
-import { Readable } from "stream";
+import express, { Router, type IRouter, type Request, type Response } from "express";
+import { randomUUID } from "crypto";
+import { eq } from "drizzle-orm";
+import { db, storedObjectsTable } from "@workspace/db";
 import {
   RequestUploadUrlBody,
   RequestUploadUrlResponse,
 } from "@workspace/api-zod";
-import { ObjectStorageService, ObjectNotFoundError } from "../lib/objectStorage";
-import { ObjectPermission } from "../lib/objectAcl";
 
+/**
+ * Postgres-backed object storage. The original implementation used Replit's
+ * object-storage sidecar (GCS with presigned URLs), which only exists inside
+ * a Replit workspace — on Railway every request failed. Uploaded files are
+ * small (board photos, lease documents), so they live in the `stored_objects`
+ * table and survive redeploys without extra infrastructure.
+ *
+ * The presigned-URL API shape is preserved so existing clients keep working:
+ * request-url still returns an `uploadURL` the client PUTs the file to — the
+ * URL just points back at this server instead of GCS.
+ */
 const router: IRouter = Router();
-const objectStorageService = new ObjectStorageService();
+
+const MAX_UPLOAD_BYTES = 25 * 1024 * 1024;
 
 /**
  * POST /storage/uploads/request-url
  *
- * Request a presigned URL for file upload.
- * The client sends JSON metadata (name, size, contentType) — NOT the file.
- * Then uploads the file directly to the returned presigned URL.
+ * The client sends JSON metadata (name, size, contentType) — NOT the file —
+ * and then PUTs the file to the returned uploadURL.
  */
-router.post("/storage/uploads/request-url", async (req: Request, res: Response) => {
+router.post("/storage/uploads/request-url", (req: Request, res: Response) => {
   const parsed = RequestUploadUrlBody.safeParse(req.body);
   if (!parsed.success) {
     res.status(400).json({ error: "Missing or invalid required fields" });
     return;
   }
+  const { name, size, contentType } = parsed.data;
+  if (size > MAX_UPLOAD_BYTES) {
+    res.status(413).json({ error: "File too large (max 25 MB)" });
+    return;
+  }
 
+  const objectId = randomUUID();
+  const objectPath = `/objects/uploads/${objectId}`;
+  // Behind Railway's proxy req.protocol is "http"; trust the forwarded proto.
+  const proto = req.get("x-forwarded-proto") ?? req.protocol;
+  const uploadURL = `${proto}://${req.get("host")}/api/storage/uploads/${objectId}`;
+
+  res.json(
+    RequestUploadUrlResponse.parse({
+      uploadURL,
+      objectPath,
+      metadata: { name, size, contentType },
+    }),
+  );
+});
+
+/**
+ * PUT /storage/uploads/:objectId
+ *
+ * Receive the raw file body for a previously requested upload URL.
+ */
+router.put(
+  "/storage/uploads/:objectId",
+  express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
+  async (req: Request, res: Response) => {
+    const rawId = req.params.objectId;
+    const objectId = Array.isArray(rawId) ? rawId.join("/") : rawId;
+    if (!/^[0-9a-f-]{36}$/i.test(objectId)) {
+      res.status(400).json({ error: "invalid object id" });
+      return;
+    }
+    const bytes = req.body as Buffer;
+    if (!Buffer.isBuffer(bytes) || bytes.length === 0) {
+      res.status(400).json({ error: "empty upload body" });
+      return;
+    }
+    try {
+      await db
+        .insert(storedObjectsTable)
+        .values({
+          path: `/objects/uploads/${objectId}`,
+          contentType: req.get("content-type") || "application/octet-stream",
+          bytes,
+        })
+        .onConflictDoUpdate({
+          target: storedObjectsTable.path,
+          set: {
+            contentType: req.get("content-type") || "application/octet-stream",
+            bytes,
+          },
+        });
+      res.status(200).json({ objectPath: `/objects/uploads/${objectId}` });
+    } catch (err) {
+      req.log.error({ err, objectId }, "Error storing uploaded object");
+      res.status(500).json({ error: "Failed to store object" });
+    }
+  },
+);
+
+/**
+ * GET /storage/objects/*
+ *
+ * Serve a stored object. Objects uploaded before the July 2026 migration to
+ * Railway lived in Replit object storage and are gone — those 404.
+ */
+router.get("/storage/objects/*path", async (req: Request, res: Response) => {
+  const raw = req.params.path;
+  const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
+  const objectPath = `/objects/${wildcardPath}`;
   try {
-    const { name, size, contentType } = parsed.data;
-
-    const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-    const objectPath = objectStorageService.normalizeObjectEntityPath(uploadURL);
-
-    res.json(
-      RequestUploadUrlResponse.parse({
-        uploadURL,
-        objectPath,
-        metadata: { name, size, contentType },
-      }),
-    );
-  } catch (error) {
-    req.log.error({ err: error }, "Error generating upload URL");
-    res.status(500).json({ error: "Failed to generate upload URL" });
+    const [row] = await db
+      .select()
+      .from(storedObjectsTable)
+      .where(eq(storedObjectsTable.path, objectPath))
+      .limit(1);
+    if (!row) {
+      res.status(404).json({ error: "Object not found" });
+      return;
+    }
+    res.setHeader("Content-Type", row.contentType);
+    res.setHeader("Cache-Control", "private, max-age=3600");
+    res.send(row.bytes);
+  } catch (err) {
+    req.log.error({ err, objectPath }, "Error serving object");
+    res.status(500).json({ error: "Failed to serve object" });
   }
 });
 
 /**
  * GET /storage/public-objects/*
  *
- * Serve public assets from PUBLIC_OBJECT_SEARCH_PATHS.
- * These are unconditionally public — no authentication or ACL checks.
- * IMPORTANT: Always provide this endpoint when object storage is set up.
+ * Legacy Replit route kept so old links fail cleanly instead of 500ing.
+ * Nothing writes public objects on Railway.
  */
-router.get("/storage/public-objects/*filePath", async (req: Request, res: Response) => {
-  try {
-    const raw = req.params.filePath;
-    const filePath = Array.isArray(raw) ? raw.join("/") : raw;
-    const file = await objectStorageService.searchPublicObject(filePath);
-    if (!file) {
-      res.status(404).json({ error: "File not found" });
-      return;
-    }
-
-    const response = await objectStorageService.downloadObject(file);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
-  } catch (error) {
-    req.log.error({ err: error }, "Error serving public object");
-    res.status(500).json({ error: "Failed to serve public object" });
-  }
-});
-
-/**
- * GET /storage/objects/*
- *
- * Serve object entities from PRIVATE_OBJECT_DIR.
- * These are served from a separate path from /public-objects and can optionally
- * be protected with authentication or ACL checks based on the use case.
- */
-router.get("/storage/objects/*path", async (req: Request, res: Response) => {
-  try {
-    const raw = req.params.path;
-    const wildcardPath = Array.isArray(raw) ? raw.join("/") : raw;
-    const objectPath = `/objects/${wildcardPath}`;
-    const objectFile = await objectStorageService.getObjectEntityFile(objectPath);
-
-    // --- Protected route example (uncomment when using replit-auth) ---
-    // if (!req.isAuthenticated()) {
-    //   res.status(401).json({ error: "Unauthorized" });
-    //   return;
-    // }
-    // const canAccess = await objectStorageService.canAccessObjectEntity({
-    //   userId: req.user.id,
-    //   objectFile,
-    //   requestedPermission: ObjectPermission.READ,
-    // });
-    // if (!canAccess) {
-    //   res.status(403).json({ error: "Forbidden" });
-    //   return;
-    // }
-
-    const response = await objectStorageService.downloadObject(objectFile);
-
-    res.status(response.status);
-    response.headers.forEach((value, key) => res.setHeader(key, value));
-
-    if (response.body) {
-      const nodeStream = Readable.fromWeb(response.body as ReadableStream<Uint8Array>);
-      nodeStream.pipe(res);
-    } else {
-      res.end();
-    }
-  } catch (error) {
-    if (error instanceof ObjectNotFoundError) {
-      req.log.warn({ err: error }, "Object not found");
-      res.status(404).json({ error: "Object not found" });
-      return;
-    }
-    req.log.error({ err: error }, "Error serving object");
-    res.status(500).json({ error: "Failed to serve object" });
-  }
+router.get("/storage/public-objects/*filePath", (_req: Request, res: Response) => {
+  res.status(404).json({ error: "File not found" });
 });
 
 export default router;

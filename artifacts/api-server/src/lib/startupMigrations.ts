@@ -35,6 +35,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addTaskPriorityColumns(client);
       await addTop3MetaColumns(client);
       await addSourceBusinessColumns(client);
+      await createStoredObjectsTable(client);
       await seedBusinesses(client);
     } finally {
       await client.query("SELECT pg_advisory_unlock($1)", [ADVISORY_LOCK_KEY]);
@@ -780,6 +781,23 @@ async function addTaskPriorityColumns(client: PgClient): Promise<void> {
   );
   await client.query(
     `ALTER TABLE cc_on_deck ADD COLUMN IF NOT EXISTS priority text`,
+  );
+}
+
+/**
+ * Uploaded files (board photos, lease documents) live in Postgres so they
+ * survive redeploys — the previous Replit object-storage backend is
+ * unreachable off-Replit and Railway containers have no persistent disk.
+ * Idempotent CREATE TABLE IF NOT EXISTS, same as cc_on_deck.
+ */
+async function createStoredObjectsTable(client: PgClient): Promise<void> {
+  await client.query(
+    `CREATE TABLE IF NOT EXISTS stored_objects (
+       path text PRIMARY KEY,
+       content_type text NOT NULL,
+       bytes bytea NOT NULL,
+       created_at timestamptz NOT NULL DEFAULT now()
+     )`,
   );
 }
 

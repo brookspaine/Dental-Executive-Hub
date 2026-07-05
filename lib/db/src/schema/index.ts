@@ -19,3 +19,4 @@ export * from "./futureTodos";
 export * from "./users";
 export * from "./businesses";
 export * from "./commandCenter";
+export * from "./storedObjects";
