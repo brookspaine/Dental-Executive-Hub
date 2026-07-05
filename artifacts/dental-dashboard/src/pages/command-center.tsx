@@ -1,5 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { FocusSnapshot } from "@/pages/ideal-week";
 
 const MOBILE_META_COLS = "repeat(auto-fit, minmax(104px, 1fr))";
 
@@ -858,34 +859,14 @@ function CommandTab({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-      {/* Focus stack — Today, This Week, On Deck as one section of
-          stacked tables, mirroring how a business section reads. */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-        <div
-          style={{
-            fontFamily: SERIF,
-            fontStyle: "italic",
-            fontSize: 15,
-            color: "#8b9bad",
-            padding: "2px 2px 0",
-          }}
-        >
-          What is the highest leverage use of my time?
-        </div>
-        <Top3Card
-          title="Today's Top 3"
-          period="day"
-          top3={data.top3}
-          onChange={reload}
-        />
-        <Top3Card
-          title="This Week's Top 3"
-          period="week"
-          top3={data.weekTop3 ?? []}
-          onChange={reload}
-        />
-        <OnDeckCard items={data.onDeck ?? []} onChange={reload} />
-      </div>
+      {/* Focus snapshot — same compact Today / This Week / On Deck board
+          as the Ideal Week page (shared component). */}
+      <FocusSnapshot
+        dayRows={data.top3}
+        weekRows={data.weekTop3 ?? []}
+        onDeck={data.onDeck ?? []}
+        onChange={reload}
+      />
 
       <ViewControls view={view} setView={setView}>
         <span style={{ width: 10 }} />

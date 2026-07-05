@@ -460,7 +460,7 @@ function FocusSlotPicker({
   );
 }
 
-function FocusSnapshot({
+export function FocusSnapshot({
   dayRows,
   weekRows,
   onDeck,
