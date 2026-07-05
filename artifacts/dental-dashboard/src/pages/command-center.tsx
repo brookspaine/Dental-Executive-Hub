@@ -861,6 +861,17 @@ function CommandTab({
       {/* Focus stack — Today, This Week, On Deck as one section of
           stacked tables, mirroring how a business section reads. */}
       <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <div
+          style={{
+            fontFamily: SERIF,
+            fontStyle: "italic",
+            fontSize: 15,
+            color: "#8b9bad",
+            padding: "2px 2px 0",
+          }}
+        >
+          What is the highest leverage use of my time?
+        </div>
         <Top3Card
           title="Today's Top 3"
           period="day"
