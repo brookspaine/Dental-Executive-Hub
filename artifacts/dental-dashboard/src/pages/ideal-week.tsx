@@ -310,6 +310,43 @@ function FocusCheck({ done, onToggle }: { done: boolean; onToggle: () => void })
   );
 }
 
+function FocusSlotText({
+  row,
+  onCommit,
+}: {
+  row: CcTop3Row | null;
+  onCommit: (text: string) => void;
+}) {
+  const initial = row?.text ?? "";
+  const [value, setValue] = useState(initial);
+  useEffect(() => setValue(initial), [initial]);
+  const done = Boolean(row?.done);
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={() => value.trim() !== initial.trim() && onCommit(value.trim())}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        if (e.key === "Escape") setValue(initial);
+      }}
+      placeholder="Open slot"
+      style={{
+        flex: 1,
+        minWidth: 0,
+        border: "none",
+        outline: "none",
+        background: "transparent",
+        fontSize: 13.5,
+        fontFamily: FOCUS_SANS,
+        color: done ? FOCUS.muted : FOCUS.text,
+        textDecoration: done ? "line-through" : "none",
+      }}
+    />
+  );
+}
+
 function FocusSlotPicker({
   dayRows,
   weekRows,
@@ -510,41 +547,27 @@ function FocusSnapshot({
                 done={Boolean(row?.done)}
                 onToggle={() => filled && void putSlot(period, i + 1, { done: !row!.done })}
               />
-              {filled ? (
-                <>
-                  <span
-                    style={{
-                      fontSize: 13.5,
-                      fontFamily: FOCUS_SANS,
-                      color: row!.done ? FOCUS.muted : FOCUS.text,
-                      textDecoration: row!.done ? "line-through" : "none",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                      minWidth: 0,
-                    }}
-                  >
-                    {row!.text}
-                  </span>
-                  {biz && (
-                    <span
-                      title={`Lives in: ${biz}`}
-                      style={{ fontSize: 11, color: FOCUS.faint, whiteSpace: "nowrap", fontFamily: FOCUS_SANS }}
-                    >
-                      {biz}
+              <FocusSlotText
+                row={row}
+                onCommit={(t) => void putSlot(period, i + 1, { text: t })}
+              />
+              {filled && biz && (
+                <span
+                  title={`Lives in: ${biz}`}
+                  style={{ fontSize: 11, color: FOCUS.faint, whiteSpace: "nowrap", fontFamily: FOCUS_SANS }}
+                >
+                  {biz}
+                </span>
+              )}
+              {filled && (
+                <span style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
+                  {pr && <span style={focusPill(pr.bg, pr.fg)}>{pr.label}</span>}
+                  {due && (
+                    <span style={focusPill(due.overdue ? "#fbdcdc" : "#fdf4d3", due.overdue ? "#a02020" : "#7a5b00")}>
+                      {due.label}
                     </span>
                   )}
-                  <span style={{ marginLeft: "auto", display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
-                    {pr && <span style={focusPill(pr.bg, pr.fg)}>{pr.label}</span>}
-                    {due && (
-                      <span style={focusPill(due.overdue ? "#fbdcdc" : "#fdf4d3", due.overdue ? "#a02020" : "#7a5b00")}>
-                        {due.label}
-                      </span>
-                    )}
-                  </span>
-                </>
-              ) : (
-                <span style={{ fontSize: 12, color: FOCUS.faint, fontFamily: FOCUS_SANS }}>Open slot</span>
+                </span>
               )}
             </div>
           );
