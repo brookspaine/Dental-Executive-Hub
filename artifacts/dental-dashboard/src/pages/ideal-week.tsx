@@ -716,12 +716,13 @@ export function FocusSnapshot({
                   style={{
                     background: "transparent",
                     border: "none",
-                    color: hoverChip === item.id ? "#64748b" : "#c2cbd6",
+                    color: "#64748b",
                     cursor: "pointer",
                     fontSize: 13,
                     lineHeight: 1,
                     padding: "0 0 0 2px",
                     marginRight: -4,
+                    visibility: hoverChip === item.id || pickerFor === item.id ? "visible" : "hidden",
                   }}
                 >
                   ×
