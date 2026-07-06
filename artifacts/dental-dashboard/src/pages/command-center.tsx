@@ -2499,7 +2499,7 @@ function CommandRow({
             if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
           }}
           style={
-            originLabel
+            originLabel && !isMobile
               ? {
                   ...inputStyle,
                   fontSize: 14,
@@ -2511,7 +2511,7 @@ function CommandRow({
               : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
           }
         />
-        {originLabel && (
+        {originLabel && !isMobile && (
           <span
             ref={mirrorRef}
             aria-hidden
@@ -2527,7 +2527,7 @@ function CommandRow({
             {text}
           </span>
         )}
-        {originLabel && (
+        {originLabel && !isMobile && (
           <span
             title={`Lives in: ${originLabel}`}
             style={{
@@ -2543,7 +2543,7 @@ function CommandRow({
             {originLabel}
           </span>
         )}
-        {originLabel && <span style={{ flex: 1 }} />}
+        {originLabel && !isMobile && <span style={{ flex: 1 }} />}
         <SendToOnDeck task={task} sourceBusinessId={taskSourceBusinessId(task)} visible={hover} />
         <PinStar taskText={task.text} sourceBusinessId={taskSourceBusinessId(task)} visible={hover} />
         <button
@@ -2570,7 +2570,7 @@ function CommandRow({
           display: "flex",
           alignItems: "center",
           justifyContent: isMobile ? "flex-start" : "center",
-          padding: "6px 8px",
+          padding: isMobile ? "2px 8px 6px" : "6px 8px",
           borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
         }}
       >
@@ -2581,7 +2581,7 @@ function CommandRow({
           display: "flex",
           alignItems: "center",
           justifyContent: isMobile ? "flex-start" : "center",
-          padding: "6px 8px",
+          padding: isMobile ? "2px 8px 6px" : "6px 8px",
           borderRight: isMobile ? "none" : `1px solid ${C.divider}`,
         }}
       >
@@ -2597,7 +2597,7 @@ function CommandRow({
           display: "flex",
           alignItems: "center",
           justifyContent: isMobile ? "flex-start" : "center",
-          padding: "6px 8px",
+          padding: isMobile ? "2px 8px 6px" : "6px 8px",
           fontSize: 13,
           color: C.textSecondary,
         }}
@@ -5321,7 +5321,7 @@ function TaskRow({
             {originLabel}
           </span>
         )}
-        {originLabel && (
+        {originLabel && !isMobile && (
           <span
             title={`Lives in: ${originLabel}`}
             style={{
@@ -5950,7 +5950,7 @@ function DueDateField({
       }}
       title={value ? `Due ${value}` : "Set due date"}
     >
-      <span style={{ opacity: value ? 1 : 0.55 }}>{value ? label : "📅"}</span>
+      <span style={{ opacity: value ? 1 : 0.55 }}>{value ? label : "—"}</span>
       <input
         type="date"
         value={value ?? ""}
