@@ -478,6 +478,15 @@ export function FocusSnapshot({
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
 
+  const removeOnDeck = async (id: number) => {
+    const res = await fetch(`${base}api/command-center/on-deck/${id}`, {
+      method: "DELETE",
+      headers: ccBusinessHeaders(),
+    });
+    if (!res.ok) window.alert(`Couldn't remove (${res.status}). Please try again.`);
+    onChange();
+  };
+
   const addOnDeck = async () => {
     const text = draft.trim();
     if (!text) return;
@@ -648,9 +657,13 @@ export function FocusSnapshot({
           const biz = businessName(item.sourceBusinessId ?? item.businessId);
           return (
             <span key={item.id} style={{ position: "relative", display: "inline-flex" }}>
-              <button
-                type="button"
+              <span
+                role="button"
+                tabIndex={0}
                 onClick={() => setPickerFor(pickerFor === item.id ? null : item.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") setPickerFor(pickerFor === item.id ? null : item.id);
+                }}
                 onMouseEnter={() => setHoverChip(item.id)}
                 onMouseLeave={() => setHoverChip((cur) => (cur === item.id ? null : cur))}
                 title="Move into a Top 3 slot"
@@ -692,7 +705,28 @@ export function FocusSnapshot({
                     {due.label}
                   </span>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void removeOnDeck(item.id);
+                  }}
+                  aria-label="Remove from On Deck"
+                  title="Remove from On Deck"
+                  style={{
+                    background: "transparent",
+                    border: "none",
+                    color: hoverChip === item.id ? "#64748b" : "#c2cbd6",
+                    cursor: "pointer",
+                    fontSize: 13,
+                    lineHeight: 1,
+                    padding: "0 0 0 2px",
+                    marginRight: -4,
+                  }}
+                >
+                  ×
+                </button>
+              </span>
               {pickerFor === item.id && (
                 <FocusSlotPicker
                   dayRows={dayRows}
