@@ -2,7 +2,8 @@ import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSPr
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FocusSnapshot } from "@/pages/ideal-week";
 
-const MOBILE_META_COLS = "repeat(auto-fit, minmax(104px, 1fr))";
+/* Mobile meta row: left-packed (priority | due | owner), no dead space. */
+const MOBILE_META_COLS = "max-content max-content 1fr";
 
 /* ========================================================================== */
 /* Types                                                                      */
@@ -2431,6 +2432,17 @@ function CommandRow({
   useEffect(() => setText(task.text), [task.text]);
   const dueInfo = formatDueDate(task.dueDate, task.done);
 
+  // Mobile text is a wrapping auto-grow textarea (inputs can't wrap, which
+  // truncated every task name on phones).
+  const taRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = taRef.current;
+    if (el) {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    }
+  }, [text, isMobile]);
+
   // Mirror span measures the rendered text so the origin hint can sit
   // immediately after the last word (ch-units overshoot in proportional fonts).
   const mirrorRef = useRef<HTMLSpanElement | null>(null);
@@ -2472,6 +2484,7 @@ function CommandRow({
       style={{
         display: "grid",
         gridTemplateColumns: isMobile ? MOBILE_META_COLS : COMMAND_GRID_COLS,
+        columnGap: isMobile ? 16 : 0,
         alignItems: "stretch",
         borderBottom: `1px solid ${C.divider}`,
         background: hover ? "#f8fafc" : "transparent",
@@ -2490,27 +2503,53 @@ function CommandRow({
         }}
       >
         <AsanaCheck done={task.done} onToggle={() => patch({ done: !task.done })} />
-        <input
-          type="text"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          onBlur={() => text !== task.text && text.trim() && patch({ text: text.trim() })}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
-          }}
-          style={
-            originLabel && !isMobile
-              ? {
-                  ...inputStyle,
-                  fontSize: 14,
-                  flex: "0 1 auto",
-                  width: textWidth !== null ? textWidth + 10 : `${Math.max(text.length + 2, 10)}ch`,
-                  maxWidth: "70%",
-                  minWidth: 60,
-                }
-              : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
-          }
-        />
+        {isMobile ? (
+          <textarea
+            ref={taRef}
+            value={text}
+            rows={1}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={() => text !== task.text && text.trim() && patch({ text: text.trim() })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                (e.currentTarget as HTMLTextAreaElement).blur();
+              }
+            }}
+            style={{
+              ...inputStyle,
+              fontSize: 14,
+              flex: 1,
+              minWidth: 0,
+              resize: "none",
+              overflow: "hidden",
+              lineHeight: 1.4,
+              fontFamily: SANS,
+            }}
+          />
+        ) : (
+          <input
+            type="text"
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            onBlur={() => text !== task.text && text.trim() && patch({ text: text.trim() })}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+            }}
+            style={
+              originLabel
+                ? {
+                    ...inputStyle,
+                    fontSize: 14,
+                    flex: "0 1 auto",
+                    width: textWidth !== null ? textWidth + 10 : `${Math.max(text.length + 2, 10)}ch`,
+                    maxWidth: "70%",
+                    minWidth: 60,
+                  }
+                : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
+            }
+          />
+        )}
         {originLabel && !isMobile && (
           <span
             ref={mirrorRef}
