@@ -1026,6 +1026,7 @@ router.post("/tasks", async (req, res): Promise<void> => {
       priority: z.enum(TASK_PRIORITIES).nullable().optional(),
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       nextSteps: z.string().optional(),
+      keyResultId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
   if (!body.success) {
@@ -1085,6 +1086,7 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
       sectionId: z.number().int().nullable().optional(),
       ownerDirectReportId: z.number().int().nullable().optional(),
       ownerName: z.string().trim().max(120).nullable().optional(),
+      keyResultId: z.number().int().nullable().optional(),
       nextSteps: z.string().optional(),
     })
     .safeParse(req.body);
@@ -1716,14 +1718,24 @@ router.get("/overview", async (req, res): Promise<void> => {
 /* -------------------------------------------------------------------------- */
 
 router.get("/objectives", async (_req, res): Promise<void> => {
-  const [objectives, krs] = await Promise.all([
+  const [objectives, krs, linkedTasks] = await Promise.all([
     db.select().from(ccObjectivesTable).orderBy(asc(ccObjectivesTable.sortOrder), asc(ccObjectivesTable.id)),
     db.select().from(ccKeyResultsTable).orderBy(asc(ccKeyResultsTable.sortOrder), asc(ccKeyResultsTable.id)),
+    db
+      .select()
+      .from(ccTasksTable)
+      .where(sql`${ccTasksTable.keyResultId} IS NOT NULL`)
+      .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id)),
   ]);
   res.json(
     objectives.map((o) => ({
       ...o,
-      keyResults: krs.filter((k) => k.objectiveId === o.id),
+      keyResults: krs
+        .filter((k) => k.objectiveId === o.id)
+        .map((k) => ({
+          ...k,
+          actionItems: linkedTasks.filter((t) => t.keyResultId === k.id),
+        })),
     })),
   );
 });
@@ -1732,6 +1744,8 @@ router.post("/objectives", async (req, res): Promise<void> => {
   const body = z
     .object({
       text: z.string().trim().min(1).max(300),
+      parentType: z.enum(["direct_report", "business"]),
+      parentId: z.number().int(),
       businessIds: z.array(z.number().int()).max(4).default([]),
       sortOrder: z.number().int().optional(),
     })
@@ -1744,6 +1758,8 @@ router.post("/objectives", async (req, res): Promise<void> => {
     .insert(ccObjectivesTable)
     .values({
       text: body.data.text,
+      parentType: body.data.parentType,
+      parentId: body.data.parentId,
       businessIds: body.data.businessIds,
       sortOrder: body.data.sortOrder ?? 0,
     })
@@ -1789,7 +1805,11 @@ router.delete("/objectives/:id", async (req, res): Promise<void> => {
 router.post("/objectives/:id/key-results", async (req, res): Promise<void> => {
   const id = z.coerce.number().int().safeParse(req.params.id);
   const body = z
-    .object({ text: z.string().trim().min(1).max(300), sortOrder: z.number().int().optional() })
+    .object({
+      text: z.string().trim().min(1).max(300),
+      target: z.number().int().min(1).max(1_000_000).optional(),
+      sortOrder: z.number().int().optional(),
+    })
     .safeParse(req.body);
   if (!id.success || !body.success) {
     res.status(400).json({ error: "invalid input" });
@@ -1806,7 +1826,12 @@ router.post("/objectives/:id/key-results", async (req, res): Promise<void> => {
   }
   const [row] = await db
     .insert(ccKeyResultsTable)
-    .values({ objectiveId: id.data, text: body.data.text, sortOrder: body.data.sortOrder ?? 0 })
+    .values({
+      objectiveId: id.data,
+      text: body.data.text,
+      target: body.data.target ?? 1,
+      sortOrder: body.data.sortOrder ?? 0,
+    })
     .returning();
   res.status(201).json(row);
 });
@@ -1817,6 +1842,8 @@ router.patch("/key-results/:id", async (req, res): Promise<void> => {
     .object({
       text: z.string().trim().min(1).max(300).optional(),
       done: z.boolean().optional(),
+      target: z.number().int().min(1).max(1_000_000).optional(),
+      current: z.number().int().min(0).max(1_000_000).optional(),
       sortOrder: z.number().int().optional(),
     })
     .safeParse(req.body);
@@ -1824,11 +1851,33 @@ router.patch("/key-results/:id", async (req, res): Promise<void> => {
     res.status(400).json({ error: "invalid input" });
     return;
   }
+  const patch: Record<string, unknown> = { ...body.data };
+  // done toggles map to full/zero progress; progress edits derive done.
+  if (body.data.done !== undefined && body.data.current === undefined) {
+    const [existing] = await db
+      .select()
+      .from(ccKeyResultsTable)
+      .where(eq(ccKeyResultsTable.id, id.data))
+      .limit(1);
+    if (existing) patch["current"] = body.data.done ? existing.target : 0;
+  }
   const [row] = await db
     .update(ccKeyResultsTable)
-    .set(body.data)
+    .set(patch)
     .where(eq(ccKeyResultsTable.id, id.data))
     .returning();
+  if (row && (body.data.current !== undefined || body.data.target !== undefined)) {
+    const nowDone = row.current >= row.target;
+    if (nowDone !== row.done) {
+      const [synced] = await db
+        .update(ccKeyResultsTable)
+        .set({ done: nowDone })
+        .where(eq(ccKeyResultsTable.id, id.data))
+        .returning();
+      res.json(synced);
+      return;
+    }
+  }
   if (!row) {
     res.status(404).json({ error: "not found" });
     return;

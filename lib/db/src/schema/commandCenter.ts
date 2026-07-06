@@ -120,6 +120,8 @@ export const ccTasksTable = pgTable(
     status: text("status").notNull().default("not_started"),
     // high | medium | low | NULL (unset). Badge-only — never affects ordering.
     priority: text("priority"),
+  // Optional link to a key result (renders nested under it, not in sections).
+  keyResultId: integer("key_result_id"),
     dueDate: date("due_date", { mode: "string" }),
     nextSteps: text("next_steps").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),
@@ -230,6 +232,9 @@ export type CcOnDeck = typeof ccOnDeckTable.$inferSelect;
 export const ccObjectivesTable = pgTable("cc_objectives", {
   id: serial("id").primaryKey(),
   businessIds: integer("business_ids").array().notNull(),
+  // Where the objective lives: a person or a business.
+  parentType: text("parent_type").notNull().default("business"), // direct_report | business
+  parentId: integer("parent_id").notNull().default(0),
   text: text("text").notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -244,6 +249,9 @@ export const ccKeyResultsTable = pgTable("cc_key_results", {
     .notNull()
     .references(() => ccObjectivesTable.id, { onDelete: "cascade" }),
   text: text("text").notNull(),
+  // Metric progress: current of target. A milestone is target=1.
+  target: integer("target").notNull().default(1),
+  current: integer("current").notNull().default(0),
   done: boolean("done").notNull().default(false),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: timestamp("created_at", { withTimezone: true })

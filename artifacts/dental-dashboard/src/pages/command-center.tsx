@@ -82,6 +82,7 @@ type Task = {
   dueDate: string | null;
   nextSteps: string;
   sortOrder: number;
+  keyResultId: number | null;
 };
 type BrainDumpOutcome =
   | "trash"
@@ -543,6 +544,35 @@ type CommandContainer = {
   sortOrder: number;
 };
 
+/* Objectives (OKR-lite) attached to a person or business. */
+type ObjKeyResult = {
+  id: number;
+  objectiveId: number;
+  text: string;
+  target: number;
+  current: number;
+  done: boolean;
+  sortOrder: number;
+  actionItems: Task[];
+};
+type CommandObjective = {
+  id: number;
+  parentType: "direct_report" | "business";
+  parentId: number;
+  businessIds: number[];
+  text: string;
+  sortOrder: number;
+  keyResults: ObjKeyResult[];
+};
+
+/* Calendar-quarter pace for objective pills. */
+function quarterPaceFrac(now = new Date()): number {
+  const q = Math.floor(now.getMonth() / 3);
+  const start = new Date(now.getFullYear(), q * 3, 1).getTime();
+  const end = new Date(now.getFullYear(), q * 3 + 3, 1).getTime();
+  return Math.min(Math.max((now.getTime() - start) / (end - start), 0), 1);
+}
+
 /* Scope pill: everything, a business id, or "personal" (Life Areas). */
 type CommandScope = "all" | number | "personal";
 
@@ -614,11 +644,14 @@ function buildScopedSections(
       parentType === "direct_report"
         ? tasks.filter(
             (t) =>
-              (t.parentType === "direct_report" && t.parentId === c.id) ||
-              (t.ownerDirectReportId === c.id &&
-                !(t.parentType === "direct_report" && t.parentId === c.id)),
+              t.keyResultId === null &&
+              ((t.parentType === "direct_report" && t.parentId === c.id) ||
+                (t.ownerDirectReportId === c.id &&
+                  !(t.parentType === "direct_report" && t.parentId === c.id))),
           )
-        : tasks.filter((t) => t.parentType === parentType && t.parentId === c.id);
+        : tasks.filter(
+            (t) => t.keyResultId === null && t.parentType === parentType && t.parentId === c.id,
+          );
     return {
       key: `${parentType}-${c.id}`,
       label: c.name,
@@ -633,7 +666,7 @@ function buildScopedSections(
     a.sortOrder - b.sortOrder || a.id - b.id;
 
   const lifeAreaGroups = () => {
-    const life = tasks.filter((t) => t.parentType === "life_area");
+    const life = tasks.filter((t) => t.parentType === "life_area" && t.keyResultId === null);
     const byArea = new Map<string, AllTask[]>();
     for (const t of life) {
       const label = t.parentName ?? "Untitled";
@@ -775,6 +808,7 @@ function CommandTab({
     projects: CommandContainer[];
     directReports: CommandContainer[];
   }>({ projects: [], directReports: [] });
+  const [objectives, setObjectives] = useState<CommandObjective[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [scope, setScope] = useState<CommandScope>(() => {
     try {
@@ -796,7 +830,7 @@ function CommandTab({
 
   const reload = async () => {
     try {
-      const [ov, all] = await Promise.all([
+      const [ov, all, objs] = await Promise.all([
         api<Overview>("/command-center/overview"),
         api<{
           tasks: AllTask[];
@@ -804,11 +838,13 @@ function CommandTab({
           projects: CommandContainer[];
           directReports: CommandContainer[];
         }>("/command-center/tasks/all"),
+        api<CommandObjective[]>("/command-center/objectives"),
       ]);
       setData(ov);
       setTasks(all.tasks);
       setTaskSections(all.sections);
       setContainers({ projects: all.projects ?? [], directReports: all.directReports ?? [] });
+      setObjectives(objs);
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -898,7 +934,9 @@ function CommandTab({
             key={sec.title || `top-${si}`}
             section={sec}
             drs={containers.directReports}
+            projects={containers.projects}
             sectionsById={sectionsById}
+            objectives={objectives}
             onChanged={reload}
           />
         ))}
@@ -1065,6 +1103,671 @@ function Chevron({ open }: { open: boolean }) {
   );
 }
 
+/* Resolve which container action items under a BUSINESS objective attach to:
+   the business-named project, else its first project. */
+function businessTaskParent(
+  projects: CommandContainer[],
+  section: CommandSection,
+): { parentType: ParentType; parentId: number } | null {
+  const biz = section.businessId;
+  if (biz === undefined) return null;
+  const candidates = projects
+    .filter((p) => p.businessIds.length === 1 && p.businessIds[0] === biz)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id);
+  const named = candidates.find((p) => p.name === section.title);
+  const pick = named ?? candidates[0];
+  return pick ? { parentType: "project", parentId: pick.id } : null;
+}
+
+/* Objective cards for one container (person or business), plus the quiet
+   "+ Objective" line. */
+function ObjectiveCards({
+  objectives,
+  parentType,
+  parentId,
+  businessIds,
+  taskParent,
+  drs,
+  onChanged,
+}: {
+  objectives: CommandObjective[];
+  parentType: "direct_report" | "business";
+  parentId: number;
+  businessIds: number[];
+  taskParent: { parentType: ParentType; parentId: number } | null;
+  drs: CommandContainer[];
+  onChanged: () => void;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [draft, setDraft] = useState("");
+  const headers = {
+    "x-business-id": String(
+      businessIds.includes(currentBusinessId) ? currentBusinessId : (businessIds[0] ?? currentBusinessId),
+    ),
+  };
+
+  const addObjective = async () => {
+    const text = draft.trim();
+    if (!text) return;
+    try {
+      await api("/command-center/objectives", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ text, parentType, parentId, businessIds, sortOrder: objectives.length }),
+      });
+      setDraft("");
+      setAdding(false);
+      onChanged();
+    } catch (e) {
+      window.alert(`Couldn't save the objective (${e instanceof Error ? e.message : "error"}).`);
+    }
+  };
+
+  return (
+    <div style={{ marginBottom: objectives.length > 0 || adding ? 12 : 4 }}>
+      {objectives.map((o) => (
+        <ObjectiveCard key={o.id} objective={o} headers={headers} taskParent={taskParent} drs={drs} onChanged={onChanged} />
+      ))}
+      {adding ? (
+        <input
+          autoFocus
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => {
+            if (draft.trim()) void addObjective();
+            else setAdding(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") void addObjective();
+            if (e.key === "Escape") {
+              setDraft("");
+              setAdding(false);
+            }
+          }}
+          placeholder="Objective (outcome, not activity) — Enter to save"
+          style={{ ...inputStyle, fontSize: 13, width: "100%", maxWidth: 480, padding: "6px 2px" }}
+        />
+      ) : (
+        <button
+          type="button"
+          onClick={() => setAdding(true)}
+          style={{
+            background: "transparent",
+            border: "none",
+            color: "#94a3b8",
+            fontFamily: SANS,
+            fontSize: 11,
+            fontWeight: 500,
+            padding: "2px 2px 4px",
+            cursor: "pointer",
+          }}
+        >
+          + Objective
+        </button>
+      )}
+    </div>
+  );
+}
+
+function paceOf(objective: CommandObjective): { label: string; bg: string; fg: string } | null {
+  if (objective.keyResults.length === 0) return null;
+  const frac =
+    objective.keyResults.reduce((sum, k) => sum + Math.min(k.current / Math.max(k.target, 1), 1), 0) /
+    objective.keyResults.length;
+  if (frac >= 1) return { label: "Completed", bg: "#e4f2e8", fg: "#1f6a3f" };
+  const diff = frac - quarterPaceFrac();
+  if (diff >= -0.05) return { label: "On pace", bg: "#e4f2e8", fg: "#1f6a3f" };
+  if (diff >= -0.3) return { label: "Slightly off pace", bg: "#fdf4d3", fg: "#7a5b00" };
+  return { label: "Off pace", bg: "#fdeaea", fg: "#a02020" };
+}
+
+function ObjectiveCard({
+  objective,
+  headers,
+  taskParent,
+  drs,
+  onChanged,
+}: {
+  objective: CommandObjective;
+  headers: Record<string, string>;
+  taskParent: { parentType: ParentType; parentId: number } | null;
+  drs: CommandContainer[];
+  onChanged: () => void;
+}) {
+  const [collapsed, toggle] = useCollapsed(`obj-${objective.id}`);
+  const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(objective.text);
+  const [addingKr, setAddingKr] = useState(false);
+  const [krDraft, setKrDraft] = useState("");
+  const [krTarget, setKrTarget] = useState("1");
+  useEffect(() => setDraft(objective.text), [objective.text]);
+  const pace = paceOf(objective);
+
+  const call = async (path: string, method: string, body?: unknown) => {
+    try {
+      await api(path, {
+        method,
+        headers,
+        body: body === undefined ? undefined : JSON.stringify(body),
+      });
+      onChanged();
+    } catch (e) {
+      window.alert(`Couldn't save (${e instanceof Error ? e.message : "error"}).`);
+    }
+  };
+
+  const addKr = async () => {
+    const text = krDraft.trim();
+    if (!text) return;
+    const target = Math.max(1, parseInt(krTarget, 10) || 1);
+    await call(`/command-center/objectives/${objective.id}/key-results`, "POST", {
+      text,
+      target,
+      sortOrder: objective.keyResults.length,
+    });
+    setKrDraft("");
+    setKrTarget("1");
+    setAddingKr(false);
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        background: C.card,
+        border: `1px solid ${C.cardBorder}`,
+        borderRadius: 10,
+        padding: "14px 16px",
+        marginBottom: 10,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <button
+          type="button"
+          onClick={toggle}
+          aria-label={collapsed ? "Expand objective" : "Collapse objective"}
+          style={{ background: "transparent", border: "none", cursor: "pointer", padding: "4px 0 0", lineHeight: 1 }}
+        >
+          <Chevron open={!collapsed} />
+        </button>
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+              setEditing(false);
+              const t = draft.trim();
+              if (t && t !== objective.text) void call(`/command-center/objectives/${objective.id}`, "PATCH", { text: t });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setDraft(objective.text);
+                setEditing(false);
+              }
+            }}
+            style={{ ...inputStyle, fontSize: 15, fontWeight: 600, flex: 1, minWidth: 0 }}
+          />
+        ) : (
+          <span
+            onClick={() => setEditing(true)}
+            title="Click to edit"
+            style={{ fontSize: 15, fontWeight: 600, color: C.textPrimary, lineHeight: 1.35, flex: 1, minWidth: 0, cursor: "text" }}
+          >
+            {objective.text}
+          </span>
+        )}
+        {pace && (
+          <span
+            style={{
+              fontSize: 11,
+              fontWeight: 600,
+              padding: "3px 11px",
+              borderRadius: 999,
+              background: pace.bg,
+              color: pace.fg,
+              flexShrink: 0,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {pace.label}
+          </span>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            if (window.confirm(`Delete objective "${objective.text}" and its key results?`)) {
+              void call(`/command-center/objectives/${objective.id}`, "DELETE");
+            }
+          }}
+          aria-label="Delete objective"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 15,
+            lineHeight: 1,
+            padding: "2px 2px 0",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      {!collapsed && (
+        <>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "baseline",
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: 0.5,
+              textTransform: "uppercase",
+              color: "#94a3b8",
+              margin: "14px 0 2px",
+            }}
+          >
+            Key Results
+            {!addingKr && (
+              <button
+                type="button"
+                onClick={() => setAddingKr(true)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  color: "#8b9bad",
+                  fontFamily: SANS,
+                  fontSize: 11,
+                  fontWeight: 500,
+                  textTransform: "none",
+                  letterSpacing: 0,
+                  cursor: "pointer",
+                  padding: 0,
+                }}
+              >
+                + New key result
+              </button>
+            )}
+          </div>
+          {objective.keyResults.map((k) => (
+            <KrRow key={k.id} kr={k} headers={headers} taskParent={taskParent} drs={drs} onChanged={onChanged} />
+          ))}
+          {addingKr && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0" }}>
+              <input
+                autoFocus
+                type="text"
+                value={krDraft}
+                onChange={(e) => setKrDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void addKr();
+                  if (e.key === "Escape") {
+                    setKrDraft("");
+                    setAddingKr(false);
+                  }
+                }}
+                placeholder="Key result — Enter to save"
+                style={{ ...inputStyle, fontSize: 13, flex: 1, border: `1px solid ${C.cardBorder}`, borderRadius: 6, padding: "5px 9px" }}
+              />
+              <label style={{ fontSize: 11, color: C.textSecondary, display: "flex", alignItems: "center", gap: 5, fontFamily: SANS }}>
+                target
+                <input
+                  type="number"
+                  min={1}
+                  value={krTarget}
+                  onChange={(e) => setKrTarget(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void addKr()}
+                  style={{ width: 64, border: `1px solid ${C.cardBorder}`, borderRadius: 6, padding: "5px 7px", fontSize: 12, fontFamily: SANS, color: C.textPrimary, outline: "none" }}
+                />
+              </label>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function KrRow({
+  kr,
+  headers,
+  taskParent,
+  drs,
+  onChanged,
+}: {
+  kr: ObjKeyResult;
+  headers: Record<string, string>;
+  taskParent: { parentType: ParentType; parentId: number } | null;
+  drs: CommandContainer[];
+  onChanged: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(kr.text);
+  const [editingProg, setEditingProg] = useState(false);
+  const [progDraft, setProgDraft] = useState(String(kr.current));
+  const [aiOpen, toggleAi] = useCollapsed(`kr-ai-${kr.id}`);
+  const [addingAi, setAddingAi] = useState(false);
+  const [aiDraft, setAiDraft] = useState("");
+  useEffect(() => setDraft(kr.text), [kr.text]);
+  useEffect(() => setProgDraft(String(kr.current)), [kr.current]);
+
+  const call = async (path: string, method: string, body?: unknown) => {
+    try {
+      await api(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+      onChanged();
+    } catch (e) {
+      window.alert(`Couldn't save (${e instanceof Error ? e.message : "error"}).`);
+    }
+  };
+
+  const frac = Math.min(kr.current / Math.max(kr.target, 1), 1);
+  const isMilestone = kr.target === 1;
+  const progLabel = frac >= 1 ? "Completed" : isMilestone ? "Open" : `${kr.current} of ${kr.target}`;
+
+  const commitProg = () => {
+    setEditingProg(false);
+    const n = parseInt(progDraft, 10);
+    if (Number.isFinite(n) && n !== kr.current) void call(`/command-center/key-results/${kr.id}`, "PATCH", { current: Math.max(0, n) });
+  };
+
+  const addAi = async () => {
+    const text = aiDraft.trim();
+    if (!text || !taskParent) return;
+    await call("/command-center/tasks", "POST", {
+      parentType: taskParent.parentType,
+      parentId: taskParent.parentId,
+      sectionId: null,
+      text,
+      keyResultId: kr.id,
+    });
+    setAiDraft("");
+    setAddingAi(false);
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ padding: "8px 0 6px", borderBottom: `1px solid #eef2f7` }}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={() => {
+              setEditing(false);
+              const t = draft.trim();
+              if (t && t !== kr.text) void call(`/command-center/key-results/${kr.id}`, "PATCH", { text: t });
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+              if (e.key === "Escape") {
+                setDraft(kr.text);
+                setEditing(false);
+              }
+            }}
+            style={{ ...inputStyle, fontSize: 13, flex: 1, minWidth: 0 }}
+          />
+        ) : (
+          <span
+            onClick={() => setEditing(true)}
+            title="Click to edit"
+            style={{ fontSize: 13, color: "#334155", flex: 1, minWidth: 0, cursor: "text", fontFamily: SANS }}
+          >
+            {kr.text}
+          </span>
+        )}
+        <span
+          style={{
+            width: 160,
+            height: 6,
+            borderRadius: 3,
+            background: "#eef2f7",
+            position: "relative",
+            flexShrink: 0,
+            display: "inline-block",
+          }}
+        >
+          <span
+            style={{
+              position: "absolute",
+              left: 0,
+              top: 0,
+              height: "100%",
+              borderRadius: 3,
+              background: frac >= 1 ? "#1f6a3f" : "#0F2A47",
+              width: `${Math.round(frac * 100)}%`,
+            }}
+          />
+        </span>
+        {editingProg ? (
+          <input
+            autoFocus
+            type="number"
+            min={0}
+            value={progDraft}
+            onChange={(e) => setProgDraft(e.target.value)}
+            onBlur={commitProg}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commitProg();
+              if (e.key === "Escape") setEditingProg(false);
+            }}
+            style={{ width: 64, border: `1px solid ${C.cardBorder}`, borderRadius: 6, padding: "3px 6px", fontSize: 12, fontFamily: SANS, color: C.textPrimary, outline: "none", flexShrink: 0 }}
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              if (isMilestone) void call(`/command-center/key-results/${kr.id}`, "PATCH", { done: !kr.done });
+              else setEditingProg(true);
+            }}
+            title={isMilestone ? "Click to toggle" : "Click to update progress"}
+            style={{
+              width: 72,
+              textAlign: "right",
+              fontSize: 12,
+              color: frac >= 1 ? "#1f6a3f" : C.textSecondary,
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: SANS,
+              fontVariantNumeric: "tabular-nums",
+              flexShrink: 0,
+              padding: 0,
+            }}
+          >
+            {progLabel}
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={() => void call(`/command-center/key-results/${kr.id}`, "DELETE")}
+          aria-label="Delete key result"
+          style={{
+            background: "transparent",
+            border: "none",
+            color: C.textSecondary,
+            cursor: "pointer",
+            fontSize: 13,
+            lineHeight: 1,
+            padding: "0 2px",
+            visibility: hover ? "visible" : "hidden",
+            flexShrink: 0,
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <button
+        type="button"
+        onClick={toggleAi}
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 7,
+          background: "transparent",
+          border: "none",
+          cursor: "pointer",
+          fontFamily: SANS,
+          fontSize: 11.5,
+          fontWeight: 600,
+          color: C.textSecondary,
+          margin: "6px 0 0 4px",
+          padding: 0,
+        }}
+      >
+        <Chevron open={aiOpen} />
+        Action Items ({kr.actionItems.length})
+      </button>
+      {aiOpen && (
+        <div style={{ background: "#f8fafc", borderRadius: 8, margin: "7px 0 3px 4px", padding: "2px 12px" }}>
+          {kr.actionItems.map((t) => (
+            <KrActionItemRow key={t.id} task={t} drs={drs} headers={headers} onChanged={onChanged} />
+          ))}
+          {addingAi ? (
+            <input
+              autoFocus
+              type="text"
+              value={aiDraft}
+              onChange={(e) => setAiDraft(e.target.value)}
+              onBlur={() => {
+                if (aiDraft.trim()) void addAi();
+                else setAddingAi(false);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void addAi();
+                if (e.key === "Escape") {
+                  setAiDraft("");
+                  setAddingAi(false);
+                }
+              }}
+              placeholder="Action item — Enter to save"
+              style={{ ...inputStyle, fontSize: 13, width: "100%", padding: "7px 0" }}
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAddingAi(true)}
+              style={{
+                background: "transparent",
+                border: "none",
+                color: "#8b9bad",
+                fontFamily: SANS,
+                fontSize: 11.5,
+                cursor: "pointer",
+                padding: "6px 0 8px",
+              }}
+            >
+              + New action item
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function KrActionItemRow({
+  task,
+  drs,
+  headers,
+  onChanged,
+}: {
+  task: Task;
+  drs: CommandContainer[];
+  headers: Record<string, string>;
+  onChanged: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const [text, setText] = useState(task.text);
+  useEffect(() => setText(task.text), [task.text]);
+  const owner =
+    task.ownerDirectReportId != null
+      ? (drs.find((d) => d.id === task.ownerDirectReportId)?.name ?? null)
+      : task.ownerName;
+  const dueInfo = formatDueDate(task.dueDate, task.done);
+
+  const patch = async (body: Record<string, unknown>) => {
+    await api(`/command-center/tasks/${task.id}`, { method: "PATCH", headers, body: JSON.stringify(body) });
+    onChanged();
+  };
+  const del = async () => {
+    await api(`/command-center/tasks/${task.id}`, { method: "DELETE", headers });
+    onChanged();
+  };
+
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderBottom: `1px solid #eef2f7`, fontSize: 13.5 }}
+    >
+      <AsanaCheck done={task.done} onToggle={() => void patch({ done: !task.done })} />
+      <input
+        type="text"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        onBlur={() => text !== task.text && text.trim() && void patch({ text: text.trim() })}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+        }}
+        style={{
+          ...inputStyle,
+          fontSize: 13.5,
+          flex: 1,
+          minWidth: 0,
+          textDecoration: task.done ? "line-through" : "none",
+          color: task.done ? C.textSecondary : C.textPrimary,
+        }}
+      />
+      <span style={{ fontSize: 11, color: "#94a3b8", flexShrink: 0, whiteSpace: "nowrap", fontFamily: SANS }}>
+        {owner && <b style={{ color: C.textSecondary, fontWeight: 600 }}>{owner}</b>}
+        {dueInfo.label && (
+          <>
+            {" "}
+            DUE: <b style={{ color: dueInfo.tone === "overdue" ? "#b1361e" : "#7a5b00", fontWeight: 600 }}>{dueInfo.label}</b>
+          </>
+        )}
+      </span>
+      <DueDateField
+        value={task.dueDate}
+        tone={dueInfo.tone}
+        label=""
+        onChange={(next) => void patch({ dueDate: next })}
+      />
+      <button
+        type="button"
+        onClick={() => void del()}
+        aria-label="Delete action item"
+        style={{
+          background: "transparent",
+          border: "none",
+          color: C.textSecondary,
+          cursor: "pointer",
+          fontSize: 13,
+          lineHeight: 1,
+          padding: "0 2px",
+          visibility: hover ? "visible" : "hidden",
+          flexShrink: 0,
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 /* Inline "+ Add person" / "+ Add project" for a business section. */
 function AddContainerRow({
   label,
@@ -1154,12 +1857,16 @@ function AddContainerRow({
 function CommandSectionBlock({
   section,
   drs,
+  projects,
   sectionsById,
+  objectives,
   onChanged,
 }: {
   section: CommandSection;
   drs: CommandContainer[];
+  projects: CommandContainer[];
   sectionsById: Map<number, string>;
+  objectives: CommandObjective[];
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`biz-${section.title || "__top"}`);
@@ -1194,12 +1901,26 @@ function CommandSectionBlock({
       )}
       {!hidden && (
         <>
+          {section.businessId !== undefined && (
+            <ObjectiveCards
+              objectives={objectives.filter(
+                (o) => o.parentType === "business" && o.parentId === section.businessId,
+              )}
+              parentType="business"
+              parentId={section.businessId}
+              businessIds={[section.businessId]}
+              taskParent={businessTaskParent(projects, section)}
+              drs={drs}
+              onChanged={onChanged}
+            />
+          )}
           {section.drGroups && section.drGroups.length > 0 && (
             <DirectReportsCluster
               clusterKey={section.title || "scoped"}
               groups={section.drGroups}
               drs={drs}
               sectionsById={sectionsById}
+              objectives={objectives}
               onChanged={onChanged}
             />
           )}
@@ -1255,12 +1976,14 @@ function DirectReportsCluster({
   groups,
   drs,
   sectionsById,
+  objectives,
   onChanged,
 }: {
   clusterKey: string;
   groups: CommandGroupData[];
   drs: CommandContainer[];
   sectionsById: Map<number, string>;
+  objectives: CommandObjective[];
   onChanged: () => void;
 }) {
   const [collapsed, toggle] = useCollapsed(`drs-${clusterKey}`);
@@ -1289,7 +2012,14 @@ function DirectReportsCluster({
       {!collapsed && (
         <div style={{ paddingLeft: 4 }}>
           {groups.map((g) => (
-            <CommandGroup key={g.key} group={g} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
+            <CommandGroup
+              key={g.key}
+              group={g}
+              drs={drs}
+              sectionsById={sectionsById}
+              objectives={objectives}
+              onChanged={onChanged}
+            />
           ))}
         </div>
       )}
@@ -1302,19 +2032,37 @@ function CommandGroup({
   hideLabel = false,
   drs,
   sectionsById,
+  objectives = [],
   onChanged,
 }: {
   group: CommandGroupData;
   hideLabel?: boolean;
   drs: CommandContainer[];
   sectionsById: Map<number, string>;
+  objectives?: CommandObjective[];
   onChanged: () => void;
 }) {
   const isMobile = useIsMobile();
   const [collapsed, toggle] = useCollapsed(`g-${group.key}`);
+  const isDr = group.parentType === "direct_report" && group.parentId !== null;
+  const drObjectives = isDr
+    ? objectives.filter((o) => o.parentType === "direct_report" && o.parentId === group.parentId)
+    : [];
+  const objectiveCards = isDr && (
+    <ObjectiveCards
+      objectives={drObjectives}
+      parentType="direct_report"
+      parentId={group.parentId!}
+      businessIds={group.businessIds}
+      taskParent={{ parentType: "direct_report", parentId: group.parentId! }}
+      drs={drs}
+      onChanged={onChanged}
+    />
+  );
   if (hideLabel) {
     return (
       <div style={{ marginBottom: 18 }}>
+        {objectiveCards}
         <CommandGroupTable group={group} isMobile={isMobile} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
       </div>
     );
@@ -1342,7 +2090,10 @@ function CommandGroup({
         {group.label}
       </button>
       {!collapsed && (
-        <CommandGroupTable group={group} isMobile={isMobile} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
+        <>
+          {objectiveCards}
+          <CommandGroupTable group={group} isMobile={isMobile} drs={drs} sectionsById={sectionsById} onChanged={onChanged} />
+        </>
       )}
     </div>
   );
@@ -1386,7 +2137,7 @@ function CommandGroupTable({
             }}
           >
             <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
-              Task
+              Action Item
             </div>
             <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
               Priority
@@ -1483,7 +2234,7 @@ function AddTaskRow({
           borderBottom: `1px solid ${C.divider}`,
         }}
       >
-        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+        <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add action item
       </button>
     );
   }
@@ -1513,7 +2264,7 @@ function AddTaskRow({
             setAdding(false);
           }
         }}
-        placeholder="Task name — Enter to save"
+        placeholder="Action item — Enter to save"
         style={{ ...inputStyle, fontSize: 14, flex: 1 }}
       />
     </div>
@@ -2025,7 +2776,7 @@ export function Top3Card({
           }}
         >
           <div style={{ padding: "7px 12px", borderRight: `1px solid ${C.divider}` }}>
-            Task
+            Action Item
           </div>
           <div style={{ padding: "7px 12px", textAlign: "center", borderRight: `1px solid ${C.divider}` }}>
             Owner
@@ -2527,7 +3278,7 @@ export function OnDeckCard({
                 opacity: atCap ? 0.5 : 1,
               }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add action item
             </button>
           )}
         </div>
@@ -3457,7 +4208,7 @@ function LifeAreaGoalsBlock({
             cursor: "pointer",
           }}
         >
-          <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+          <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add action item
         </button>
        </div>
       </div>
@@ -4329,7 +5080,7 @@ function TaskSectionGroup({
                       setAdding(false);
                     }
                   }}
-                  placeholder="Task name — press Enter to save"
+                  placeholder="Action item — press Enter to save"
                   style={{ ...inputStyle, fontSize: 14, color: C.textPrimary, flex: 1 }}
                 />
               </div>
@@ -4374,7 +5125,7 @@ function TaskSectionGroup({
                 textAlign: "left",
               }}
             >
-              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add task
+              <span style={{ fontSize: 14, lineHeight: 1 }}>+</span> Add action item
             </button>
           )}
         </div>

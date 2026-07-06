@@ -35,6 +35,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addTaskPriorityColumns(client);
       await addTop3MetaColumns(client);
       await createObjectivesTables(client);
+      await addObjectiveAttachmentColumns(client);
       await addSourceBusinessColumns(client);
       await createStoredObjectsTable(client);
       await seedBusinesses(client);
@@ -873,4 +874,23 @@ async function createObjectivesTables(client: PgClient): Promise<void> {
     sort_order integer NOT NULL DEFAULT 0,
     created_at timestamptz NOT NULL DEFAULT now()
   )`);
+}
+
+/** Objective attachment + KR metrics + action-item link. Idempotent. */
+async function addObjectiveAttachmentColumns(client: PgClient): Promise<void> {
+  await client.query(
+    `ALTER TABLE cc_objectives ADD COLUMN IF NOT EXISTS parent_type text NOT NULL DEFAULT 'business'`,
+  );
+  await client.query(
+    `ALTER TABLE cc_objectives ADD COLUMN IF NOT EXISTS parent_id integer NOT NULL DEFAULT 0`,
+  );
+  await client.query(
+    `ALTER TABLE cc_key_results ADD COLUMN IF NOT EXISTS target integer NOT NULL DEFAULT 1`,
+  );
+  await client.query(
+    `ALTER TABLE cc_key_results ADD COLUMN IF NOT EXISTS current integer NOT NULL DEFAULT 0`,
+  );
+  await client.query(
+    `ALTER TABLE cc_tasks ADD COLUMN IF NOT EXISTS key_result_id integer`,
+  );
 }
