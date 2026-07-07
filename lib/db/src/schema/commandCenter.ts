@@ -122,6 +122,9 @@ export const ccTasksTable = pgTable(
     priority: text("priority"),
   // Optional link to a key result (renders nested under it, not in sections).
   keyResultId: integer("key_result_id"),
+  // Day the item was checked off — completed items stay visible (struck
+  // through) for the rest of that day, then leave the open lists.
+  completedOn: date("completed_on", { mode: "string" }),
     dueDate: date("due_date", { mode: "string" }),
     nextSteps: text("next_steps").notNull().default(""),
     sortOrder: integer("sort_order").notNull().default(0),

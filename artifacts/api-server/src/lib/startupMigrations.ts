@@ -37,6 +37,7 @@ export async function runStartupMigrations(): Promise<void> {
       await createObjectivesTables(client);
       await addObjectiveAttachmentColumns(client);
       await addTop3SourceColumns(client);
+      await addTaskCompletedOnColumn(client);
       await addSourceBusinessColumns(client);
       await createStoredObjectsTable(client);
       await seedBusinesses(client);
@@ -903,5 +904,12 @@ async function addTop3SourceColumns(client: PgClient): Promise<void> {
   );
   await client.query(
     `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS source_business_id integer`,
+  );
+}
+
+/** Completed-today visibility for action items. Idempotent. */
+async function addTaskCompletedOnColumn(client: PgClient): Promise<void> {
+  await client.query(
+    `ALTER TABLE cc_tasks ADD COLUMN IF NOT EXISTS completed_on date`,
   );
 }

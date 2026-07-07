@@ -63,11 +63,9 @@ const GOAL_TYPES = [
 const GOAL_STATUSES = ["not_started", "in_progress", "launched", "achieved"] as const;
 
 function todayDateString(): string {
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${dd}`;
+  // The user's day, not the server's — Railway runs UTC, which would flip
+  // "tomorrow" at ~8pm Eastern.
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/New_York" });
 }
 
 let taskStatusBackfilled = false;
@@ -289,6 +287,7 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
       .set({
         done: patch["done"],
         status: patch["done"] ? "completed" : "not_started",
+        completedOn: patch["done"] ? todayDateString() : null,
       })
       .where(eq(ccTasksTable.id, row.sourceTaskId));
   }
@@ -499,6 +498,7 @@ router.patch("/on-deck/:id", async (req, res): Promise<void> => {
       .set({
         done: body.data.status === "completed",
         status: body.data.status,
+        completedOn: body.data.status === "completed" ? todayDateString() : null,
       })
       .where(eq(ccTasksTable.id, row.sourceTaskId));
   }
@@ -920,7 +920,9 @@ router.get("/tasks/all", async (_req, res): Promise<void> => {
     db
       .select()
       .from(ccTasksTable)
-      .where(eq(ccTasksTable.done, false))
+      .where(
+        sql`(${ccTasksTable.done} = false OR ${ccTasksTable.completedOn} = ${todayDateString()})`,
+      )
       .orderBy(asc(ccTasksTable.sortOrder), asc(ccTasksTable.id)),
     db.select().from(ccProjectsTable),
     db.select().from(ccDirectReportsTable),
@@ -1179,6 +1181,8 @@ router.patch("/tasks/:id", async (req, res): Promise<void> => {
   else if (patch.status !== undefined) patch.done = false;
   else if (patch.done === true) patch.status = "completed";
   else if (patch.done === false) patch.status = "not_started";
+  if (patch.done === true) patch.completedOn = todayDateString();
+  else if (patch.done === false) patch.completedOn = null;
   const [row] = await db
     .update(ccTasksTable)
     .set(patch)

@@ -84,6 +84,7 @@ type Task = {
   nextSteps: string;
   sortOrder: number;
   keyResultId: number | null;
+  completedOn: string | null;
 };
 type BrainDumpOutcome =
   | "trash"
@@ -524,6 +525,7 @@ function taskSourceBusinessId(t: AllTask): number | null {
 
 function sortCommandTasks(list: AllTask[]): AllTask[] {
   return [...list].sort((a, b) => {
+    if (a.done !== b.done) return a.done ? 1 : -1;
     const pa = a.priority ? PRIORITY_RANK[a.priority] : 3;
     const pb = b.priority ? PRIORITY_RANK[b.priority] : 3;
     if (pa !== pb) return pa - pb;
@@ -2525,6 +2527,8 @@ function CommandRow({
               overflow: "hidden",
               lineHeight: 1.4,
               fontFamily: SANS,
+              textDecoration: task.done ? "line-through" : "none",
+              color: task.done ? C.textSecondary : C.textPrimary,
             }}
           />
         ) : (
@@ -2536,18 +2540,20 @@ function CommandRow({
             onKeyDown={(e) => {
               if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
             }}
-            style={
-              originLabel
+            style={{
+              ...(originLabel
                 ? {
                     ...inputStyle,
                     fontSize: 14,
-                    flex: "0 1 auto",
+                    flex: "0 1 auto" as const,
                     width: textWidth !== null ? textWidth + 10 : `${Math.max(text.length + 2, 10)}ch`,
                     maxWidth: "70%",
                     minWidth: 60,
                   }
-                : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }
-            }
+                : { ...inputStyle, fontSize: 14, flex: 1, minWidth: 0 }),
+              textDecoration: task.done ? "line-through" : "none",
+              color: task.done ? C.textSecondary : C.textPrimary,
+            }}
           />
         )}
         {originLabel && !isMobile && (
