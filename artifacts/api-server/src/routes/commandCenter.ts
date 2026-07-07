@@ -111,6 +111,29 @@ async function ensureTop3Slots(businessId: number): Promise<void> {
         });
     }
   }
+  // Checked slots auto-clear at the start of the next day (yesterday's wins
+  // make room for today). Unchecked slots carry over untouched.
+  await db
+    .update(ccTop3Table)
+    .set({
+      text: "",
+      done: false,
+      status: "not_started",
+      ownerDirectReportId: null,
+      ownerName: null,
+      priority: null,
+      dueDate: null,
+      sourceTaskId: null,
+      sourceBusinessId: null,
+      date: today,
+    })
+    .where(
+      and(
+        eq(ccTop3Table.businessId, businessId),
+        eq(ccTop3Table.done, true),
+        sql`${ccTop3Table.date} < ${today}`,
+      ),
+    );
 }
 
 /** Verify a parent id belongs to the current business — guards cross-business writes. */
