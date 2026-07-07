@@ -211,6 +211,7 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
       dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
       status: z.enum(TASK_STATUSES).optional(),
       sourceBusinessId: z.number().int().nullable().optional(),
+      sourceTaskId: z.number().int().nullable().optional(),
     })
     .safeParse(req.body);
   if (!period.success || !slot.success || !body.success) {
@@ -222,10 +223,17 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
     ...body.data,
     date: todayDateString(),
   };
-  // The source business travels with the text: pinning sends both together,
-  // and re-typing a slot by hand clears the now-stale source.
+  // The source travels with the text: pinning sends both together, and an
+  // emptied slot clears the now-stale link. Ordinary re-wording keeps it.
   if (body.data.sourceBusinessId === undefined && body.data.text !== undefined) {
     patch["sourceBusinessId"] = null;
+  }
+  if (
+    body.data.sourceTaskId === undefined &&
+    body.data.text !== undefined &&
+    body.data.text.trim() === ""
+  ) {
+    patch["sourceTaskId"] = null;
   }
   // Owner is either a direct report OR a free-form name, never both.
   if (body.data.ownerDirectReportId != null) {
@@ -250,6 +258,17 @@ router.put("/top3/:period/:slot", async (req, res): Promise<void> => {
       ),
     )
     .returning();
+  // Completion flows back to the source action item (and un-completion too),
+  // so checking off a pinned slot clears the task in its original section.
+  if (row?.sourceTaskId != null && typeof patch["done"] === "boolean") {
+    await db
+      .update(ccTasksTable)
+      .set({
+        done: patch["done"],
+        status: patch["done"] ? "completed" : "not_started",
+      })
+      .where(eq(ccTasksTable.id, row.sourceTaskId));
+  }
   res.json(row);
 });
 
@@ -449,6 +468,16 @@ router.patch("/on-deck/:id", async (req, res): Promise<void> => {
   if (!row) {
     res.status(404).json({ error: "not found" });
     return;
+  }
+  // Status changes flow back to the source action item.
+  if (row.sourceTaskId != null && body.data.status !== undefined) {
+    await db
+      .update(ccTasksTable)
+      .set({
+        done: body.data.status === "completed",
+        status: body.data.status,
+      })
+      .where(eq(ccTasksTable.id, row.sourceTaskId));
   }
   res.json(row);
 });

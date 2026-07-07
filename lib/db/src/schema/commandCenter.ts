@@ -173,6 +173,9 @@ export const ccTop3Table = pgTable(
     priority: text("priority"),
     dueDate: date("due_date", { mode: "string" }),
     status: text("status").notNull().default("not_started"),
+    // Link back to the cc_tasks row this slot was pinned from (completion
+    // propagates to the source). NULL for hand-typed entries.
+    sourceTaskId: integer("source_task_id"),
     // Business the pinned task resides in (may differ from businessId, the
     // scope the slot belongs to). NULL for hand-typed entries.
     sourceBusinessId: integer("source_business_id"),

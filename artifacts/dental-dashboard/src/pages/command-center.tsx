@@ -2584,7 +2584,7 @@ function CommandRow({
         )}
         {originLabel && !isMobile && <span style={{ flex: 1 }} />}
         <SendToOnDeck task={task} sourceBusinessId={taskSourceBusinessId(task)} visible={hover} />
-        <PinStar taskText={task.text} sourceBusinessId={taskSourceBusinessId(task)} visible={hover} />
+        <PinStar taskText={task.text} sourceBusinessId={taskSourceBusinessId(task)} sourceTaskId={task.id} visible={hover} />
         <button
           type="button"
           onClick={() => void del()}
@@ -3414,6 +3414,7 @@ function OnDeckRow({
         <PinStar
           taskText={text}
           sourceBusinessId={item.sourceBusinessId ?? item.businessId}
+          sourceTaskId={item.sourceTaskId ?? null}
           visible={hover}
           onPinned={onDelete}
         />
@@ -5379,7 +5380,7 @@ function TaskRow({
           </span>
         )}
         <SendToOnDeck task={task} visible={hover} />
-        <PinStar taskText={task.text} visible={hover} />
+        <PinStar taskText={task.text} sourceTaskId={task.id} visible={hover} />
         <button
           type="button"
           onClick={onDelete}
@@ -5713,12 +5714,14 @@ function SendToOnDeck({
 function PinStar({
   taskText,
   sourceBusinessId = null,
+  sourceTaskId = null,
   apiPrefix = "/command-center",
   visible,
   onPinned,
 }: {
   taskText: string;
   sourceBusinessId?: number | null;
+  sourceTaskId?: number | null;
   apiPrefix?: string;
   visible: boolean;
   onPinned?: () => void | Promise<void>;
@@ -5756,7 +5759,7 @@ function PinStar({
     try {
       await api(`${apiPrefix}/top3/${period}/${slot}`, {
         method: "PUT",
-        body: JSON.stringify({ text, done: false, sourceBusinessId }),
+        body: JSON.stringify({ text, done: false, sourceBusinessId, sourceTaskId }),
       });
       setSlots((cur) =>
         (cur ?? []).map((r) =>

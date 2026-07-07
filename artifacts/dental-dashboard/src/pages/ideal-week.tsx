@@ -527,6 +527,7 @@ export function FocusSnapshot({
       text: item.text,
       done: false,
       sourceBusinessId: item.sourceBusinessId ?? item.businessId,
+      sourceTaskId: item.sourceTaskId ?? null,
       priority: item.priority,
       dueDate: item.dueDate,
       ownerDirectReportId: item.ownerDirectReportId,

@@ -36,6 +36,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addTop3MetaColumns(client);
       await createObjectivesTables(client);
       await addObjectiveAttachmentColumns(client);
+      await addTop3SourceColumns(client);
       await addSourceBusinessColumns(client);
       await createStoredObjectsTable(client);
       await seedBusinesses(client);
@@ -892,5 +893,15 @@ async function addObjectiveAttachmentColumns(client: PgClient): Promise<void> {
   );
   await client.query(
     `ALTER TABLE cc_tasks ADD COLUMN IF NOT EXISTS key_result_id integer`,
+  );
+}
+
+/** Top 3 slots link back to their source task. Idempotent. */
+async function addTop3SourceColumns(client: PgClient): Promise<void> {
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS source_task_id integer`,
+  );
+  await client.query(
+    `ALTER TABLE cc_top3 ADD COLUMN IF NOT EXISTS source_business_id integer`,
   );
 }
