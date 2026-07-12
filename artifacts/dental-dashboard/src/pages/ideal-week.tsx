@@ -83,7 +83,7 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
-import { useBusinessName, type OnDeckItem } from "@/pages/command-center";
+import { useBusinessName, ON_DECK_CAP, type OnDeckItem } from "@/pages/command-center";
 import {
   categoryColors,
   categoryLabels,
@@ -490,8 +490,8 @@ export function FocusSnapshot({
   const addOnDeck = async () => {
     const text = draft.trim();
     if (!text) return;
-    if (onDeck.length >= 7) {
-      window.alert("On Deck is full (7/7 — this week's shortlist). Remove an item before adding another.");
+    if (onDeck.length >= ON_DECK_CAP) {
+      window.alert(`On Deck is full (${ON_DECK_CAP}/${ON_DECK_CAP} — this week's shortlist). Remove an item before adding another.`);
       return;
     }
     const res = await fetch(`${base}api/command-center/on-deck`, {
@@ -648,7 +648,7 @@ export function FocusSnapshot({
       <div style={{ ...focusSubhead, borderTop: `1px solid ${FOCUS.cardBorder}` }}>
         <span>On Deck</span>
         <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
-          {onDeck.length}/7 · pick from here to fill a slot
+          {onDeck.length}/{ON_DECK_CAP} · pick from here to fill a slot
         </span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 14px" }}>

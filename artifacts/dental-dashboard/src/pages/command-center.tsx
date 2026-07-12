@@ -3041,7 +3041,7 @@ function Top3Row({
   );
 }
 
-const ON_DECK_CAP = 10;
+export const ON_DECK_CAP = 10;
 
 /* Turn an api() error (its message begins with the HTTP status) into an
    accurate, human message instead of always blaming the On Deck cap. */
