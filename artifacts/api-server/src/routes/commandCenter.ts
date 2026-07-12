@@ -330,7 +330,7 @@ router.put("/top3/:slot", async (req, res): Promise<void> => {
 /* -------------------------------------------------------------------------- */
 
 const ON_DECK_TAGS = ["move_the_needle", "maintenance", "follow_up"] as const;
-const ON_DECK_CAP = 7;
+const ON_DECK_CAP = 10;
 
 router.get("/on-deck", async (req, res): Promise<void> => {
   const businessId = getBusinessId(req);
@@ -362,14 +362,14 @@ router.post("/on-deck", async (req, res): Promise<void> => {
     return;
   }
   try {
-    // Enforce the 7-item cap server-side.
+    // Enforce the On Deck cap server-side.
     const countRows = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(ccOnDeckTable)
       .where(eq(ccOnDeckTable.businessId, businessId));
     const count = countRows[0]?.count ?? 0;
     if (count >= ON_DECK_CAP) {
-      res.status(409).json({ error: "On Deck is full (max 7). Remove an item first." });
+      res.status(409).json({ error: `On Deck is full (max ${ON_DECK_CAP}). Remove an item first.` });
       return;
     }
     // Owner, if a direct report, must belong to the current business.

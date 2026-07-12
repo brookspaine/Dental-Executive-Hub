@@ -3041,10 +3041,10 @@ function Top3Row({
   );
 }
 
-const ON_DECK_CAP = 7;
+const ON_DECK_CAP = 10;
 
 /* Turn an api() error (its message begins with the HTTP status) into an
-   accurate, human message instead of always blaming the 7-item cap. */
+   accurate, human message instead of always blaming the On Deck cap. */
 function onDeckAddErrorMessage(e: unknown): string {
   const msg = e instanceof Error ? e.message : "";
   if (msg.startsWith("409"))
@@ -3214,7 +3214,7 @@ export function OnDeckCard({
 
           {items.length === 0 && (
             <div style={{ padding: "10px 12px", fontSize: 13, color: C.textSecondary }}>
-              Nothing on deck yet — add up to 7 priorities below.
+              Nothing on deck yet — add up to {ON_DECK_CAP} priorities below.
             </div>
           )}
 
@@ -3299,7 +3299,7 @@ export function OnDeckCard({
               onClick={() => {
                 if (atCap) {
                   window.alert(
-                    "On Deck is capped at 7 items. Remove one before adding another.",
+                    `On Deck is capped at ${ON_DECK_CAP} items. Remove one before adding another.`,
                   );
                   return;
                 }
