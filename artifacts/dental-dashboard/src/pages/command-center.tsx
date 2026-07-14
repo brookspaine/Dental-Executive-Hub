@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { FocusSnapshot } from "@/pages/ideal-week";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 /* Mobile meta row: left-packed (priority | due | owner), no dead space. */
 const MOBILE_META_COLS = "max-content max-content 1fr";
@@ -548,7 +549,7 @@ type CommandContainer = {
 };
 
 /* Objectives (OKR-lite) attached to a person or business. */
-type ObjKeyResult = {
+export type ObjKeyResult = {
   id: number;
   objectiveId: number;
   text: string;
@@ -558,7 +559,7 @@ type ObjKeyResult = {
   sortOrder: number;
   actionItems: Task[];
 };
-type CommandObjective = {
+export type CommandObjective = {
   id: number;
   parentType: "direct_report" | "business";
   parentId: number;
@@ -567,6 +568,44 @@ type CommandObjective = {
   sortOrder: number;
   keyResults: ObjKeyResult[];
 };
+
+/* Assigned dot/accent colors for the quarterly objectives band + popup —
+   the business model has no color field, so we derive one deterministically
+   from the business id. */
+export const OBJ_GROUP_PALETTE = [
+  "#2f6fed",
+  "#c2410c",
+  "#7c3aed",
+  "#0891b2",
+  "#b45309",
+  "#be185d",
+  "#15803d",
+];
+export function objectiveGroupColor(businessId: number): string {
+  return OBJ_GROUP_PALETTE[Math.abs(businessId) % OBJ_GROUP_PALETTE.length];
+}
+
+/* "Q3 2026 · 14% elapsed" for the objective popup / band headers. */
+export function quarterLabel(now = new Date()): string {
+  const q = Math.floor(now.getMonth() / 3) + 1;
+  const pct = Math.round(quarterPaceFrac(now) * 100);
+  return `Q${q} ${now.getFullYear()} · ${pct}% elapsed`;
+}
+
+/* Count of key results that have hit their target (used for the "2 / 4 KRs"
+   summaries). */
+export function objectiveDoneKrs(o: CommandObjective): number {
+  return o.keyResults.filter((k) => k.done || k.current >= k.target).length;
+}
+
+/* Fraction 0..1 of an objective's overall key-result progress. */
+function objectiveProgressFrac(o: CommandObjective): number {
+  if (o.keyResults.length === 0) return 0;
+  return (
+    o.keyResults.reduce((s, k) => s + Math.min(k.current / Math.max(k.target, 1), 1), 0) /
+    o.keyResults.length
+  );
+}
 
 /* Calendar-quarter pace for objective pills. */
 function quarterPaceFrac(now = new Date()): number {
@@ -812,7 +851,9 @@ function CommandTab({
     directReports: CommandContainer[];
   }>({ projects: [], directReports: [] });
   const [objectives, setObjectives] = useState<CommandObjective[]>([]);
+  const [openObjId, setOpenObjId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const businessName = useBusinessName();
   const [scope, setScope] = useState<CommandScope>(() => {
     try {
       const raw = localStorage.getItem("cc-scope");
@@ -896,6 +937,21 @@ function CommandTab({
     fontFamily: SANS,
   });
 
+  /* Objective popup is bound by id and re-derived from the freshly reloaded
+     objectives list, so edits inside it reflect immediately (and it closes
+     itself if the objective gets deleted). */
+  const openObj = openObjId != null ? objectives.find((o) => o.id === openObjId) ?? null : null;
+  const openBizId = openObj
+    ? openObj.businessIds.includes(currentBusinessId)
+      ? currentBusinessId
+      : openObj.businessIds[0] ?? currentBusinessId
+    : currentBusinessId;
+  const openTaskParent = openObj
+    ? openObj.parentType === "direct_report"
+      ? ({ parentType: "direct_report", parentId: openObj.parentId } as { parentType: ParentType; parentId: number })
+      : businessTaskParentById(containers.projects, openBizId)
+    : null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
       {/* Focus snapshot — same compact Today / This Week / On Deck board
@@ -904,6 +960,8 @@ function CommandTab({
         dayRows={data.top3}
         weekRows={data.weekTop3 ?? []}
         onDeck={data.onDeck ?? []}
+        objectives={objectives}
+        onOpenObjective={(o) => setOpenObjId(o.id)}
         onChange={reload}
       />
 
@@ -945,6 +1003,18 @@ function CommandTab({
         ))}
         {scope === "personal" && <LifeAreasTab businesses={businesses} />}
       </div>
+      {openObj && (
+        <ObjectiveDialog
+          objective={openObj}
+          venueLabel={businessName(openBizId)}
+          venueColor={objectiveGroupColor(openBizId)}
+          headers={{ "x-business-id": String(openBizId) }}
+          taskParent={openTaskParent}
+          drs={containers.directReports}
+          onChanged={reload}
+          onClose={() => setOpenObjId(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1122,6 +1192,19 @@ function businessTaskParent(
   return pick ? { parentType: "project", parentId: pick.id } : null;
 }
 
+/* Same resolution as businessTaskParent but keyed directly by business id —
+   used by the objective popup, which has an objective (hence a business id)
+   rather than a rendered section. */
+function businessTaskParentById(
+  projects: CommandContainer[],
+  businessId: number,
+): { parentType: ParentType; parentId: number } | null {
+  const pick = projects
+    .filter((p) => p.businessIds.length === 1 && p.businessIds[0] === businessId)
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id)[0];
+  return pick ? { parentType: "project", parentId: pick.id } : null;
+}
+
 /* Objective cards for one container (person or business), plus the quiet
    "+ Objective" line. */
 function ObjectiveCards({
@@ -1213,7 +1296,7 @@ function ObjectiveCards({
   );
 }
 
-function paceOf(objective: CommandObjective): { label: string; bg: string; fg: string } | null {
+export function paceOf(objective: CommandObjective): { label: string; bg: string; fg: string } | null {
   if (objective.keyResults.length === 0) return null;
   const frac =
     objective.keyResults.reduce((sum, k) => sum + Math.min(k.current / Math.max(k.target, 1), 1), 0) /
@@ -1436,6 +1519,244 @@ function ObjectiveCard({
         </>
       )}
     </div>
+  );
+}
+
+/* Shared objective popup — opened by tapping an objective anywhere (the
+   "This Quarter" band, and reusable elsewhere). Reuses KrRow for the key
+   results + action items so editing behaves exactly like the inline card. */
+function ObjectiveDialog({
+  objective,
+  venueLabel,
+  venueColor,
+  headers,
+  taskParent,
+  drs,
+  onChanged,
+  onClose,
+}: {
+  objective: CommandObjective;
+  venueLabel: string | null;
+  venueColor: string;
+  headers: Record<string, string>;
+  taskParent: { parentType: ParentType; parentId: number } | null;
+  drs: CommandContainer[];
+  onChanged: () => void;
+  onClose: () => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(objective.text);
+  const [addingKr, setAddingKr] = useState(false);
+  const [krDraft, setKrDraft] = useState("");
+  const [krTarget, setKrTarget] = useState("1");
+  useEffect(() => setDraft(objective.text), [objective.text]);
+
+  const pace = paceOf(objective);
+  const doneKr = objectiveDoneKrs(objective);
+  const totalKr = objective.keyResults.length;
+  const frac = objectiveProgressFrac(objective);
+
+  const call = async (path: string, method: string, body?: unknown) => {
+    try {
+      await api(path, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
+      onChanged();
+    } catch (e) {
+      window.alert(`Couldn't save (${e instanceof Error ? e.message : "error"}).`);
+    }
+  };
+
+  const addKr = async () => {
+    const text = krDraft.trim();
+    if (!text) return;
+    const target = Math.max(1, parseInt(krTarget, 10) || 1);
+    await call(`/command-center/objectives/${objective.id}/key-results`, "POST", {
+      text,
+      target,
+      sortOrder: objective.keyResults.length,
+    });
+    setKrDraft("");
+    setKrTarget("1");
+    setAddingKr(false);
+  };
+
+  const sectLabel: CSSProperties = {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    fontSize: 11,
+    fontWeight: 700,
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+    color: "#94a3b8",
+    margin: "14px 0 8px",
+  };
+
+  return (
+    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="p-0 gap-0 max-w-[560px] overflow-hidden">
+        <DialogTitle className="sr-only">{objective.text}</DialogTitle>
+        <DialogDescription className="sr-only">Objective details and key results</DialogDescription>
+
+        {/* Header — venue tag + editable title + pace pill */}
+        <div style={{ padding: "18px 44px 14px 20px", borderBottom: `1px solid ${C.divider}` }}>
+          {venueLabel && (
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#5b6b7d",
+                textTransform: "uppercase",
+                letterSpacing: 0.4,
+                marginBottom: 6,
+                fontFamily: SANS,
+              }}
+            >
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: venueColor }} />
+              {venueLabel}
+            </div>
+          )}
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+            {editing ? (
+              <input
+                autoFocus
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onBlur={() => {
+                  setEditing(false);
+                  const t = draft.trim();
+                  if (t && t !== objective.text) void call(`/command-center/objectives/${objective.id}`, "PATCH", { text: t });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") (e.currentTarget as HTMLInputElement).blur();
+                  if (e.key === "Escape") { setDraft(objective.text); setEditing(false); }
+                }}
+                style={{ ...inputStyle, fontSize: 18, fontWeight: 700, flex: 1, minWidth: 0 }}
+              />
+            ) : (
+              <span
+                onClick={() => setEditing(true)}
+                title="Click to edit"
+                style={{ fontSize: 18, fontWeight: 700, color: C.textPrimary, lineHeight: 1.3, flex: 1, minWidth: 0, cursor: "text", fontFamily: SANS }}
+              >
+                {objective.text}
+              </span>
+            )}
+            {pace && (
+              <span
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: "3px 11px",
+                  borderRadius: 999,
+                  background: pace.bg,
+                  color: pace.fg,
+                  flexShrink: 0,
+                  whiteSpace: "nowrap",
+                  marginTop: 2,
+                  fontFamily: SANS,
+                }}
+              >
+                {pace.label}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Progress summary strip */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 14,
+            padding: "12px 20px",
+            background: "#f8fafc",
+            borderBottom: `1px solid ${C.divider}`,
+            fontSize: 12,
+            color: C.textSecondary,
+            fontFamily: SANS,
+          }}
+        >
+          <span style={{ fontSize: 13, fontWeight: 700, color: C.textPrimary, whiteSpace: "nowrap" }}>
+            {doneKr} / {totalKr} KRs
+          </span>
+          <div style={{ flex: 1, height: 6, borderRadius: 999, background: "#e6ebf1", overflow: "hidden", minWidth: 80 }}>
+            <div style={{ height: "100%", width: `${Math.round(frac * 100)}%`, background: "#3f9b63", borderRadius: 999 }} />
+          </div>
+          <span style={{ whiteSpace: "nowrap" }}>{quarterLabel()}</span>
+        </div>
+
+        {/* Key results + action items */}
+        <div style={{ padding: "0 20px 16px", maxHeight: "52vh", overflow: "auto" }}>
+          <div style={sectLabel}>
+            <span>Key Results</span>
+            {!addingKr && (
+              <button
+                type="button"
+                onClick={() => setAddingKr(true)}
+                style={{ background: "transparent", border: "none", color: "#8b9bad", fontFamily: SANS, fontSize: 11, fontWeight: 500, textTransform: "none", letterSpacing: 0, cursor: "pointer", padding: 0 }}
+              >
+                + New key result
+              </button>
+            )}
+          </div>
+          {objective.keyResults.map((k) => (
+            <KrRow key={k.id} kr={k} headers={headers} taskParent={taskParent} drs={drs} onChanged={onChanged} />
+          ))}
+          {totalKr === 0 && !addingKr && (
+            <div style={{ fontSize: 12, color: C.textSecondary, fontFamily: SANS, padding: "2px 0 6px" }}>
+              No key results yet — add one to start tracking pace.
+            </div>
+          )}
+          {addingKr && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", padding: "8px 0" }}>
+              <input
+                autoFocus
+                type="text"
+                value={krDraft}
+                onChange={(e) => setKrDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void addKr();
+                  if (e.key === "Escape") { setKrDraft(""); setAddingKr(false); }
+                }}
+                placeholder="Key result — Enter to save"
+                style={{ ...inputStyle, fontSize: 13, flex: 1, border: `1px solid ${C.cardBorder}`, borderRadius: 6, padding: "5px 9px" }}
+              />
+              <label style={{ fontSize: 11, color: C.textSecondary, display: "flex", alignItems: "center", gap: 5, fontFamily: SANS }}>
+                target
+                <input
+                  type="number"
+                  min={1}
+                  value={krTarget}
+                  onChange={(e) => setKrTarget(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && void addKr()}
+                  style={{ width: 64, border: `1px solid ${C.cardBorder}`, borderRadius: 6, padding: "5px 7px", fontSize: 12, fontFamily: SANS, color: C.textPrimary, outline: "none" }}
+                />
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 20px", borderTop: `1px solid ${C.divider}` }}>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Delete objective "${objective.text}" and its key results?`)) {
+                void call(`/command-center/objectives/${objective.id}`, "DELETE");
+                onClose();
+              }
+            }}
+            style={{ background: "transparent", border: "none", color: "#b0455b", fontSize: 12, cursor: "pointer", fontFamily: SANS }}
+          >
+            Delete objective
+          </button>
+          <span style={{ fontSize: 11, color: C.textSecondary, fontFamily: SANS }}>Edits save automatically</span>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
