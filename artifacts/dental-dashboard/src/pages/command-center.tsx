@@ -2070,6 +2070,13 @@ function KrActionItemRow({
         label=""
         onChange={(next) => void patch({ dueDate: next })}
       />
+      <SendToOnDeck task={task} sourceBusinessId={Number(headers["x-business-id"]) || null} visible={hover} />
+      <PinStar
+        taskText={task.text}
+        sourceBusinessId={Number(headers["x-business-id"]) || null}
+        sourceTaskId={task.id}
+        visible={hover}
+      />
       <button
         type="button"
         onClick={() => void del()}
