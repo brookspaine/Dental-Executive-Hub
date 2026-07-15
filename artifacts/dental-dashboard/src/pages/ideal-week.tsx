@@ -822,14 +822,28 @@ export function FocusSnapshot({
 
       {/* This Quarter — read-only objectives band (Command Center only).
           Tapping an objective opens the shared Objective popup. */}
-      {objGroups.length > 0 && (
+      {objectives !== undefined && (
         <>
           <div style={{ ...focusSubhead, borderTop: `1px solid ${FOCUS.cardBorder}` }}>
             <span>This Quarter</span>
             <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
-              {quarterLabel()} · tap to open
+              {quarterLabel()}{objGroups.length > 0 ? " · tap to open" : ""}
             </span>
           </div>
+          {objGroups.length === 0 && (
+            <div
+              style={{
+                padding: "16px 16px 18px",
+                fontSize: 12.5,
+                color: FOCUS.muted,
+                fontFamily: FOCUS_SANS,
+                lineHeight: 1.55,
+              }}
+            >
+              No objectives yet. Add one under a business or person in the Command Center
+              below — it’ll appear here with its pace and key-result progress.
+            </div>
+          )}
           {objGroups.map(([bizId, objs]) => (
             <div
               key={bizId}
