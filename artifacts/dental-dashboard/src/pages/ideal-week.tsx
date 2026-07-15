@@ -83,7 +83,16 @@ import {
 import { Slider } from "@/components/ui/slider";
 import { useUpload } from "@workspace/object-storage-web";
 import { useToast } from "@/hooks/use-toast";
-import { useBusinessName, type OnDeckItem } from "@/pages/command-center";
+import {
+  useBusinessName,
+  ON_DECK_CAP,
+  paceOf,
+  objectiveGroupColor,
+  objectiveDoneKrs,
+  quarterLabel,
+  type OnDeckItem,
+  type CommandObjective,
+} from "@/pages/command-center";
 import {
   categoryColors,
   categoryLabels,
@@ -464,11 +473,17 @@ export function FocusSnapshot({
   dayRows,
   weekRows,
   onDeck,
+  objectives,
+  onOpenObjective,
   onChange,
 }: {
   dayRows: CcTop3Row[];
   weekRows: CcTop3Row[];
   onDeck: OnDeckItem[];
+  /* Optional — when passed (Command Center), a read-only "This Quarter"
+     objectives band renders below On Deck. Omitted on the Ideal Week page. */
+  objectives?: CommandObjective[];
+  onOpenObjective?: (o: CommandObjective) => void;
   onChange: () => void;
 }) {
   const base = import.meta.env.BASE_URL || "/";
@@ -490,8 +505,8 @@ export function FocusSnapshot({
   const addOnDeck = async () => {
     const text = draft.trim();
     if (!text) return;
-    if (onDeck.length >= 7) {
-      window.alert("On Deck is full (7/7 — this week's shortlist). Remove an item before adding another.");
+    if (onDeck.length >= ON_DECK_CAP) {
+      window.alert(`On Deck is full (${ON_DECK_CAP}/${ON_DECK_CAP} — this week's shortlist). Remove an item before adding another.`);
       return;
     }
     const res = await fetch(`${base}api/command-center/on-deck`, {
@@ -609,6 +624,18 @@ export function FocusSnapshot({
     );
   };
 
+  /* Group the "This Quarter" objectives by the business they live in. */
+  const objGroups: Array<[number, CommandObjective[]]> = (() => {
+    const m = new Map<number, CommandObjective[]>();
+    for (const o of objectives ?? []) {
+      const bid = o.businessIds[0] ?? 0;
+      const arr = m.get(bid);
+      if (arr) arr.push(o);
+      else m.set(bid, [o]);
+    }
+    return [...m.entries()].sort((a, b) => a[0] - b[0]);
+  })();
+
   return (
     <div>
       <div
@@ -648,7 +675,7 @@ export function FocusSnapshot({
       <div style={{ ...focusSubhead, borderTop: `1px solid ${FOCUS.cardBorder}` }}>
         <span>On Deck</span>
         <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
-          {onDeck.length}/7 · pick from here to fill a slot
+          {onDeck.length}/{ON_DECK_CAP} · pick from here to fill a slot
         </span>
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, padding: "12px 16px 14px" }}>
@@ -792,6 +819,116 @@ export function FocusSnapshot({
           </button>
         )}
       </div>
+
+      {/* This Quarter — read-only objectives band (Command Center only).
+          Tapping an objective opens the shared Objective popup. */}
+      {objGroups.length > 0 && (
+        <>
+          <div style={{ ...focusSubhead, borderTop: `1px solid ${FOCUS.cardBorder}` }}>
+            <span>This Quarter</span>
+            <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
+              {quarterLabel()} · tap to open
+            </span>
+          </div>
+          {objGroups.map(([bizId, objs]) => (
+            <div
+              key={bizId}
+              style={{
+                display: "flex",
+                gap: 12,
+                padding: "10px 14px",
+                borderBottom: `1px solid ${FOCUS.divider}`,
+                alignItems: "flex-start",
+              }}
+            >
+              <div
+                style={{
+                  width: 140,
+                  flexShrink: 0,
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#5b6b7d",
+                  paddingTop: 4,
+                  lineHeight: 1.25,
+                  fontFamily: FOCUS_SANS,
+                }}
+              >
+                <span
+                  style={{
+                    display: "inline-block",
+                    width: 8,
+                    height: 8,
+                    borderRadius: "50%",
+                    marginRight: 6,
+                    verticalAlign: "middle",
+                    background: objectiveGroupColor(bizId),
+                  }}
+                />
+                {businessName(bizId) ?? "—"}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
+                {objs.map((o) => {
+                  const pace = paceOf(o);
+                  const done = objectiveDoneKrs(o);
+                  return (
+                    <div
+                      key={o.id}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onOpenObjective?.(o)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          onOpenObjective?.(o);
+                        }
+                      }}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 9,
+                        cursor: "pointer",
+                        borderRadius: 7,
+                        padding: "3px 6px",
+                        margin: "-3px -6px",
+                      }}
+                    >
+                      <span style={{ color: "#94a3b8", fontSize: 11, flexShrink: 0 }}>◆</span>
+                      <span
+                        style={{
+                          fontSize: 13,
+                          color: FOCUS.text,
+                          flex: 1,
+                          minWidth: 0,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                          fontFamily: FOCUS_SANS,
+                        }}
+                      >
+                        {o.text}
+                      </span>
+                      {o.keyResults.length > 0 && (
+                        <span
+                          style={{
+                            fontSize: 10.5,
+                            color: FOCUS.faint,
+                            whiteSpace: "nowrap",
+                            fontVariantNumeric: "tabular-nums",
+                            fontFamily: FOCUS_SANS,
+                          }}
+                        >
+                          {done}/{o.keyResults.length} KRs
+                        </span>
+                      )}
+                      {pace && <span style={focusPill(pace.bg, pace.fg)}>{pace.label}</span>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+        </>
+      )}
       </div>
     </div>
   );
