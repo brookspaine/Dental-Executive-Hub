@@ -2375,6 +2375,27 @@ function CommandGroup({
 }) {
   const isMobile = useIsMobile();
   const [collapsed, toggle] = useCollapsed(`g-${group.key}`);
+  const [headerHover, setHeaderHover] = useState(false);
+  const canDelete =
+    group.parentId !== null &&
+    (group.parentType === "direct_report" || group.parentType === "project");
+  const deleteContainer = async () => {
+    if (group.parentId === null) return;
+    if (!window.confirm(`Delete "${group.label}" and its action items from this business?`)) return;
+    const bizId = group.businessIds.includes(currentBusinessId)
+      ? currentBusinessId
+      : group.businessIds[0] ?? currentBusinessId;
+    const path =
+      group.parentType === "direct_report"
+        ? `/command-center/direct-reports/${group.parentId}`
+        : `/command-center/projects/${group.parentId}`;
+    try {
+      await api(path, { method: "DELETE", headers: { "x-business-id": String(bizId) } });
+      onChanged();
+    } catch (e) {
+      window.alert(`Couldn't delete "${group.label}" (${e instanceof Error ? e.message : "error"}).`);
+    }
+  };
   const isDr = group.parentType === "direct_report" && group.parentId !== null;
   const drObjectives = isDr
     ? objectives.filter((o) => o.parentType === "direct_report" && o.parentId === group.parentId)
@@ -2400,26 +2421,51 @@ function CommandGroup({
   }
   return (
     <div style={{ marginBottom: 18 }}>
-      <button
-        type="button"
-        onClick={toggle}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          background: "transparent",
-          border: "none",
-          cursor: "pointer",
-          fontFamily: SANS,
-          fontSize: 16,
-          fontWeight: 600,
-          color: C.textPrimary,
-          padding: "4px 2px 8px",
-        }}
+      <div
+        onMouseEnter={() => setHeaderHover(true)}
+        onMouseLeave={() => setHeaderHover(false)}
+        style={{ display: "flex", alignItems: "center", gap: 4 }}
       >
-        <Chevron open={!collapsed} />
-        {group.label}
-      </button>
+        <button
+          type="button"
+          onClick={toggle}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "transparent",
+            border: "none",
+            cursor: "pointer",
+            fontFamily: SANS,
+            fontSize: 16,
+            fontWeight: 600,
+            color: C.textPrimary,
+            padding: "4px 2px 8px",
+          }}
+        >
+          <Chevron open={!collapsed} />
+          {group.label}
+        </button>
+        {canDelete && (
+          <button
+            type="button"
+            onClick={() => void deleteContainer()}
+            title={`Delete ${group.label}`}
+            style={{
+              background: "transparent",
+              border: "none",
+              color: C.textSecondary,
+              cursor: "pointer",
+              fontFamily: SANS,
+              fontSize: 12,
+              padding: "2px 6px",
+              visibility: headerHover ? "visible" : "hidden",
+            }}
+          >
+            Delete
+          </button>
+        )}
+      </div>
       {!collapsed && (
         <>
           {objectiveCards}
