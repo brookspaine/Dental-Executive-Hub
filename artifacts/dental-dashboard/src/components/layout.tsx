@@ -257,9 +257,10 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const showTitle = location === "/ideal-week" || location === "/";
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-background overflow-hidden">
-      {/* Full-width navy top bar */}
-      <header className="h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
+    <div className="flex flex-col min-h-[100dvh] bg-background">
+      {/* Full-width navy top bar — sticky so it stays pinned while the
+          document scrolls (single scroll context; see sidebar + main below). */}
+      <header className="sticky top-0 h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
         {/* Brand spacer — aligned with sidebar width on desktop. */}
         <div className="hidden md:flex w-52 items-center justify-center px-3 border-r border-white/10 shrink-0" />
 
@@ -325,17 +326,22 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Sidebar + main content */}
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      {/* Sidebar + main content — one document-level scroll context.
+          The whole page scrolls (no nested overflow container), so a wheel
+          anywhere — including over the sidebar — moves the page, and the
+          bottom is always reachable. The sidebar is sticky under the header
+          and viewport-tall; self-start keeps it from stretching to content
+          height (which would leave sticky nothing to pin against). */}
+      <div className="flex flex-1">
         {/* Persistent sidebar — md and up — White chrome */}
-        <aside className="hidden md:flex w-52 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10">
+        <aside className="hidden md:flex w-52 bg-white text-slate-700 border-r border-slate-200 flex-col shrink-0 z-10 sticky top-16 self-start h-[calc(100dvh-4rem)]">
           <NavList location={location} />
           <UserBadge />
         </aside>
 
         {/* Main column */}
-        <main className="flex-1 flex flex-col overflow-hidden min-w-0">
-          <div className="flex-1 overflow-auto p-3 sm:p-4">
+        <main className="flex-1 min-w-0">
+          <div className="p-3 sm:p-4">
             <div className="max-w-6xl mx-auto space-y-4">{children}</div>
           </div>
         </main>
