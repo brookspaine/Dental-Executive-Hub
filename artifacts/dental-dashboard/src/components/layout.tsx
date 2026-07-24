@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useLocation } from "wouter";
+import { ReviewReminderModal } from "@/components/review-reminder-modal";
 import {
   Bell,
   CalendarCheck,
@@ -258,6 +259,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background">
+      {/* Persistent review reminder — shows on app open when a review is due. */}
+      <ReviewReminderModal />
       {/* Full-width navy top bar — sticky so it stays pinned while the
           document scrolls (single scroll context; see sidebar + main below). */}
       <header className="sticky top-0 h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
