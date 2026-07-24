@@ -282,6 +282,32 @@ export function WeeklyReview() {
 
   const weeks = Array.from({ length: 53 }, (_, i) => i + 1);
 
+  // Review completion — what stops the reminder pop-up for this week (U1).
+  type ReviewCompletion = { kind: string; year: number; period: number };
+  const { data: completions } = useQuery<ReviewCompletion[]>({
+    queryKey: ["reviews-status"],
+    queryFn: async () => {
+      const res = await fetch(`${base}api/reviews/status`);
+      if (!res.ok) throw new Error("Failed to load review status");
+      return res.json();
+    },
+  });
+  const isCompleted = (completions ?? []).some(
+    (c) => c.kind === "weekly" && c.year === year && c.period === week,
+  );
+  const completeMut = useMutation({
+    mutationFn: async () => {
+      const res = await fetch(`${base}api/reviews/weekly/complete`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ year, period: week }),
+      });
+      if (!res.ok) throw new Error("Failed to mark complete");
+      return res.json();
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reviews-status"] }),
+  });
+
   return (
     <div className="space-y-4" data-testid="page-weekly-review">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -292,6 +318,20 @@ export function WeeklyReview() {
           </h2>
         </div>
         <div className="flex items-center gap-2">
+          {isCompleted ? (
+            <span className="inline-flex items-center gap-1.5 rounded-md bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+              ✓ Completed
+            </span>
+          ) : (
+            <button
+              type="button"
+              onClick={() => completeMut.mutate()}
+              disabled={completeMut.isPending}
+              className="rounded-md bg-[#0F2A47] px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50"
+            >
+              Finish — mark complete ✓
+            </button>
+          )}
           <label className="text-sm text-muted-foreground">Week</label>
           <Select
             value={String(week)}

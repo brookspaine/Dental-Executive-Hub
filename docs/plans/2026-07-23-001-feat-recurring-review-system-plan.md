@@ -50,23 +50,28 @@ Today the Weekly Review (`src/pages/weekly-review.tsx`) is a flat, per-week form
 - **R5** — Marking a review **complete** (explicit "Finish / Mark complete") is the only thing that stops the reminder for that period, and records completion.
 - **R6** — The weekly review is presented as a hybrid: a single well-designed page by default, plus an optional guided step-by-step mode.
 - **R7** — The weekly review preserves all existing reflection + planning fields.
-- **R8** — The weekly review's "Plan" step lets the user pick **This Week's Top 3 from On Deck**, and surfaces the current quarter's objectives with pace as an anchor.
+- **R8** — The weekly review's "Plan" step lets the user pick **This Week's Top 3 (Weekly Big 3) from On Deck**, add new items to On Deck inline, and (when On Deck is empty) offers a link to set it up. It also surfaces the current quarter's objectives with pace as an anchor.
 - **R9** — A new quarterly review page presents Score → Reflect → Set next quarter, hybrid like the weekly.
 - **R10** — The quarterly review's "Score" step auto-pulls the user's objectives and their key-result progress; scores are snapshotted into the review's saved content.
 - **R11** — The quarterly review's "Set next quarter" step lets the user edit/add objectives going forward (carry-forward = keep an objective).
-- **R12** — Both reviews and a cadence/streak indicator are surfaced prominently in navigation (no longer buried).
+- **R12** — Both reviews are surfaced prominently in navigation (no longer buried), as **text-only** items (no icons), with a small "due" dot when a review is due. No streak/cadence widget.
+- **R13** — Designated reflection/planning fields provide **three discrete entry spots** (not one free-text blob): Wins, Losses, Fixes, Ah-HAs, What I learned, Banner Goals, Quarterly Big 3, Three Most Important Events, Habits, and Personal-development studying. The remaining single-entry fields (Unexpected Time Drains, the two Grateful fields) keep one input; Weekly Big 3 comes from the On Deck picker.
+- **R14** — Objectives shown in the weekly "Review" section are **editable in place** (click-to-edit), not read-only.
+- **R15** — Vision Board is removed from the sidebar navigation (its page/route is retained, just unlinked).
 
 ---
 
 ## Key Technical Decisions
 
-- **KTD1 — Due-ness computed client-side, completion from the server.** The frontend already knows the date and the configured due-day, so it computes "is a review due"; the backend supplies "is this period completed." The reminder modal mounts once in `src/components/layout.tsx` (wraps every route) and reads a status query on load. Session dismissal uses `sessionStorage` so it clears on a fresh app open. *(Rationale: no email/push infra needed; single-user app; smallest surface that satisfies R1–R2.)*
+- **KTD1 — Due-ness computed client-side, completion from the server.** The frontend already knows the date and the configured due-day, so it computes "is a review due"; the backend supplies "is this period completed." **As shipped (U1/U2):** the endpoints are root-level — `GET /reviews/status` (returns the raw completion rows), `POST /reviews/:kind/complete`, and `/quarterly-review/...` — matching the existing root-mounted `weekly-review` router, and **not** business-scoped. `GET /reviews/status` returns only the completion rows (no streak); the client derives "completed this week/quarter" from them. The reminder modal mounts once in `src/components/layout.tsx` (wraps every route). Session dismissal uses `sessionStorage` so it clears on a fresh app open. *(Rationale: no email/push infra needed; single-user app.)*
 - **KTD2 — Completion tracked in a new `review_completions` table**, mirroring the existing `idealWeekCompletionsTable` pattern: `(kind, year, period, completed_at)` where `kind ∈ {weekly, quarterly}` and `period` is ISO week or quarter number. Unique on `(kind, year, period)`.
 - **KTD3 — Configurable weekly due-day lives in `localStorage` (default Sunday) for v1.** No settings table exists; a single-user app doesn't need cross-device sync yet. Promoting to a server setting is deferred.
 - **KTD4 — Quarterly persistence mirrors weekly.** New `quarterly_review_entries` table `(year, quarter, field_key, content)` and a `quarterlyReview.ts` router that mirrors `weeklyReview.ts` (per-field GET/PUT, debounced autosave). *(Rationale: identical shape → reuse the proven pattern.)*
 - **KTD5 — Objectives are NOT quarter-stamped, and this plan does not add stamping.** `cc_objectives` has no quarter column; pace is derived vs. the current calendar quarter. The quarterly review therefore **scores the current objectives** at review time and snapshots each score into its own saved fields; "Set next quarter" edits objectives forward via the existing objectives/key-results endpoints. Per-quarter objective historization is explicitly deferred (see Scope Boundaries).
 - **KTD6 — Hybrid = one page + a local "guided mode" toggle, not separate routes.** Guided mode is UI state over the same sections and same persistence; the reminder's "Start review" can deep-link into guided mode via a query param.
-- **KTD7 — Reuse, don't reinvent.** The On Deck → Top 3 picker reuses the existing `FocusSnapshot` pin/slot logic (`src/pages/ideal-week.tsx`); OKR pace reuses `paceOf` / objectives (`src/pages/command-center.tsx`); the modal reuses the Radix `Dialog`; weekly persistence stays as-is. Schema changes ship via drizzle `push` (no migration files).
+- **KTD7 — Reuse, don't reinvent.** The On Deck → Top 3 picker reuses the existing `FocusSnapshot` pin/slot logic (`src/pages/ideal-week.tsx`); OKR pace reuses `paceOf` / objectives (`src/pages/command-center.tsx`); the modal reuses the Radix `Dialog`; weekly persistence stays as-is. Schema changes ship via drizzle `push` (no migration files) — and, since the deploy pipeline does not auto-migrate, the push is run manually against `DATABASE_PUBLIC_URL`.
+- **KTD8 — Three-entry fields store one field key, newline-joined.** For the R13 fields, the frontend renders three input boxes but persists them as a **single** field key whose content is the three lines joined by `\n` (split back into three boxes on load). This keeps the existing per-field weekly/quarterly persistence and its allowlist **unchanged** — no new field keys, no backend edit. *(Rationale: KISS; avoids reopening the shipped backend.)*
+- **KTD9 — Nav is text-only and flat.** Weekly Review and Quarterly Review are added as plain text nav items (no icons, no "Reviews" group heading), with a small red "due" dot driven by the same status query. No streak/cadence widget. Vision Board's nav entry is removed (route retained). *(Existing nav items keep their current icons; only the review items and the removals are in scope.)*
 
 **Product Contract preservation:** N/A — no separate brainstorm doc; product decisions authored here from the in-session dialogue.
 
@@ -113,18 +118,20 @@ Due-ness (client-computed): **weekly** = today's weekday ≥ configured due-day 
 - `artifacts/api-server/src/routes/index.ts` (mount the router)
 - `artifacts/api-server/src/routes/reviews.test.ts` (new)
 
-**Approach:** Mirror `idealWeekCompletionsTable`. `review_completions(id, kind text, year int, period int, completed_at timestamptz)`, unique `(kind, year, period)`. Endpoints: `GET /command-center/reviews/status` → `{ weekly: { completedThisWeek, lastCompletedWeek, streakWeeks }, quarterly: { completedThisQuarter, lastCompletedQuarter } }` computed from the table + server clock; `POST /command-center/reviews/:kind/complete` with `{ year, period }` upserts a completion row. Streak = count of consecutive prior ISO weeks each having a completion row, ending at the current/last completed week.
-**Patterns to follow:** `idealWeekCompletionsTable` and its router; existing `weeklyReview.ts` route style; drizzle `push` for schema (no migration files).
-**Test scenarios:**
-- Happy: `POST .../weekly/complete {year:2026, period:30}` then `GET status` → `completedThisWeek: true`.
-- Streak: completions for weeks 28,29,30 → `streakWeeks: 3`; gap at 29 → streak resets to weeks since the gap.
-- Edge: completing the same `(kind,year,period)` twice is idempotent (no duplicate row, no error).
-- Edge: `GET status` with no rows → all `false`, `streakWeeks: 0`.
-- Error: `POST` with missing/invalid `year`/`period` → 400.
-- Quarterly: `POST .../quarterly/complete {year:2026, period:3}` reflects in `quarterly.completedThisQuarter`.
-**Verification:** `GET status` transitions correctly across complete calls; unique constraint prevents dupes; streak math matches the scenarios.
+**Status: SHIPPED (PR #6).** Prod DB migrated via `drizzle-kit push`; endpoints verified live returning `[]`.
+
+**Approach (as built):** Mirror `idealWeekCompletionsTable`. `review_completions(id, kind text, year int, period int, completed_at timestamptz)`, unique `(kind, year, period)`. **Root-mounted, not business-scoped:** `GET /reviews/status` returns the raw completion rows `[{kind, year, period, completedAt}]` (no streak — the client derives everything); `POST /reviews/:kind/complete {year, period}` idempotently upserts (validates kind + period range). *(Streak was dropped per the no-streak decision, KTD9/R12.)*
+**Patterns to follow:** `idealWeekCompletionsTable`; `weeklyReview.ts` route style; drizzle `push` (no migration files; run manually against `DATABASE_PUBLIC_URL`).
+**Test scenarios (no backend harness — verified via typecheck + live probe):**
+- `POST /reviews/weekly/complete {year:2026, period:30}` then `GET /reviews/status` includes that row.
+- Completing the same `(kind,year,period)` twice is idempotent (unique index; returns existing row).
+- `GET /reviews/status` with no rows → `[]`.
+- `POST` with missing/invalid `year`/`period`, or invalid `kind`, → 400.
+**Verification:** `GET status` reflects completions; unique constraint prevents dupes.
 
 ### U2. Backend — quarterly review persistence
+
+**Status: SHIPPED (PR #6).** Table created in prod; `/quarterly-review/...` verified live.
 
 **Goal:** Per-field storage for quarterly review content, mirroring the weekly review.
 **Requirements:** R9, R10.
@@ -156,8 +163,8 @@ Due-ness (client-computed): **weekly** = today's weekday ≥ configured due-day 
 - `src/lib/review-cadence.ts` (new — due-ness helpers + due-day localStorage accessor)
 - `src/components/review-reminder-modal.test.tsx` (new)
 
-**Approach:** On mount, query `GET /command-center/reviews/status` (react-query). Compute due-ness client-side via `review-cadence.ts`: weekly due when `todayWeekday >= dueDay` (from `localStorage`, default 0=Sunday) and `!completedThisWeek`; quarterly due when inside the current quarter and `!completedThisQuarter`. If due and not dismissed this session (a `sessionStorage` key per kind+period), render a Radix `Dialog` with copy + "Start review" (navigates to the page, quarterly takes precedence when both due) and "Later" (sets the sessionStorage dismiss). The modal never sets completion — only the page's Finish action does (U4/U5), so it returns next app open until then.
-**Patterns to follow:** existing `Dialog` usage; react-query hooks in `src/pages/ideal-week.tsx`; wouter `useLocation`/`Link` for navigation.
+**Approach:** On mount, query `GET /reviews/status` (react-query; returns completion rows). Compute due-ness client-side via `review-cadence.ts`: weekly due when `todayWeekday >= dueDay` (from `localStorage`, default 0=Sunday) and the current ISO week is not in the completions; quarterly due when the current quarter is not in the completions. If due and not dismissed this session (a `sessionStorage` key per kind+period), render a centered Radix `Dialog`. **Copy:** title "Your Weekly Review is ready" (quarterly: "New quarter — time for your Q# review"), sub-line "Take a few minutes to reflect on last week and set your focus for the week ahead." — **no** persistence/"it'll come back" fine print. Buttons: **"Start review →"** navigates to the page **and opens Guided mode** (`?mode=guided`), quarterly taking precedence when both due; **"Later"** (and the X) set the sessionStorage dismiss. The modal never sets completion — only the page's Finish does (U4/U5), so it returns next app open until then.
+**Patterns to follow:** existing `Dialog` usage; react-query hooks in `src/pages/ideal-week.tsx`; wouter `useLocation`/`Link` for navigation. **No backend test harness exists** — cover this unit with the frontend component test only.
 **Test scenarios:**
 - Happy: status weekly-due + not dismissed → modal renders with weekly copy + link to `/weekly-review`.
 - Both due → quarterly modal takes precedence.
@@ -170,23 +177,31 @@ Due-ness (client-computed): **weekly** = today's weekday ≥ configured due-day 
 ### U4. Frontend — Weekly Review redesign (hybrid, On Deck → Top 3, Finish)
 
 **Goal:** Rebuild the weekly review as a nicely-designed hybrid page whose Plan step sets This Week's Top 3 from On Deck and which can be marked complete.
-**Requirements:** R6, R7, R8, R5.
+**Requirements:** R5, R6, R7, R8, R13, R14.
 **Dependencies:** U1 (complete endpoint). Reuses On Deck/Top 3 + objectives (no new backend).
 **Files:**
 - `src/pages/weekly-review.tsx` (redesign; keep field defs + per-field autosave)
 - `src/pages/ideal-week.tsx` (export the On Deck → Top 3 slot-pick logic for reuse, or a thin extracted picker)
 - `src/pages/weekly-review.test.tsx` (new/expanded)
 
-**Approach:** Restructure into three sections — **Reflect** (existing REVIEW_FIELDS as tidy cards), **Review** (read-only current-quarter objectives + `paceOf` pills, pulled from `/command-center/objectives`), **Plan** (existing PLANNING_FIELDS + the On Deck → This Week's Top 3 picker). Add a **guided-mode toggle** (local state; `?mode=guided` deep-link shows one section at a time with Back/Next). Keep the debounced per-field autosave to `api/weekly-review/...` untouched. Add a **"Finish — set my week"** action that `POST`s weekly completion (U1) and routes to the focus board. The Top 3 picker reuses `FocusSnapshot`'s pin-to-slot flow so picking an On Deck item fills `This Week's Top 3` and removes it from On Deck exactly as today.
-**Patterns to follow:** current `weekly-review.tsx` persistence; `FocusSnapshot` pin/slot picker and On Deck in `src/pages/ideal-week.tsx`; `paceOf`/objectives in `src/pages/command-center.tsx`.
+**Approach:** Restructure into three sections with a shared visual language — every field is **label + uniform input boxes** (see below):
+- **1 · Reflect** — Wins, Losses, Fixes, Ah-HAs, What I learned (**three boxes each**, R13); Unexpected Time Drains, Something I'm grateful for, A loss I'm grateful for (one box each).
+- **2 · Review** — current-quarter objectives from `/command-center/objectives` with `paceOf` pills, rendered **click-to-edit (R14, not read-only)** reusing the Command Center objective edit/`ObjectiveDialog` pattern; plus Banner Goals and Quarterly Big 3 (three boxes each).
+- **3 · Plan** — the **On Deck → Weekly Big 3** picker (reuses `FocusSnapshot`'s pin-to-slot flow), with a quiet **"+ Add to On Deck"** input under the list and, when On Deck is empty, a **"Set up your On Deck →"** link; plus Three Most Important Events, Habits, and studying (three boxes each).
+
+**Three-box fields (R13/KTD8):** render three inputs but persist as one field key, the three lines joined by `\n` (split on load). Existing debounced per-field autosave to `api/weekly-review/...` is otherwise **untouched**.
+
+**Hybrid (KTD6):** a **Page ↔ Guided** toggle. Guided (also entered via the pop-up's `?mode=guided`) shows a **stepper (Reflect → Review → Plan)** with Back/Next, one section at a time; finished steps show a check. Both modes share the same fields and autosave. A **"Finish — set my week ✓"** action `POST`s weekly completion (U1) and routes to the focus board.
+**Patterns to follow:** current `weekly-review.tsx` persistence; `FocusSnapshot` pin/slot picker, On Deck add + `ON_DECK_CAP` in `src/pages/ideal-week.tsx`; `paceOf`/objectives/`ObjectiveDialog` in `src/pages/command-center.tsx`.
 **Test scenarios:**
-- Happy: typing in a Reflect field autosaves (debounced PUT fires with the field key + content).
-- Plan: selecting an On Deck item into slot 2 fills This Week's Top 3 slot 2 and removes the item from On Deck.
-- Review: current-quarter objectives render with correct pace pills (on/slightly-off/off) from `paceOf`.
-- Guided: `?mode=guided` shows one section with Back/Next; Next advances Reflect→Review→Plan; the final step shows Finish.
-- Finish: clicking Finish posts weekly completion and navigates away; re-opening the app that session shows no weekly modal.
-- Edge: Finish with empty fields still completes (completion is user-driven, not field-gated).
-**Verification:** Page saves as before; Top 3 gets set from On Deck; Finish records completion and silences the reminder for the week.
+- Happy: typing in box 2 of a three-box field autosaves with the three lines joined by `\n`; reload splits them back into the right boxes.
+- Plan: selecting an On Deck item into slot 2 fills Weekly Big 3 slot 2 and removes the item from On Deck.
+- On Deck: "+ Add to On Deck" adds an item; empty On Deck shows the "Set up your On Deck →" link.
+- Review: current-quarter objectives render with correct pace pills; editing an objective's text persists via the objectives endpoint.
+- Guided: toggle/`?mode=guided` shows the stepper; Next advances Reflect→Review→Plan; the last step shows Finish; Back returns.
+- Finish: posts weekly completion and navigates away; re-opening the app that session shows no weekly modal.
+- Edge: Finish with empty fields still completes (user-driven, not field-gated).
+**Verification:** Three-box fields round-trip; Weekly Big 3 gets set from On Deck; objectives editable inline; Guided stepper flows; Finish records completion and silences the reminder for the week.
 
 ### U5. Frontend — Quarterly Review page (new, hybrid)
 
@@ -198,7 +213,7 @@ Due-ness (client-computed): **weekly** = today's weekday ≥ configured due-day 
 - `src/App.tsx` (add `/quarterly-review` route)
 - `src/pages/quarterly-review.test.tsx` (new)
 
-**Approach:** Three sections mirroring the weekly hybrid. **Score:** fetch `/command-center/objectives`, render each objective grouped by business (`businessIds` → EDGE/Urgent/Personal) with its key-result progress and a per-objective score field saved to `quarterly_review_entries` (via U2) — score is a snapshot, not written back to the objective (KTD5). **Reflect:** quarterly reflection prompts (new field keys) persisted via U2. **Set next quarter:** list current objectives with inline edit/add using the existing objectives + key-results endpoints (carry-forward = leave as-is; add = create). **Finish — set the quarter** posts quarterly completion (U1). Same guided-mode toggle as U4.
+**Approach:** Three sections mirroring the weekly hybrid, same **Page ↔ Guided stepper** (Score → Reflect → Set next quarter) and same uniform input boxes. **Score:** fetch `/command-center/objectives`, render each objective grouped by business (`businessIds` → EDGE/Urgent/Personal) with its key-result progress bar and a per-objective **score input** saved to `quarterly_review_entries` via `PUT /quarterly-review/:year/:quarter/score_<objectiveId>` (via U2) — score is a snapshot, not written back to the objective (KTD5). **Reflect:** quarterly reflection prompts as **three-box fields** (KTD8), persisted via U2. **Set next quarter:** list current objectives with inline edit/add using the existing objectives + key-results endpoints (carry-forward = leave as-is; "+ Add a Q3 objective" = create). **Finish — set the quarter ✓** posts `POST /reviews/quarterly/complete` (U1).
 **Patterns to follow:** U4's hybrid structure; objectives grouping + `objectiveGroupColor`/`paceOf` from `src/pages/command-center.tsx`; weekly per-field autosave pattern for the score/reflect fields.
 **Test scenarios:**
 - Happy: Score step lists objectives with derived KR progress; entering a score autosaves to the quarterly field store.
@@ -209,23 +224,22 @@ Due-ness (client-computed): **weekly** = today's weekday ≥ configured due-day 
 - Edge: no objectives yet → Score step shows an empty-state prompt, Finish still allowed.
 **Verification:** Scores persist independently of objective edits; next-quarter edits flow through existing objective endpoints; Finish silences the quarterly reminder.
 
-### U6. Navigation prominence + cadence surfacing
+### U6. Navigation — surface reviews, remove Vision Board
 
-**Goal:** Make both reviews first-class in the nav and show cadence/streak at a glance so the system stops feeling hidden.
-**Requirements:** R12.
-**Dependencies:** U1 (status/streak), U5 (route exists).
+**Goal:** Make both reviews first-class, text-only nav items with a small "due" dot; remove Vision Board from the sidebar.
+**Requirements:** R12, R15.
+**Dependencies:** U1 (status), U5 (route exists).
 **Files:**
-- `src/components/layout.tsx` (nav items for Weekly Review + Quarterly Review; small due/streak indicators)
+- `src/components/layout.tsx` (nav items for Weekly Review + Quarterly Review; remove Vision Board entry; due dot)
+- `src/App.tsx` (retain the `/vision-board` route — only the nav link is removed)
 - `src/components/layout.test.tsx` (new/expanded, if a nav test exists)
 
-**Approach:** Add/relocate nav entries for Weekly Review and Quarterly Review (grouped under a "Reviews" heading or top-level, matching existing `NAV` structure in `layout.tsx`). Show a small status dot/label from `GET reviews/status` — e.g. "Weekly · due" (red) / "done ✓" (green) and a streak chip. Reuse the status query already added in U3 (share the hook).
+**Approach:** Add **plain text** nav entries for Weekly Review and Quarterly Review (no icons, **no "Reviews" group heading** — flat in the `NAV` list), and **remove the Vision Board entry** (route retained per R15). Show a small red **due dot** on a review item when that review is due, derived from the same `GET /reviews/status` query used by U3 (share the hook). **No streak/cadence widget** (KTD9). Existing items keep their icons.
 **Patterns to follow:** existing `NAV` array + `NavList` in `src/components/layout.tsx`.
 **Test scenarios:**
-- Nav shows Weekly Review + Quarterly Review entries linking to the right routes.
-- Status dot reflects due vs done from the status query.
-- Streak chip shows the streak count from status.
-- `Test expectation: none` for pure label/styling that carries no logic — but the status-dot state mapping IS behavior and must be tested.
-**Verification:** Both reviews reachable from nav; indicators match status.
+- Nav shows Weekly Review + Quarterly Review as text items linking to the right routes; Vision Board is absent.
+- The due dot appears on Weekly Review only when the status query says it's due, and is absent when completed.
+**Verification:** Both reviews reachable from nav as text items; Vision Board gone from nav but its route still resolves; due dot matches status.
 
 ---
 
@@ -247,7 +261,8 @@ Due-ness (client-computed): **weekly** = today's weekday ≥ configured due-day 
 - **Completion gating:** Finish completes regardless of how many fields are filled (assumed — user-driven ritual, not a form gate). Revisit if the user wants a minimum.
 - **Quarterly due window:** due from the first day of the quarter until completed (assumed). A later grace/lead window is deferred.
 - **Reminder frequency:** once per app session until completed (via `sessionStorage`), reappearing each new session. Alternative (once per calendar day) is a small tweak if preferred.
-- **Streak definition:** consecutive ISO weeks with a completed weekly review (assumed).
+- **Three-entry storage (resolved → KTD8):** stored as one field key, three lines joined by `\n` — no backend change. (Alternative of three separate field keys was declined for KISS.)
+- **Streak: removed.** The nav shows only a "due" dot; no streak/cadence widget (KTD9/R12).
 
 ---
 
