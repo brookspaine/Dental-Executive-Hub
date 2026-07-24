@@ -168,7 +168,7 @@ type WeeklyItem = {
   createdAt: string;
 };
 
-type CcTop3Row = {
+export type CcTop3Row = {
   id: number;
   businessId: number;
   slot: number;
@@ -187,7 +187,7 @@ type CcTop3Row = {
 // Mirror the Command Center's business scoping so reads on this page line up
 // with the writes performed by the reused Top3Card / OnDeckCard components
 // (which send x-business-id via the shared api() helper).
-function ccBusinessHeaders(): Record<string, string> {
+export function ccBusinessHeaders(): Record<string, string> {
   try {
     const raw = localStorage.getItem("cc-business");
     const n = raw ? parseInt(raw, 10) : NaN;
@@ -197,7 +197,7 @@ function ccBusinessHeaders(): Record<string, string> {
   }
 }
 
-function useCcTop3() {
+export function useCcTop3() {
   return useQuery<CcTop3Row[]>({
     queryKey: ["cc-top3"],
     queryFn: async () => {
@@ -211,7 +211,7 @@ function useCcTop3() {
   });
 }
 
-function useOnDeck() {
+export function useOnDeck() {
   return useQuery<OnDeckItem[]>({
     queryKey: ["cc-on-deck"],
     queryFn: async () => {
