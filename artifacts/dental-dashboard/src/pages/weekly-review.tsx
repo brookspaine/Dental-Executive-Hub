@@ -58,6 +58,11 @@ const REVIEW_FIELDS: FieldDef[] = [
   { key: "quarterlyBig3", label: "Quarterly Big 3", multi: true },
 ];
 const PLAN_FIELDS: FieldDef[] = [
+  {
+    key: "lastWeekTest",
+    label: "If this week were my last week, would I be doing what I plan to do this week?",
+    multi: false,
+  },
   { key: "topEvents", label: "Three Most Important Events", multi: true },
   { key: "habits", label: "Habits I'm developing", multi: true },
   { key: "studying", label: "Personal development I'm studying", multi: true },

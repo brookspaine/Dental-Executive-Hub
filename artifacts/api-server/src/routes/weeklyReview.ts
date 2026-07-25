@@ -19,6 +19,7 @@ const VALID_FIELD_KEYS = new Set<string>([
   "topEvents",
   "habits",
   "studying",
+  "lastWeekTest",
 ]);
 
 function parseYearWeek(yearStr: string, weekStr: string): { year: number; week: number } | null {
