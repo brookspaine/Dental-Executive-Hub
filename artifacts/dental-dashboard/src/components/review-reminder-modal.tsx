@@ -1,12 +1,6 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
-import {
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  DialogDescription,
-} from "@/components/ui/dialog";
 import {
   isWeeklyDue,
   isQuarterlyDue,
@@ -35,10 +29,13 @@ function setDismissed(kind: string, year: number, period: number): void {
   }
 }
 
-/* Persistent reminder: on app open, if a review is due and not completed and
-   not dismissed this session, a modal appears linking into the review's guided
-   flow. X / "Later" dismiss for the session only — it returns on the next app
-   open until the review is marked complete (which only the review page does). */
+/* Persistent reminder rendered as a PLAIN fixed overlay (deliberately NOT a
+   Radix Dialog — auto-mounting a modal Dialog app-wide in the shell triggered a
+   scroll-lock / focus-trap / refetch loop that white-screened the app). On app
+   open, if a review is due, not completed, and not dismissed this session, this
+   overlay appears linking into the review's guided flow. X / "Later" dismiss
+   for the session only; it returns next app open until the review is completed
+   (which only the review page does). */
 export function ReviewReminderModal() {
   const [, setLocation] = useLocation();
   const [, forceTick] = useState(0);
@@ -50,7 +47,9 @@ export function ReviewReminderModal() {
       if (!res.ok) throw new Error("Failed to load review status");
       return (await res.json()) as ReviewCompletion[];
     },
-    staleTime: 60_000,
+    staleTime: Infinity,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   if (!completions) return null; // fail closed — never block the app
@@ -64,7 +63,6 @@ export function ReviewReminderModal() {
   const weeklyDue =
     isWeeklyDue(completions, now) && !isDismissed("weekly", wP.year, wP.period);
 
-  // Quarterly takes precedence when both are due.
   const active: "quarterly" | "weekly" | null = quarterlyDue
     ? "quarterly"
     : weeklyDue
@@ -84,37 +82,83 @@ export function ReviewReminderModal() {
     setLocation(isQ ? "/quarterly-review?mode=guided" : "/weekly-review?mode=guided");
   };
 
+  const navyBtn: CSSProperties = {
+    background: "#0F2A47",
+    color: "#fff",
+    border: "none",
+    borderRadius: 8,
+    padding: "8px 16px",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+  const ghostBtn: CSSProperties = {
+    background: "transparent",
+    color: "#64748b",
+    border: "1px solid #e2e8f0",
+    borderRadius: 8,
+    padding: "8px 16px",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+  };
+
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) dismiss(); }}>
-      <DialogContent className="p-0 gap-0 max-w-[440px] overflow-hidden text-center">
-        <div style={{ background: "linear-gradient(135deg,#0F2A47,#1c4066)", color: "#fff", padding: "26px 24px 20px" }}>
-          <div style={{ fontSize: 30 }}>{isQ ? "🎯" : "🗓️"}</div>
-          <DialogTitle style={{ color: "#fff", fontSize: 18, fontWeight: 800, marginTop: 6 }}>
-            {isQ ? `New quarter — time for your Q${qP.period} review` : "Your Weekly Review is ready"}
-          </DialogTitle>
-          <DialogDescription style={{ color: "#c7d5e6", fontSize: 13, marginTop: 6, lineHeight: 1.5 }}>
-            {isQ
-              ? "Score last quarter's objectives, reflect, and set this quarter's goals."
-              : "Take a few minutes to reflect on last week and set your focus for the week ahead."}
-          </DialogDescription>
-        </div>
-        <div style={{ padding: "18px 24px 22px", display: "flex", gap: 10, justifyContent: "center" }}>
-          <button
-            type="button"
-            onClick={start}
-            style={{ background: "#0F2A47", color: "#fff", border: "none", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
-          >
-            Start review →
-          </button>
+    <div
+      role="dialog"
+      aria-modal="true"
+      onClick={dismiss}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 100,
+        background: "rgba(15,42,71,0.5)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 16,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: "#fff",
+          maxWidth: 440,
+          width: "100%",
+          borderRadius: 16,
+          boxShadow: "0 24px 60px rgba(15,42,71,0.4)",
+          overflow: "hidden",
+          textAlign: "center",
+        }}
+      >
+        <div style={{ background: "linear-gradient(135deg,#0F2A47,#1c4066)", color: "#fff", padding: "26px 24px 20px", position: "relative" }}>
           <button
             type="button"
             onClick={dismiss}
-            style={{ background: "transparent", color: "#64748b", border: "1px solid #e2e8f0", borderRadius: 8, padding: "8px 16px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+            aria-label="Close"
+            style={{ position: "absolute", top: 12, right: 14, background: "none", border: "none", color: "#9fb3c9", fontSize: 18, cursor: "pointer", lineHeight: 1 }}
           >
+            ✕
+          </button>
+          <div style={{ fontSize: 30 }}>{isQ ? "🎯" : "🗓️"}</div>
+          <div style={{ fontSize: 18, fontWeight: 800, marginTop: 6 }}>
+            {isQ ? `New quarter — time for your Q${qP.period} review` : "Your Weekly Review is ready"}
+          </div>
+          <div style={{ fontSize: 13, color: "#c7d5e6", marginTop: 6, lineHeight: 1.5 }}>
+            {isQ
+              ? "Score last quarter's objectives, reflect, and set this quarter's goals."
+              : "Take a few minutes to reflect on last week and set your focus for the week ahead."}
+          </div>
+        </div>
+        <div style={{ padding: "18px 24px 22px", display: "flex", gap: 10, justifyContent: "center" }}>
+          <button type="button" onClick={start} style={navyBtn}>
+            Start review →
+          </button>
+          <button type="button" onClick={dismiss} style={ghostBtn}>
             Later
           </button>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </div>
   );
 }
