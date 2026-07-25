@@ -563,6 +563,7 @@ export function FocusSnapshot({
         {slots.map((row, i) => {
           const filled = Boolean(row && row.text.trim());
           const due = period === "week" && filled ? focusShortDue(row!.dueDate) : null;
+          const biz = filled ? businessName(row!.sourceBusinessId ?? row!.businessId) : null;
           const pr = filled && row!.priority ? FOCUS_PRIORITY_PILL[row!.priority] : null;
           return (
             <div
@@ -598,6 +599,14 @@ export function FocusSnapshot({
                 row={row}
                 onCommit={(t) => void putSlot(period, i + 1, { text: t })}
               />
+              {filled && biz && (
+                <span
+                  title={`Lives in: ${biz}`}
+                  style={{ fontSize: 11, color: FOCUS.faint, whiteSpace: "nowrap", fontFamily: FOCUS_SANS }}
+                >
+                  {biz}
+                </span>
+              )}
               {filled && (
                 <span style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
                   {pr && <span style={focusPill(pr.bg, pr.fg)}>{pr.label}</span>}
@@ -673,6 +682,7 @@ export function FocusSnapshot({
 
         {onDeck.map((item) => {
           const due = focusShortDue(item.dueDate);
+          const biz = businessName(item.sourceBusinessId ?? item.businessId);
           return (
             <span key={item.id} style={{ position: "relative", display: "inline-flex" }}>
               <span
@@ -717,6 +727,7 @@ export function FocusSnapshot({
                   }}
                 />
                 {item.text}
+                {biz && <span style={{ fontSize: 11, color: FOCUS.faint }}>{biz}</span>}
                 {due && (
                   <span style={{ fontSize: 11, fontWeight: 600, color: due.overdue ? "#a02020" : "#7a5b00" }}>
                     {due.label}
