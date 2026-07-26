@@ -901,7 +901,11 @@ function CommandTab({
     reload();
     const onChanged = () => reload();
     window.addEventListener("cc:top3-changed", onChanged);
-    return () => window.removeEventListener("cc:top3-changed", onChanged);
+    window.addEventListener("cc:objectives-changed", onChanged);
+    return () => {
+      window.removeEventListener("cc:top3-changed", onChanged);
+      window.removeEventListener("cc:objectives-changed", onChanged);
+    };
   }, []);
 
   const sectionsById = useMemo(
