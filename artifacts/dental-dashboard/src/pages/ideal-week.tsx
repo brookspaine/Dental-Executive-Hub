@@ -1222,8 +1222,6 @@ export function FocusSnapshot({
                       width: "100%",
                     }}
                   />
-                ) : objs.length >= 3 ? (
-                  <span style={{ fontSize: 10.5, color: FOCUS.faint, fontFamily: FOCUS_SANS }}>3 / 3</span>
                 ) : (
                   <button
                     type="button"
