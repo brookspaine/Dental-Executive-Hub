@@ -230,6 +230,12 @@ export function useOnDeck() {
    just the currently-selected business). Fetches per business and dedupes by
    id since an objective can belong to more than one business. */
 export function useAllObjectives() {
+  const qc = useQueryClient();
+  useEffect(() => {
+    const onChanged = () => qc.invalidateQueries({ queryKey: ["cc-objectives-all"] });
+    window.addEventListener("cc:objectives-changed", onChanged);
+    return () => window.removeEventListener("cc:objectives-changed", onChanged);
+  }, [qc]);
   return useQuery<CommandObjective[]>({
     queryKey: ["cc-objectives-all"],
     queryFn: async () => {
@@ -531,6 +537,9 @@ export async function patchObjectiveBusiness(id: number, bizId: number): Promise
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+  // Notify every objective surface (React Query band/pages + Command Center's
+  // local-state cards) so a reassignment regroups immediately, not on navigation.
+  window.dispatchEvent(new Event("cc:objectives-changed"));
 }
 
 /* Plain (no colors) editable business tag — click to reassign an On Deck /
