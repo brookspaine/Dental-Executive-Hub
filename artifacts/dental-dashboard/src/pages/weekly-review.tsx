@@ -12,11 +12,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClipboardCheck } from "lucide-react";
-import { useCcTop3, useOnDeck, ccBusinessHeaders, useAllObjectives } from "@/pages/ideal-week";
+import {
+  useCcTop3,
+  useOnDeck,
+  ccBusinessHeaders,
+  useAllObjectives,
+  useBizOptions,
+  patchObjectiveBusiness,
+  BizTag,
+} from "@/pages/ideal-week";
 import {
   paceOf,
   objectiveDoneKrs,
-  useBusinessName,
   ON_DECK_CAP,
   type OnDeckItem,
   type CommandObjective,
@@ -131,9 +138,11 @@ function FieldBlock({
 function ObjectivesAnchor() {
   const qc = useQueryClient();
   const { data: objectives = [] } = useAllObjectives();
-  const businessName = useBusinessName();
-  const bizLabel = (o: CommandObjective) =>
-    o.businessIds.length === 0 ? "Personal" : (businessName(o.businessIds[0]) ?? "—");
+  const bizOptions = useBizOptions();
+  const reassign = async (id: number, bizId: number) => {
+    await patchObjectiveBusiness(id, bizId);
+    qc.invalidateQueries({ queryKey: ["cc-objectives-all"] });
+  };
   const patch = async (o: CommandObjective, text: string) => {
     const bizId = o.businessIds[0] ?? 1;
     await fetch(`${base}api/command-center/objectives/${o.id}`, {
@@ -158,7 +167,7 @@ function ObjectivesAnchor() {
         const done = objectiveDoneKrs(o);
         return (
           <div key={o.id} className="flex items-center gap-2.5 py-1 border-b last:border-0">
-            <span className="text-[10px] uppercase tracking-wide text-slate-400 w-14 shrink-0 truncate">{bizLabel(o)}</span>
+            <span className="w-16 shrink-0"><BizTag currentId={o.businessIds[0] ?? 0} businesses={bizOptions} onChange={(id) => reassign(o.id, id)} /></span>
             <input
               defaultValue={o.text}
               onBlur={(e) => {

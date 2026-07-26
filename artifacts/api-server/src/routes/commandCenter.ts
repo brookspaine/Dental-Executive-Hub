@@ -1829,6 +1829,8 @@ router.patch("/objectives/:id", async (req, res): Promise<void> => {
   const body = z
     .object({
       text: z.string().trim().min(1).max(300).optional(),
+      parentType: z.enum(["direct_report", "business", "personal"]).optional(),
+      parentId: z.number().int().optional(),
       businessIds: z.array(z.number().int()).max(4).optional(),
       sortOrder: z.number().int().optional(),
     })

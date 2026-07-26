@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { FocusSnapshot } from "@/pages/ideal-week";
+import { FocusSnapshot, BizTag, useBizOptions, patchObjectiveBusiness } from "@/pages/ideal-week";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 /* Mobile meta row: left-packed (priority | due | owner), no dead space. */
@@ -772,6 +772,13 @@ function buildScopedSections(
       ],
     });
   }
+  // Personal sits right under the cross-business ("Brooks") section, above
+  // the per-business sections.
+  const personalProjects = projects.filter((p) => p.businessIds.length === 0).sort(bySort).map((p) => groupOf(p, "project"));
+  const life = lifeAreaGroups();
+  if (personalProjects.length + life.length > 0) {
+    result.push({ title: "Personal", groups: [...personalProjects, ...life] });
+  }
   for (const b of [...businesses].sort((x, y) => x.sortOrder - y.sortOrder || x.id - y.id)) {
     const drs = directReports.filter((d) => d.businessIds.length === 1 && d.businessIds[0] === b.id).sort(bySort);
     const projs = projects.filter((p) => p.businessIds.length === 1 && p.businessIds[0] === b.id).sort(bySort);
@@ -781,11 +788,6 @@ function buildScopedSections(
       drGroups: drs.map((d) => groupOf(d, "direct_report")),
       groups: projs.map((p) => groupOf(p, "project")),
     });
-  }
-  const personalProjects = projects.filter((p) => p.businessIds.length === 0).sort(bySort).map((p) => groupOf(p, "project"));
-  const life = lifeAreaGroups();
-  if (personalProjects.length + life.length > 0) {
-    result.push({ title: "Personal", groups: [...personalProjects, ...life] });
   }
   return result;
 }
@@ -1022,8 +1024,6 @@ function CommandTab({
       {openObj && (
         <ObjectiveDialog
           objective={openObj}
-          venueLabel={businessName(openBizId)}
-          venueColor={objectiveGroupColor(openBizId)}
           headers={{ "x-business-id": String(openBizId) }}
           taskParent={openTaskParent}
           drs={containers.directReports}
@@ -1547,8 +1547,6 @@ function ObjectiveCard({
    results + action items so editing behaves exactly like the inline card. */
 function ObjectiveDialog({
   objective,
-  venueLabel,
-  venueColor,
   headers,
   taskParent,
   drs,
@@ -1556,8 +1554,6 @@ function ObjectiveDialog({
   onClose,
 }: {
   objective: CommandObjective;
-  venueLabel: string | null;
-  venueColor: string;
   headers: Record<string, string>;
   taskParent: { parentType: ParentType; parentId: number } | null;
   drs: CommandContainer[];
@@ -1569,6 +1565,7 @@ function ObjectiveDialog({
   const [addingKr, setAddingKr] = useState(false);
   const [krDraft, setKrDraft] = useState("");
   const [krTarget, setKrTarget] = useState("1");
+  const bizOptions = useBizOptions();
   useEffect(() => setDraft(objective.text), [objective.text]);
 
   const pace = paceOf(objective);
@@ -1619,25 +1616,13 @@ function ObjectiveDialog({
 
         {/* Header — venue tag + editable title + pace pill */}
         <div style={{ padding: "18px 44px 14px 20px", borderBottom: `1px solid ${C.divider}` }}>
-          {venueLabel && (
-            <div
-              style={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#5b6b7d",
-                textTransform: "uppercase",
-                letterSpacing: 0.4,
-                marginBottom: 6,
-                fontFamily: SANS,
-              }}
-            >
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: venueColor }} />
-              {venueLabel}
-            </div>
-          )}
+          <div style={{ marginBottom: 6 }}>
+            <BizTag
+              currentId={objective.businessIds[0] ?? 0}
+              businesses={bizOptions}
+              onChange={(id) => void patchObjectiveBusiness(objective.id, id).then(onChanged)}
+            />
+          </div>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
             {editing ? (
               <input
