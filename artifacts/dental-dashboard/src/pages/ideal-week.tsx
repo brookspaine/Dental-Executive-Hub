@@ -469,6 +469,102 @@ function FocusSlotPicker({
   );
 }
 
+/* Plain (no colors) editable business tag — click to reassign an On Deck /
+   Top 3 item's business. The item stays put; only its tag changes. */
+function BizTag({
+  currentId,
+  businesses,
+  onChange,
+}: {
+  currentId: number | null;
+  businesses: { id: number; name: string }[];
+  onChange: (id: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+  if (businesses.length === 0) return null;
+  const name = businesses.find((b) => b.id === currentId)?.name ?? null;
+  return (
+    <span ref={ref} style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((o) => !o);
+        }}
+        title="Change business"
+        style={{
+          fontSize: 11,
+          color: FOCUS.faint,
+          fontFamily: FOCUS_SANS,
+          background: "none",
+          border: "none",
+          cursor: "pointer",
+          padding: 0,
+          whiteSpace: "nowrap",
+        }}
+      >
+        {name ?? "Set business"} ▾
+      </button>
+      {open && (
+        <div
+          onMouseDown={(e) => e.stopPropagation()}
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 60,
+            background: "#fff",
+            border: `1px solid ${FOCUS.cardBorder}`,
+            borderRadius: 8,
+            boxShadow: "0 8px 24px rgba(15,42,71,.14)",
+            padding: 5,
+            width: 180,
+          }}
+        >
+          {businesses.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                if (b.id !== currentId) onChange(b.id);
+              }}
+              style={{
+                display: "flex",
+                width: "100%",
+                alignItems: "center",
+                gap: 8,
+                fontSize: 12.5,
+                padding: "6px 8px",
+                borderRadius: 6,
+                background: b.id === currentId ? "#f1f5f9" : "transparent",
+                border: "none",
+                cursor: "pointer",
+                color: FOCUS.text,
+                textAlign: "left",
+                fontFamily: FOCUS_SANS,
+              }}
+            >
+              {b.name}
+              {b.id === currentId && <span style={{ marginLeft: "auto", color: "#1f6a3f" }}>✓</span>}
+            </button>
+          ))}
+        </div>
+      )}
+    </span>
+  );
+}
+
 export function FocusSnapshot({
   dayRows,
   weekRows,
@@ -488,6 +584,22 @@ export function FocusSnapshot({
 }) {
   const base = import.meta.env.BASE_URL || "/";
   const businessName = useBusinessName();
+  const { data: businesses = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["businesses"],
+    queryFn: async () => {
+      const res = await fetch(`${base}api/businesses`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+  const patchOnDeckBiz = async (id: number, sourceBusinessId: number) => {
+    await fetch(`${base}api/command-center/on-deck/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...ccBusinessHeaders() },
+      body: JSON.stringify({ sourceBusinessId }),
+    });
+    onChange();
+  };
   const [pickerFor, setPickerFor] = useState<number | null>(null);
   const [hoverChip, setHoverChip] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
@@ -563,7 +675,6 @@ export function FocusSnapshot({
         {slots.map((row, i) => {
           const filled = Boolean(row && row.text.trim());
           const due = period === "week" && filled ? focusShortDue(row!.dueDate) : null;
-          const biz = filled ? businessName(row!.sourceBusinessId ?? row!.businessId) : null;
           const pr = filled && row!.priority ? FOCUS_PRIORITY_PILL[row!.priority] : null;
           return (
             <div
@@ -599,13 +710,12 @@ export function FocusSnapshot({
                 row={row}
                 onCommit={(t) => void putSlot(period, i + 1, { text: t })}
               />
-              {filled && biz && (
-                <span
-                  title={`Lives in: ${biz}`}
-                  style={{ fontSize: 11, color: FOCUS.faint, whiteSpace: "nowrap", fontFamily: FOCUS_SANS }}
-                >
-                  {biz}
-                </span>
+              {filled && (
+                <BizTag
+                  currentId={row!.sourceBusinessId ?? row!.businessId}
+                  businesses={businesses}
+                  onChange={(id) => void putSlot(period, i + 1, { sourceBusinessId: id })}
+                />
               )}
               {filled && (
                 <span style={{ display: "flex", gap: 5, alignItems: "center", flexShrink: 0 }}>
@@ -682,7 +792,6 @@ export function FocusSnapshot({
 
         {onDeck.map((item) => {
           const due = focusShortDue(item.dueDate);
-          const biz = businessName(item.sourceBusinessId ?? item.businessId);
           return (
             <span key={item.id} style={{ position: "relative", display: "inline-flex" }}>
               <span
@@ -727,7 +836,11 @@ export function FocusSnapshot({
                   }}
                 />
                 {item.text}
-                {biz && <span style={{ fontSize: 11, color: FOCUS.faint }}>{biz}</span>}
+                <BizTag
+                  currentId={item.sourceBusinessId ?? item.businessId}
+                  businesses={businesses}
+                  onChange={(id) => void patchOnDeckBiz(item.id, id)}
+                />
                 {due && (
                   <span style={{ fontSize: 11, fontWeight: 600, color: due.overdue ? "#a02020" : "#7a5b00" }}>
                     {due.label}
