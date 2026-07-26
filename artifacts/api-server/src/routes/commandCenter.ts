@@ -1801,7 +1801,7 @@ router.post("/objectives", async (req, res): Promise<void> => {
   const body = z
     .object({
       text: z.string().trim().min(1).max(300),
-      parentType: z.enum(["direct_report", "business"]),
+      parentType: z.enum(["direct_report", "business", "personal"]),
       parentId: z.number().int(),
       businessIds: z.array(z.number().int()).max(4).default([]),
       sortOrder: z.number().int().optional(),

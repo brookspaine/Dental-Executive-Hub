@@ -1,5 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { createPortal } from "react-dom";
+import { Link } from "wouter";
 import type { LucideIcon } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
@@ -513,21 +514,51 @@ function BizTag({
   businesses: { id: number; name: string }[];
   onChange: (id: number) => void;
 }) {
+  const MENU_W = 180;
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLSpanElement>(null);
+  const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Anchor the menu to the button in viewport space. Because the menu renders
+  // in a body portal (position: fixed), it is NOT clipped by the Top 3 grid's
+  // overflow:hidden — the reason rows 2/3 used to chop the dropdown into the
+  // On Deck area. Right-align to the button, clamped inside the viewport.
+  const place = () => {
+    const el = btnRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const maxLeft = window.innerWidth - MENU_W - 8;
+    const left = Math.max(8, Math.min(r.right - MENU_W, maxLeft));
+    setCoords({ top: r.bottom + 4, left });
+  };
+
   useEffect(() => {
     if (!open) return;
+    place();
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (btnRef.current?.contains(t) || menuRef.current?.contains(t)) return;
+      setOpen(false);
     };
+    const reposition = () => place();
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    // capture:true so scrolls in any nested container reposition the menu too.
+    window.addEventListener("scroll", reposition, true);
+    window.addEventListener("resize", reposition);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      window.removeEventListener("scroll", reposition, true);
+      window.removeEventListener("resize", reposition);
+    };
   }, [open]);
+
   if (businesses.length === 0) return null;
   const name = businesses.find((b) => b.id === currentId)?.name ?? null;
   return (
-    <span ref={ref} style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
+    <span style={{ position: "relative", display: "inline-flex", flexShrink: 0 }}>
       <button
+        ref={btnRef}
         type="button"
         onClick={(e) => {
           e.stopPropagation();
@@ -547,20 +578,23 @@ function BizTag({
       >
         {name ?? "Set business"} ▾
       </button>
-      {open && (
+      {open &&
+        coords &&
+        createPortal(
         <div
+          ref={menuRef}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
-            position: "absolute",
-            top: "calc(100% + 4px)",
-            right: 0,
-            zIndex: 60,
+            position: "fixed",
+            top: coords.top,
+            left: coords.left,
+            zIndex: 100,
             background: "#fff",
             border: `1px solid ${FOCUS.cardBorder}`,
             borderRadius: 8,
             boxShadow: "0 8px 24px rgba(15,42,71,.14)",
             padding: 5,
-            width: 180,
+            width: MENU_W,
           }}
         >
           {businesses.map((b) => (
@@ -592,8 +626,9 @@ function BizTag({
               {b.id === currentId && <span style={{ marginLeft: "auto", color: "#1f6a3f" }}>✓</span>}
             </button>
           ))}
-        </div>
-      )}
+        </div>,
+          document.body,
+        )}
     </span>
   );
 }
@@ -977,6 +1012,10 @@ export function FocusSnapshot({
             <span>This Quarter</span>
             <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
               {quarterLabel()}{objGroups.length > 0 ? " · tap to open" : ""}
+              {" · "}
+              <Link href="/quarterly-review">
+                <span style={{ color: "#2f6fed", cursor: "pointer" }}>Quarterly Review →</span>
+              </Link>
             </span>
           </div>
           {objGroups.length === 0 && (
@@ -1027,7 +1066,7 @@ export function FocusSnapshot({
                     background: objectiveGroupColor(bizId),
                   }}
                 />
-                {businessName(bizId) ?? "—"}
+                {bizId === 0 ? "Personal" : (businessName(bizId) ?? "—")}
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1, minWidth: 0 }}>
                 {objs.map((o) => {
