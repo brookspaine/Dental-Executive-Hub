@@ -460,6 +460,7 @@ router.patch("/on-deck/:id", async (req, res): Promise<void> => {
       tag: z.enum(ON_DECK_TAGS).optional(),
       status: z.enum(["not_started", "in_progress", "completed"]).optional(),
       priority: z.enum(TASK_PRIORITIES).nullable().optional(),
+      sourceBusinessId: z.number().int().nullable().optional(),
       sortOrder: z.number().int().optional(),
     })
     .safeParse(req.body);
