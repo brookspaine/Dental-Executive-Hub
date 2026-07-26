@@ -3,7 +3,7 @@
    plus the configured weekly due-day (localStorage). See KTD1. */
 
 export type ReviewCompletion = {
-  kind: "weekly" | "quarterly" | string;
+  kind: "weekly" | "monthly" | "quarterly" | string;
   year: number;
   period: number;
   completedAt: string;
@@ -59,12 +59,18 @@ export function isoWeekYear(date: Date): number {
 export function currentQuarter(date: Date): number {
   return Math.floor(date.getMonth() / 3) + 1;
 }
+export function currentMonth(date: Date): number {
+  return date.getMonth() + 1;
+}
 
 export function weeklyPeriod(now: Date = new Date()): { year: number; period: number } {
   return { year: isoWeekYear(now), period: isoWeek(now) };
 }
 export function quarterlyPeriod(now: Date = new Date()): { year: number; period: number } {
   return { year: now.getFullYear(), period: currentQuarter(now) };
+}
+export function monthlyPeriod(now: Date = new Date()): { year: number; period: number } {
+  return { year: now.getFullYear(), period: currentMonth(now) };
 }
 
 function isCompleted(
@@ -102,4 +108,14 @@ export function isQuarterlyDue(
 ): boolean {
   const { year, period } = quarterlyPeriod(now);
   return !isCompleted(completions, "quarterly", year, period);
+}
+
+/** Monthly review is due from the start of a calendar month until the current
+    month is marked complete. */
+export function isMonthlyDue(
+  completions: ReviewCompletion[],
+  now: Date = new Date(),
+): boolean {
+  const { year, period } = monthlyPeriod(now);
+  return !isCompleted(completions, "monthly", year, period);
 }
