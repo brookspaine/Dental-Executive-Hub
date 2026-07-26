@@ -714,6 +714,35 @@ export function FocusSnapshot({
   const [hoverChip, setHoverChip] = useState<number | null>(null);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
+  // Add-objective directly from the This Quarter band (per scope).
+  const [addingObjBiz, setAddingObjBiz] = useState<number | null>(null);
+  const [objDraft, setObjDraft] = useState("");
+  const objCancelRef = useRef(false);
+  const addObjective = async (bizId: number, count: number) => {
+    const text = objDraft.trim();
+    if (!text) {
+      setAddingObjBiz(null);
+      return;
+    }
+    const body =
+      bizId === 0
+        ? { text, parentType: "personal", parentId: 0, businessIds: [] as number[], sortOrder: count }
+        : { text, parentType: "business", parentId: bizId, businessIds: [bizId], sortOrder: count };
+    const hdr = bizId === 0 ? String(businesses[0]?.id ?? 1) : String(bizId);
+    try {
+      await fetch(`${base}api/command-center/objectives`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-business-id": hdr },
+        body: JSON.stringify(body),
+      });
+      setObjDraft("");
+      setAddingObjBiz(null);
+      window.dispatchEvent(new Event("cc:objectives-changed"));
+      onChange();
+    } catch (e) {
+      window.alert(`Couldn't save the objective (${e instanceof Error ? e.message : "error"}).`);
+    }
+  };
 
   const removeOnDeck = async (id: number) => {
     const res = await fetch(`${base}api/command-center/on-deck/${id}`, {
@@ -844,16 +873,24 @@ export function FocusSnapshot({
     );
   };
 
-  /* Group the "This Quarter" objectives by the business they live in. */
+  /* Group the "This Quarter" objectives by the business they live in.
+     Always show every scope (each business + Personal) so an empty group
+     still offers an "+ Objective" add. */
   const objGroups: Array<[number, CommandObjective[]]> = (() => {
     const m = new Map<number, CommandObjective[]>();
+    for (const opt of bizOptions) m.set(opt.id, []);
     for (const o of objectives ?? []) {
       const bid = o.businessIds[0] ?? 0;
       const arr = m.get(bid);
       if (arr) arr.push(o);
       else m.set(bid, [o]);
     }
-    return [...m.entries()].sort((a, b) => a[0] - b[0]);
+    // Preserve bizOptions order (businesses first, Personal last); any stray
+    // group not in bizOptions sorts after by id.
+    const order = new Map(bizOptions.map((o, i) => [o.id, i]));
+    return [...m.entries()].sort(
+      (a, b) => (order.get(a[0]) ?? 100 + a[0]) - (order.get(b[0]) ?? 100 + b[0]),
+    );
   })();
 
   return (
@@ -1050,27 +1087,13 @@ export function FocusSnapshot({
           <div style={{ ...focusSubhead, borderTop: `1px solid ${FOCUS.cardBorder}` }}>
             <span>This Quarter</span>
             <span style={{ fontSize: 11, fontWeight: 400, textTransform: "none", letterSpacing: 0, color: "#94a3b8" }}>
-              {quarterLabel()}{objGroups.length > 0 ? " · tap to open" : ""}
+              {quarterLabel()}{(objectives?.length ?? 0) > 0 ? " · tap to open" : ""}
               {" · "}
               <Link href="/quarterly-review">
                 <span style={{ color: "#2f6fed", cursor: "pointer" }}>Quarterly Review →</span>
               </Link>
             </span>
           </div>
-          {objGroups.length === 0 && (
-            <div
-              style={{
-                padding: "16px 16px 18px",
-                fontSize: 12.5,
-                color: FOCUS.muted,
-                fontFamily: FOCUS_SANS,
-                lineHeight: 1.55,
-              }}
-            >
-              No objectives yet. Add one under a business or person in the Command Center
-              below — it’ll appear here with its pace and key-result progress.
-            </div>
-          )}
           {objGroups.map(([bizId, objs]) => (
             <div
               key={bizId}
@@ -1165,6 +1188,63 @@ export function FocusSnapshot({
                     </div>
                   );
                 })}
+                {addingObjBiz === bizId ? (
+                  <input
+                    autoFocus
+                    type="text"
+                    value={objDraft}
+                    onChange={(e) => setObjDraft(e.target.value)}
+                    onBlur={() => {
+                      if (objCancelRef.current) {
+                        objCancelRef.current = false;
+                        setObjDraft("");
+                        setAddingObjBiz(null);
+                        return;
+                      }
+                      void addObjective(bizId, objs.length);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") e.currentTarget.blur();
+                      if (e.key === "Escape") {
+                        objCancelRef.current = true;
+                        e.currentTarget.blur();
+                      }
+                    }}
+                    placeholder="New objective…"
+                    style={{
+                      fontSize: 13,
+                      fontFamily: FOCUS_SANS,
+                      color: FOCUS.text,
+                      border: `1px solid ${FOCUS.cardBorder}`,
+                      borderRadius: 7,
+                      padding: "4px 8px",
+                      outline: "none",
+                      width: "100%",
+                    }}
+                  />
+                ) : objs.length >= 3 ? (
+                  <span style={{ fontSize: 10.5, color: FOCUS.faint, fontFamily: FOCUS_SANS }}>3 / 3</span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setObjDraft("");
+                      setAddingObjBiz(bizId);
+                    }}
+                    style={{
+                      alignSelf: "flex-start",
+                      background: "none",
+                      border: "none",
+                      padding: "1px 0",
+                      fontSize: 12,
+                      color: "#94a3b8",
+                      cursor: "pointer",
+                      fontFamily: FOCUS_SANS,
+                    }}
+                  >
+                    + Objective
+                  </button>
+                )}
               </div>
             </div>
           ))}
