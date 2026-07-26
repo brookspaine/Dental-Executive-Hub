@@ -4,8 +4,11 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Target } from "lucide-react";
-import { ccBusinessHeaders } from "@/pages/ideal-week";
-import { paceOf, objectiveDoneKrs, type CommandObjective } from "@/pages/command-center";
+import { ccBusinessHeaders, useAllObjectives } from "@/pages/ideal-week";
+import { paceOf, objectiveDoneKrs, useBusinessName, type CommandObjective } from "@/pages/command-center";
+
+const bizLabel = (o: CommandObjective, name: (id: number) => string | null) =>
+  o.businessIds.length === 0 ? "Personal" : (name(o.businessIds[0]) ?? "—");
 
 const base = import.meta.env.BASE_URL || "/";
 
@@ -55,10 +58,12 @@ function FieldBlock({
    to the objective. */
 function ScoreSection({
   objectives,
+  businessName,
   scoreValue,
   onScore,
 }: {
   objectives: CommandObjective[];
+  businessName: (id: number) => string | null;
   scoreValue: (key: string) => string;
   onScore: (key: string, v: string) => void;
 }) {
@@ -79,6 +84,7 @@ function ScoreSection({
           : 0;
         return (
           <div key={o.id} className="flex items-center gap-3 py-1.5 border-b last:border-0 text-sm">
+            <span className="text-[10px] uppercase tracking-wide text-slate-400 w-14 shrink-0 truncate">{bizLabel(o, businessName)}</span>
             <span className="flex-1 min-w-0">{o.text}</span>
             {o.keyResults.length > 0 && (
               <>
@@ -108,15 +114,24 @@ function ScoreSection({
 
 /* Set next quarter — edit existing objectives (carry forward = leave as-is) or
    add new ones, via the existing objectives endpoints. */
-function SetNextSection({ objectives, onChanged }: { objectives: CommandObjective[]; onChanged: () => void }) {
+function SetNextSection({
+  objectives,
+  businessName,
+  onChanged,
+}: {
+  objectives: CommandObjective[];
+  businessName: (id: number) => string | null;
+  onChanged: () => void;
+}) {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const currentBiz = Number(ccBusinessHeaders()["x-business-id"]) || 1;
 
-  const patch = async (id: number, text: string) => {
-    await fetch(`${base}api/command-center/objectives/${id}`, {
+  const patch = async (o: CommandObjective, text: string) => {
+    const bizId = o.businessIds[0] ?? 1;
+    await fetch(`${base}api/command-center/objectives/${o.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", ...ccBusinessHeaders() },
+      headers: { "Content-Type": "application/json", "x-business-id": String(bizId) },
       body: JSON.stringify({ text }),
     });
     onChanged();
@@ -144,12 +159,12 @@ function SetNextSection({ objectives, onChanged }: { objectives: CommandObjectiv
     <div className="flex flex-col gap-1.5">
       {objectives.map((o) => (
         <div key={o.id} className="flex items-center gap-2 py-1 border-b last:border-0">
-          <span className="text-slate-400 text-xs">◆</span>
+          <span className="text-[10px] uppercase tracking-wide text-slate-400 w-14 shrink-0 truncate">{bizLabel(o, businessName)}</span>
           <input
             defaultValue={o.text}
             onBlur={(e) => {
               const t = e.target.value.trim();
-              if (t && t !== o.text) void patch(o.id, t);
+              if (t && t !== o.text) void patch(o, t);
             }}
             className="flex-1 min-w-0 bg-transparent text-sm outline-none focus:bg-muted/40 rounded px-1"
             title="Click to edit — carry forward or revise"
@@ -193,14 +208,8 @@ export function QuarterlyReview() {
   const [guided, setGuided] = useState<boolean>(() => location.includes("mode=guided"));
   const [step, setStep] = useState(0);
 
-  const { data: objectives = [] } = useQuery<CommandObjective[]>({
-    queryKey: ["cc-objectives"],
-    queryFn: async () => {
-      const res = await fetch(`${base}api/command-center/objectives`, { headers: ccBusinessHeaders() });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
+  const { data: objectives = [] } = useAllObjectives();
+  const businessName = useBusinessName();
 
   const qKey = ["quarterly-review", year, quarter] as const;
   const { data: entries } = useQuery<QuarterlyEntry[]>({
@@ -311,13 +320,13 @@ export function QuarterlyReview() {
     {
       title: "Score the quarter",
       body: (
-        <ScoreSection objectives={objectives} scoreValue={(k) => localValues[k] || ""} onScore={(k, v) => setField(k, v)} />
+        <ScoreSection objectives={objectives} businessName={businessName} scoreValue={(k) => localValues[k] || ""} onScore={(k, v) => setField(k, v)} />
       ),
     },
     { title: "Reflect", body: reflectGrid },
     {
       title: "Set next quarter",
-      body: <SetNextSection objectives={objectives} onChanged={() => queryClient.invalidateQueries({ queryKey: ["cc-objectives"] })} />,
+      body: <SetNextSection objectives={objectives} businessName={businessName} onChanged={() => queryClient.invalidateQueries({ queryKey: ["cc-objectives-all"] })} />,
     },
   ];
 

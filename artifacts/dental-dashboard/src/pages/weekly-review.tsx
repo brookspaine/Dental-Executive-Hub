@@ -12,10 +12,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ClipboardCheck } from "lucide-react";
-import { useCcTop3, useOnDeck, ccBusinessHeaders } from "@/pages/ideal-week";
+import { useCcTop3, useOnDeck, ccBusinessHeaders, useAllObjectives } from "@/pages/ideal-week";
 import {
   paceOf,
   objectiveDoneKrs,
+  useBusinessName,
   ON_DECK_CAP,
   type OnDeckItem,
   type CommandObjective,
@@ -129,23 +130,18 @@ function FieldBlock({
    click-to-edit (R14). Scoped to the current business (x-business-id). */
 function ObjectivesAnchor() {
   const qc = useQueryClient();
-  const { data: objectives = [] } = useQuery<CommandObjective[]>({
-    queryKey: ["cc-objectives"],
-    queryFn: async () => {
-      const res = await fetch(`${base}api/command-center/objectives`, {
-        headers: ccBusinessHeaders(),
-      });
-      if (!res.ok) return [];
-      return res.json();
-    },
-  });
-  const patch = async (id: number, text: string) => {
-    await fetch(`${base}api/command-center/objectives/${id}`, {
+  const { data: objectives = [] } = useAllObjectives();
+  const businessName = useBusinessName();
+  const bizLabel = (o: CommandObjective) =>
+    o.businessIds.length === 0 ? "Personal" : (businessName(o.businessIds[0]) ?? "—");
+  const patch = async (o: CommandObjective, text: string) => {
+    const bizId = o.businessIds[0] ?? 1;
+    await fetch(`${base}api/command-center/objectives/${o.id}`, {
       method: "PATCH",
-      headers: { "Content-Type": "application/json", ...ccBusinessHeaders() },
+      headers: { "Content-Type": "application/json", "x-business-id": String(bizId) },
       body: JSON.stringify({ text }),
     });
-    qc.invalidateQueries({ queryKey: ["cc-objectives"] });
+    qc.invalidateQueries({ queryKey: ["cc-objectives-all"] });
   };
 
   if (objectives.length === 0) {
@@ -162,12 +158,12 @@ function ObjectivesAnchor() {
         const done = objectiveDoneKrs(o);
         return (
           <div key={o.id} className="flex items-center gap-2.5 py-1 border-b last:border-0">
-            <span className="text-slate-400 text-xs">◆</span>
+            <span className="text-[10px] uppercase tracking-wide text-slate-400 w-14 shrink-0 truncate">{bizLabel(o)}</span>
             <input
               defaultValue={o.text}
               onBlur={(e) => {
                 const t = e.target.value.trim();
-                if (t && t !== o.text) void patch(o.id, t);
+                if (t && t !== o.text) void patch(o, t);
               }}
               className="flex-1 min-w-0 bg-transparent text-sm outline-none focus:bg-muted/40 rounded px-1"
               title="Click to edit"
