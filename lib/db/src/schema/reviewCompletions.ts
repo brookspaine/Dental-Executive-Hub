@@ -2,8 +2,8 @@ import { pgTable, serial, text, integer, timestamp, uniqueIndex } from "drizzle-
 
 /* Records that a recurring review was completed for a given period. This is
    what stops the review reminder pop-up until the next period.
-   - kind: "weekly" | "quarterly"
-   - period: ISO week (1-53) for weekly, quarter (1-4) for quarterly
+   - kind: "weekly" | "monthly" | "quarterly"
+   - period: ISO week (1-53) for weekly, month (1-12) for monthly, quarter (1-4) for quarterly
    Due-ness is computed client-side from these rows; the server only stores
    the fact of completion (see the review reminder modal). */
 export const reviewCompletionsTable = pgTable(
