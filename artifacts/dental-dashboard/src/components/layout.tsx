@@ -2,11 +2,12 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
 import { ReviewReminderModal } from "@/components/review-reminder-modal";
-import { isWeeklyDue, isQuarterlyDue, type ReviewCompletion } from "@/lib/review-cadence";
+import { isWeeklyDue, isMonthlyDue, isQuarterlyDue, type ReviewCompletion } from "@/lib/review-cadence";
 import {
   Bell,
   CalendarCheck,
   ClipboardCheck,
+  Wallet,
   Target,
   Menu,
   ChevronDown,
@@ -43,6 +44,7 @@ const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/command-center", label: "Action Items", icon: LayoutDashboard },
   { href: "/weekly-review", label: "Weekly Review", icon: ClipboardCheck },
+  { href: "/monthly-review", label: "Monthly Review", icon: Wallet },
   { href: "/quarterly-review", label: "Quarterly Review", icon: Target },
 ];
 
@@ -87,6 +89,7 @@ function NavList({
   const dueHrefs = new Set<string>();
   if (reviewCompletions) {
     if (isWeeklyDue(reviewCompletions)) dueHrefs.add("/weekly-review");
+    if (isMonthlyDue(reviewCompletions)) dueHrefs.add("/monthly-review");
     if (isQuarterlyDue(reviewCompletions)) dueHrefs.add("/quarterly-review");
   }
   // Track which groups are expanded. Auto-expand a group if its child is active.
