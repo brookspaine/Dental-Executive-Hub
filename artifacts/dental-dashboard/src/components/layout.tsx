@@ -178,10 +178,6 @@ function NavList({
                   : "text-slate-600 hover:bg-slate-50 hover:text-[#0F2A47]"
               }`}
             >
-              <item.icon
-                className={`h-4 w-4 shrink-0 ${isActive ? "text-[#D62828]" : "text-slate-500"}`}
-                strokeWidth={isActive ? 2.5 : 2}
-              />
               <span className="truncate">{item.label}</span>
               {dueHrefs.has(item.href) && (
                 <span

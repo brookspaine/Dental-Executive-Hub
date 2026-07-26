@@ -225,6 +225,39 @@ export function useOnDeck() {
   });
 }
 
+/* Objectives across ALL businesses (the reviews want the whole picture, not
+   just the currently-selected business). Fetches per business and dedupes by
+   id since an objective can belong to more than one business. */
+export function useAllObjectives() {
+  return useQuery<CommandObjective[]>({
+    queryKey: ["cc-objectives-all"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const bizRes = await fetch(`${base}api/businesses`);
+      const businesses: { id: number }[] = bizRes.ok ? await bizRes.json() : [];
+      const lists = await Promise.all(
+        businesses.map(async (b) => {
+          const r = await fetch(`${base}api/command-center/objectives`, {
+            headers: { "x-business-id": String(b.id) },
+          });
+          return r.ok ? ((await r.json()) as CommandObjective[]) : [];
+        }),
+      );
+      const seen = new Set<number>();
+      const merged: CommandObjective[] = [];
+      for (const list of lists) {
+        for (const o of list) {
+          if (!seen.has(o.id)) {
+            seen.add(o.id);
+            merged.push(o);
+          }
+        }
+      }
+      return merged;
+    },
+  });
+}
+
 /* ---- Focus snapshot (Top 3 + On Deck) ------------------------------------
    Read-first panel that replaces the editable Command Center tables on this
    page: Today / This Week side by side under big slot numerals, On Deck as
