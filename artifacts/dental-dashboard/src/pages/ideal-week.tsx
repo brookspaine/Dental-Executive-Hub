@@ -503,9 +503,39 @@ function FocusSlotPicker({
   );
 }
 
+/* Business options for the tag dropdown: the real businesses plus a synthetic
+   "Personal" (reserved id 0). */
+export function useBizOptions(): { id: number; name: string }[] {
+  const { data: businesses = [] } = useQuery<{ id: number; name: string }[]>({
+    queryKey: ["businesses"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/businesses`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+  return [...businesses, { id: 0, name: "Personal" }];
+}
+
+/* Reassign an objective's business (0 = Personal). Objectives PATCH is keyed by
+   id only, so no business scope is needed. */
+export async function patchObjectiveBusiness(id: number, bizId: number): Promise<void> {
+  const base = import.meta.env.BASE_URL || "/";
+  const body =
+    bizId === 0
+      ? { parentType: "personal", parentId: 0, businessIds: [] as number[] }
+      : { parentType: "business", parentId: bizId, businessIds: [bizId] };
+  await fetch(`${base}api/command-center/objectives/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
 /* Plain (no colors) editable business tag — click to reassign an On Deck /
-   Top 3 item's business. The item stays put; only its tag changes. */
-function BizTag({
+   Top 3 item's (or objective's) business. */
+export function BizTag({
   currentId,
   businesses,
   onChange,

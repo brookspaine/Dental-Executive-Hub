@@ -4,11 +4,14 @@ import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Target } from "lucide-react";
-import { ccBusinessHeaders, useAllObjectives } from "@/pages/ideal-week";
-import { paceOf, objectiveDoneKrs, useBusinessName, type CommandObjective } from "@/pages/command-center";
-
-const bizLabel = (o: CommandObjective, name: (id: number) => string | null) =>
-  o.businessIds.length === 0 ? "Personal" : (name(o.businessIds[0]) ?? "—");
+import {
+  ccBusinessHeaders,
+  useAllObjectives,
+  useBizOptions,
+  patchObjectiveBusiness,
+  BizTag,
+} from "@/pages/ideal-week";
+import { paceOf, objectiveDoneKrs, type CommandObjective } from "@/pages/command-center";
 
 const base = import.meta.env.BASE_URL || "/";
 
@@ -58,12 +61,14 @@ function FieldBlock({
    to the objective. */
 function ScoreSection({
   objectives,
-  businessName,
+  bizOptions,
+  reassign,
   scoreValue,
   onScore,
 }: {
   objectives: CommandObjective[];
-  businessName: (id: number) => string | null;
+  bizOptions: { id: number; name: string }[];
+  reassign: (id: number, bizId: number) => void;
   scoreValue: (key: string) => string;
   onScore: (key: string, v: string) => void;
 }) {
@@ -84,7 +89,7 @@ function ScoreSection({
           : 0;
         return (
           <div key={o.id} className="flex items-center gap-3 py-1.5 border-b last:border-0 text-sm">
-            <span className="text-[10px] uppercase tracking-wide text-slate-400 w-14 shrink-0 truncate">{bizLabel(o, businessName)}</span>
+            <span className="w-16 shrink-0"><BizTag currentId={o.businessIds[0] ?? 0} businesses={bizOptions} onChange={(id) => reassign(o.id, id)} /></span>
             <span className="flex-1 min-w-0">{o.text}</span>
             {o.keyResults.length > 0 && (
               <>
@@ -116,11 +121,13 @@ function ScoreSection({
    add new ones, via the existing objectives endpoints. */
 function SetNextSection({
   objectives,
-  businessName,
+  bizOptions,
+  reassign,
   onChanged,
 }: {
   objectives: CommandObjective[];
-  businessName: (id: number) => string | null;
+  bizOptions: { id: number; name: string }[];
+  reassign: (id: number, bizId: number) => void;
   onChanged: () => void;
 }) {
   const [adding, setAdding] = useState(false);
@@ -159,7 +166,7 @@ function SetNextSection({
     <div className="flex flex-col gap-1.5">
       {objectives.map((o) => (
         <div key={o.id} className="flex items-center gap-2 py-1 border-b last:border-0">
-          <span className="text-[10px] uppercase tracking-wide text-slate-400 w-14 shrink-0 truncate">{bizLabel(o, businessName)}</span>
+          <span className="w-16 shrink-0"><BizTag currentId={o.businessIds[0] ?? 0} businesses={bizOptions} onChange={(id) => reassign(o.id, id)} /></span>
           <input
             defaultValue={o.text}
             onBlur={(e) => {
@@ -209,7 +216,11 @@ export function QuarterlyReview() {
   const [step, setStep] = useState(0);
 
   const { data: objectives = [] } = useAllObjectives();
-  const businessName = useBusinessName();
+  const bizOptions = useBizOptions();
+  const reassign = async (id: number, bizId: number) => {
+    await patchObjectiveBusiness(id, bizId);
+    queryClient.invalidateQueries({ queryKey: ["cc-objectives-all"] });
+  };
 
   const qKey = ["quarterly-review", year, quarter] as const;
   const { data: entries } = useQuery<QuarterlyEntry[]>({
@@ -320,13 +331,13 @@ export function QuarterlyReview() {
     {
       title: "Score the quarter",
       body: (
-        <ScoreSection objectives={objectives} businessName={businessName} scoreValue={(k) => localValues[k] || ""} onScore={(k, v) => setField(k, v)} />
+        <ScoreSection objectives={objectives} bizOptions={bizOptions} reassign={reassign} scoreValue={(k) => localValues[k] || ""} onScore={(k, v) => setField(k, v)} />
       ),
     },
     { title: "Reflect", body: reflectGrid },
     {
       title: "Set next quarter",
-      body: <SetNextSection objectives={objectives} businessName={businessName} onChanged={() => queryClient.invalidateQueries({ queryKey: ["cc-objectives-all"] })} />,
+      body: <SetNextSection objectives={objectives} bizOptions={bizOptions} reassign={reassign} onChanged={() => queryClient.invalidateQueries({ queryKey: ["cc-objectives-all"] })} />,
     },
   ];
 
