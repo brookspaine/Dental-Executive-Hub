@@ -561,7 +561,7 @@ export type ObjKeyResult = {
 };
 export type CommandObjective = {
   id: number;
-  parentType: "direct_report" | "business";
+  parentType: "direct_report" | "business" | "personal";
   parentId: number;
   businessIds: number[];
   text: string;
@@ -1001,6 +1001,22 @@ function CommandTab({
             onChanged={reload}
           />
         ))}
+        {scope === "personal" && (
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontFamily: SANS, fontSize: 16, fontWeight: 600, color: C.textPrimary, padding: "4px 2px 8px" }}>
+              Personal Objectives
+            </div>
+            <ObjectiveCards
+              objectives={objectives.filter((o) => o.parentType === "personal")}
+              parentType="personal"
+              parentId={0}
+              businessIds={[]}
+              taskParent={null}
+              drs={containers.directReports}
+              onChanged={reload}
+            />
+          </div>
+        )}
         {scope === "personal" && <LifeAreasTab businesses={businesses} />}
       </div>
       {openObj && (
@@ -1217,7 +1233,7 @@ function ObjectiveCards({
   onChanged,
 }: {
   objectives: CommandObjective[];
-  parentType: "direct_report" | "business";
+  parentType: "direct_report" | "business" | "personal";
   parentId: number;
   businessIds: number[];
   taskParent: { parentType: ParentType; parentId: number } | null;
@@ -1254,7 +1270,11 @@ function ObjectiveCards({
       {objectives.map((o) => (
         <ObjectiveCard key={o.id} objective={o} headers={headers} taskParent={taskParent} drs={drs} onChanged={onChanged} />
       ))}
-      {adding ? (
+      {objectives.length >= 3 ? (
+        <div style={{ fontSize: 11, color: "#cbd5e1", fontFamily: SANS, padding: "2px 2px 4px" }}>
+          3 / 3 objectives
+        </div>
+      ) : adding ? (
         <input
           autoFocus
           type="text"
