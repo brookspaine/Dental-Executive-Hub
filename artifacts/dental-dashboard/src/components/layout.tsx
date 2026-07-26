@@ -1,8 +1,13 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Link, useLocation } from "wouter";
+import { ReviewReminderModal } from "@/components/review-reminder-modal";
+import { isWeeklyDue, isQuarterlyDue, type ReviewCompletion } from "@/lib/review-cadence";
 import {
   Bell,
   CalendarCheck,
+  ClipboardCheck,
+  Target,
   Menu,
   ChevronDown,
   Compass,
@@ -37,6 +42,8 @@ type NavItem = NavLeaf | NavGroup;
 const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/command-center", label: "Action Items", icon: LayoutDashboard },
+  { href: "/weekly-review", label: "Weekly Review", icon: ClipboardCheck },
+  { href: "/quarterly-review", label: "Quarterly Review", icon: Target },
 ];
 
 function isGroup(item: NavItem): item is NavGroup {
@@ -68,6 +75,20 @@ function NavList({
   location: string;
   onNavigate?: () => void;
 }) {
+  const { data: reviewCompletions } = useQuery<ReviewCompletion[]>({
+    queryKey: ["reviews-status"],
+    queryFn: async () => {
+      const base = import.meta.env.BASE_URL || "/";
+      const res = await fetch(`${base}api/reviews/status`);
+      if (!res.ok) return [];
+      return res.json();
+    },
+  });
+  const dueHrefs = new Set<string>();
+  if (reviewCompletions) {
+    if (isWeeklyDue(reviewCompletions)) dueHrefs.add("/weekly-review");
+    if (isQuarterlyDue(reviewCompletions)) dueHrefs.add("/quarterly-review");
+  }
   // Track which groups are expanded. Auto-expand a group if its child is active.
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
@@ -162,6 +183,12 @@ function NavList({
                 strokeWidth={isActive ? 2.5 : 2}
               />
               <span className="truncate">{item.label}</span>
+              {dueHrefs.has(item.href) && (
+                <span
+                  className="ml-auto h-2 w-2 shrink-0 rounded-full bg-[#D62828]"
+                  title="Review due"
+                />
+              )}
             </span>
           </Link>
         );
@@ -258,6 +285,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col min-h-[100dvh] bg-background">
+      {/* Persistent review reminder — plain overlay (not Radix), safe to mount app-wide. */}
+      <ReviewReminderModal />
       {/* Full-width navy top bar — sticky so it stays pinned while the
           document scrolls (single scroll context; see sidebar + main below). */}
       <header className="sticky top-0 h-16 bg-[#0F2A47] border-b border-[#0a1e33] shadow-sm flex items-stretch shrink-0 z-20">
