@@ -592,6 +592,9 @@ export function FocusSnapshot({
       return res.json();
     },
   });
+  // "Personal" is a scope (no business row), so it rides as a synthetic tag
+  // option stored as the reserved sourceBusinessId 0.
+  const bizOptions = [...businesses, { id: 0, name: "Personal" }];
   const patchOnDeckBiz = async (id: number, sourceBusinessId: number) => {
     await fetch(`${base}api/command-center/on-deck/${id}`, {
       method: "PATCH",
@@ -713,7 +716,7 @@ export function FocusSnapshot({
               {filled && (
                 <BizTag
                   currentId={row!.sourceBusinessId ?? row!.businessId}
-                  businesses={businesses}
+                  businesses={bizOptions}
                   onChange={(id) => void putSlot(period, i + 1, { sourceBusinessId: id })}
                 />
               )}
@@ -838,7 +841,7 @@ export function FocusSnapshot({
                 {item.text}
                 <BizTag
                   currentId={item.sourceBusinessId ?? item.businessId}
-                  businesses={businesses}
+                  businesses={bizOptions}
                   onChange={(id) => void patchOnDeckBiz(item.id, id)}
                 />
                 {due && (
