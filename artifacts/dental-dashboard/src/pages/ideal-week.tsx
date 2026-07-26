@@ -1222,7 +1222,7 @@ export function FocusSnapshot({
                       width: "100%",
                     }}
                   />
-                ) : (
+                ) : objs.length >= 3 ? null : (
                   <button
                     type="button"
                     onClick={() => {
