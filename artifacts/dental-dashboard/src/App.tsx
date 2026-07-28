@@ -18,6 +18,7 @@ import { LivingYourBestYearEver } from "@/pages/living-your-best-year-ever";
 import { VisionBoard } from "@/pages/vision-board";
 import { WeeklyReview } from "@/pages/weekly-review";
 import { QuarterlyReview } from "@/pages/quarterly-review";
+import { MonthlyReview } from "@/pages/monthly-review";
 import { ActiveUserProvider } from "@/contexts/active-user-context";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function AppRouter() {
         <Route path="/"><Redirect to="/ideal-week" /></Route>
         <Route path="/ideal-week" component={IdealWeek} />
         <Route path="/weekly-review" component={WeeklyReview} />
+        <Route path="/monthly-review" component={MonthlyReview} />
         <Route path="/quarterly-review" component={QuarterlyReview} />
         <Route
           path="/living-your-best-year-ever"

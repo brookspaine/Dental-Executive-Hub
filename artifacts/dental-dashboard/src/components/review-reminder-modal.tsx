@@ -3,8 +3,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import {
   isWeeklyDue,
+  isMonthlyDue,
   isQuarterlyDue,
   weeklyPeriod,
+  monthlyPeriod,
   quarterlyPeriod,
   type ReviewCompletion,
 } from "@/lib/review-cadence";
@@ -56,22 +58,47 @@ export function ReviewReminderModal() {
 
   const now = new Date();
   const qP = quarterlyPeriod(now);
+  const mP = monthlyPeriod(now);
   const wP = weeklyPeriod(now);
 
   const quarterlyDue =
     isQuarterlyDue(completions, now) && !isDismissed("quarterly", qP.year, qP.period);
+  const monthlyDue =
+    isMonthlyDue(completions, now) && !isDismissed("monthly", mP.year, mP.period);
   const weeklyDue =
     isWeeklyDue(completions, now) && !isDismissed("weekly", wP.year, wP.period);
 
-  const active: "quarterly" | "weekly" | null = quarterlyDue
+  // Precedence: surface the rarest/most-strategic review first.
+  const active: "quarterly" | "monthly" | "weekly" | null = quarterlyDue
     ? "quarterly"
-    : weeklyDue
-      ? "weekly"
-      : null;
+    : monthlyDue
+      ? "monthly"
+      : weeklyDue
+        ? "weekly"
+        : null;
   if (!active) return null;
 
-  const isQ = active === "quarterly";
-  const period = isQ ? qP : wP;
+  const period = active === "quarterly" ? qP : active === "monthly" ? mP : wP;
+  const copy = {
+    quarterly: {
+      icon: "🎯",
+      title: `New quarter — time for your Q${qP.period} review`,
+      sub: "Score last quarter's objectives, reflect, and set this quarter's goals.",
+      path: "/quarterly-review",
+    },
+    monthly: {
+      icon: "💰",
+      title: "Time for your Monthly Review",
+      sub: "Review your personal finances and log this month's personal assessment.",
+      path: "/monthly-review",
+    },
+    weekly: {
+      icon: "🗓️",
+      title: "Your Weekly Review is ready",
+      sub: "Take a few minutes to reflect on last week and set your focus for the week ahead.",
+      path: "/weekly-review",
+    },
+  }[active];
 
   const dismiss = () => {
     setDismissed(active, period.year, period.period);
@@ -79,7 +106,7 @@ export function ReviewReminderModal() {
   };
   const start = () => {
     dismiss();
-    setLocation(isQ ? "/quarterly-review?mode=guided" : "/weekly-review?mode=guided");
+    setLocation(`${copy.path}?mode=guided`);
   };
 
   const navyBtn: CSSProperties = {
@@ -140,14 +167,12 @@ export function ReviewReminderModal() {
           >
             ✕
           </button>
-          <div style={{ fontSize: 30 }}>{isQ ? "🎯" : "🗓️"}</div>
+          <div style={{ fontSize: 30 }}>{copy.icon}</div>
           <div style={{ fontSize: 18, fontWeight: 800, marginTop: 6 }}>
-            {isQ ? `New quarter — time for your Q${qP.period} review` : "Your Weekly Review is ready"}
+            {copy.title}
           </div>
           <div style={{ fontSize: 13, color: "#c7d5e6", marginTop: 6, lineHeight: 1.5 }}>
-            {isQ
-              ? "Score last quarter's objectives, reflect, and set this quarter's goals."
-              : "Take a few minutes to reflect on last week and set your focus for the week ahead."}
+            {copy.sub}
           </div>
         </div>
         <div style={{ padding: "18px 24px 22px", display: "flex", gap: 10, justifyContent: "center" }}>

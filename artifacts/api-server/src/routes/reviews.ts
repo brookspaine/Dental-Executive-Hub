@@ -4,7 +4,7 @@ import { db, reviewCompletionsTable } from "@workspace/db";
 
 const router: IRouter = Router();
 
-const KINDS = new Set<string>(["weekly", "quarterly"]);
+const KINDS = new Set<string>(["weekly", "monthly", "quarterly"]);
 
 /* Returns every review completion. The client computes due-ness and streak
    from these rows using its own ISO-week helpers, so week math lives in one
@@ -30,7 +30,7 @@ router.post("/reviews/:kind/complete", async (req, res): Promise<void> => {
   }
   const year = Number(req.body?.year);
   const period = Number(req.body?.period);
-  const maxPeriod = kind === "weekly" ? 53 : 4;
+  const maxPeriod = kind === "weekly" ? 53 : kind === "monthly" ? 12 : 4;
   if (
     !Number.isInteger(year) ||
     year < 1970 ||

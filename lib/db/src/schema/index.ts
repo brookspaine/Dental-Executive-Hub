@@ -13,6 +13,7 @@ export * from "./wisdomQuotes";
 export * from "./yearlyPlanning";
 export * from "./weeklyReview";
 export * from "./quarterlyReview";
+export * from "./monthlyReview";
 export * from "./reviewCompletions";
 export * from "./leaseRecords";
 export * from "./leaseDocuments";
