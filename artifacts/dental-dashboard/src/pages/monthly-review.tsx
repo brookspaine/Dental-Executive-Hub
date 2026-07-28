@@ -3,7 +3,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Wallet } from "lucide-react";
 
 const base = import.meta.env.BASE_URL || "/";
 
@@ -22,66 +21,106 @@ const MONTHS = [
   "December",
 ];
 
-type FieldDef = { key: string; label: string; multi: boolean };
-
-/* Personal finances / wealth review — grounded in the app's monthly_review
-   ritual (pay CC, transfer to savings, invest HSA/brokerage). */
-const FINANCE_FIELDS: FieldDef[] = [
-  { key: "income", label: "Income this month vs. plan", multi: false },
-  { key: "spending", label: "Spending — top categories & biggest leak", multi: true },
-  { key: "money_moves", label: "Money moves — CC paid, savings transfer, invested (HSA/brokerage)", multi: true },
-  { key: "net_worth", label: "Net worth / cash position", multi: false },
-  { key: "win", label: "Money win this month", multi: false },
-  { key: "next_move", label: "Next month's #1 money move", multi: false },
-];
-
-/* Light capture of the personal assessment taken outside the app. */
-const ASSESSMENT_FIELDS: FieldDef[] = [
-  { key: "assessment_link", label: "Link to my assessment", multi: false },
-  { key: "assessment_takeaways", label: "Key takeaways", multi: true },
-  { key: "assessment_focus", label: "Focus for next month", multi: false },
-];
-
 type MonthlyEntry = { id: number; year: number; month: number; fieldKey: string; content: string };
 
-/* Single-box for one-line fields; three newline-joined boxes for multi fields
-   (persisted as one field key, split back on load — mirrors the quarterly page). */
-function FieldBlock({
-  field,
-  value,
-  onChange,
-}: {
-  field: FieldDef;
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  if (field.multi) {
-    const lines = (value ? value.split("\n") : []).concat(["", "", ""]).slice(0, 3);
-    const setLine = (i: number, v: string) => {
-      const next = [...lines];
-      next[i] = v;
-      onChange(next.join("\n"));
-    };
+/* ---- Monarch snapshot (Path A) --------------------------------------------
+   The app never calls Monarch. Claude pulls the month's numbers via the Monarch
+   MCP and writes this JSON into the `money_snapshot` field; the page just
+   renders whatever is stored (or an empty state when nothing has been pulled). */
+type SnapshotTile = { k: string; v: string; d?: string; dir?: "up" | "down" | "flat" };
+type SnapshotCat = { name: string; amount: string; pct?: number };
+type Snapshot = {
+  range?: string;
+  syncedAt?: string;
+  tiles?: SnapshotTile[];
+  categories?: SnapshotCat[];
+  categoriesTotal?: string;
+};
+
+function parseSnapshot(raw: string): Snapshot | null {
+  if (!raw || !raw.trim()) return null;
+  try {
+    const s = JSON.parse(raw);
+    return s && typeof s === "object" ? (s as Snapshot) : null;
+  } catch {
+    return null;
+  }
+}
+
+function MonarchSnapshot({ raw, monthName }: { raw: string; monthName: string }) {
+  const snap = parseSnapshot(raw);
+  if (!snap || !(snap.tiles?.length || snap.categories?.length)) {
     return (
-      <div className="rounded-lg border bg-card p-2.5">
-        <div className="text-[11px] font-bold text-slate-600 mb-1.5">{field.label}</div>
-        <div className="flex flex-col gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <Input key={i} value={lines[i]} onChange={(e) => setLine(i, e.target.value)} className="h-8 text-sm" />
-          ))}
-        </div>
+      <div className="rounded-lg border border-dashed bg-muted/30 p-4 text-center text-sm text-muted-foreground">
+        No {monthName} snapshot yet — run your monthly review with Claude to pull your Monarch numbers.
       </div>
     );
   }
+  const dirClass = (dir?: string) =>
+    dir === "up" ? "text-emerald-700" : dir === "down" ? "text-red-700" : "text-slate-400";
   return (
-    <div className="rounded-lg border bg-card p-2.5">
-      <div className="text-[11px] font-bold text-slate-600 mb-1.5">{field.label}</div>
-      <Input value={value} onChange={(e) => onChange(e.target.value)} className="h-8 text-sm" />
+    <div className="space-y-3">
+      {(snap.range || snap.syncedAt) && (
+        <div className="flex items-center gap-2 text-[11px] font-semibold text-slate-500">
+          <span className="rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-emerald-700">● Monarch</span>
+          {snap.range}
+          {snap.syncedAt ? ` · synced ${snap.syncedAt}` : ""}
+        </div>
+      )}
+      {snap.tiles && snap.tiles.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {snap.tiles.map((t, i) => (
+            <div key={i} className="rounded-lg border bg-card p-3">
+              <div className="text-[10.5px] font-semibold uppercase tracking-wide text-slate-500">{t.k}</div>
+              <div className="mt-0.5 text-lg font-bold tabular-nums text-slate-900">{t.v}</div>
+              {t.d && <div className={`mt-0.5 text-[11px] font-semibold ${dirClass(t.dir)}`}>{t.d}</div>}
+            </div>
+          ))}
+        </div>
+      )}
+      {snap.categories && snap.categories.length > 0 && (
+        <div className="rounded-lg border p-3.5">
+          <div className="mb-2.5 flex justify-between text-[11px] font-bold text-slate-600">
+            <span>Spending by category</span>
+            {snap.categoriesTotal && <span className="font-semibold tabular-nums text-slate-500">{snap.categoriesTotal}</span>}
+          </div>
+          <div className="space-y-1.5">
+            {snap.categories.map((c, i) => (
+              <div key={i} className="grid grid-cols-[110px_1fr_64px] items-center gap-2.5">
+                <span className="truncate text-xs text-slate-700">{c.name}</span>
+                <span className="h-2 overflow-hidden rounded-full bg-slate-100">
+                  <span className="block h-full rounded-full bg-[#0F2A47]" style={{ width: `${Math.max(0, Math.min(100, c.pct ?? 0))}%` }} />
+                </span>
+                <span className="text-right text-xs font-semibold tabular-nums text-slate-900">{c.amount}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-const STEPS = ["Finances", "Personal Assessment"] as const;
+function FieldBox({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  return (
+    <div className="rounded-lg border bg-card p-2.5">
+      <div className="text-[11px] font-bold text-slate-600 mb-1.5">{label}</div>
+      <Input value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="h-8 text-sm" />
+    </div>
+  );
+}
+
+const STEPS = ["Money", "Personal Assessment"] as const;
 
 export function MonthlyReview() {
   const now = useMemo(() => new Date(), []);
@@ -190,29 +229,40 @@ export function MonthlyReview() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["reviews-status"] }),
   });
 
-  const financeGrid = (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-      {FINANCE_FIELDS.map((f) => (
-        <FieldBlock key={f.key} field={f} value={localValues[f.key] || ""} onChange={(v) => setField(f.key, v)} />
-      ))}
+  const moneyBody = (
+    <div className="space-y-3">
+      <MonarchSnapshot raw={localValues["money_snapshot"] || ""} monthName={MONTHS[month - 1]} />
+      <FieldBox
+        label="One money move for next month"
+        value={localValues["money_move"] || ""}
+        onChange={(v) => setField("money_move", v)}
+        placeholder="e.g. Automate the brokerage transfer"
+      />
     </div>
   );
 
   const assessmentBody = (
     <div className="space-y-2.5">
       <div className="text-xs text-muted-foreground">
-        Take your personal assessment outside the app, then capture the essentials here.
+        Take your assessment outside the app, then capture the essentials here.
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
-        {ASSESSMENT_FIELDS.map((f) => (
-          <FieldBlock key={f.key} field={f} value={localValues[f.key] || ""} onChange={(v) => setField(f.key, v)} />
-        ))}
-      </div>
+      <FieldBox
+        label="Link to my assessment"
+        value={localValues["assessment_link"] || ""}
+        onChange={(v) => setField("assessment_link", v)}
+        placeholder="https://…"
+      />
+      <FieldBox
+        label="Takeaway + focus for next month"
+        value={localValues["assessment_focus"] || ""}
+        onChange={(v) => setField("assessment_focus", v)}
+        placeholder="e.g. Health trending up — protect deep-work mornings"
+      />
     </div>
   );
 
   const sections = [
-    { title: "Finances", body: financeGrid },
+    { title: "Money", body: moneyBody },
     { title: "Personal Assessment", body: assessmentBody },
   ];
 
@@ -235,7 +285,6 @@ export function MonthlyReview() {
     <div className="space-y-4" data-testid="page-monthly-review">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <Wallet className="h-5 w-5 text-emerald-700" />
           <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Monthly Review · {MONTHS[month - 1]} {year}</h2>
           {!isCompleted && (
             <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700">Not completed</span>
@@ -300,7 +349,7 @@ export function MonthlyReview() {
           ))}
           <Card>
             <CardContent className="p-4 flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">Entries autosave</span>
+              <span className="text-xs text-muted-foreground">Autosaves</span>
               {finishBtn}
             </CardContent>
           </Card>

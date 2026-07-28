@@ -6,8 +6,8 @@ import { isWeeklyDue, isMonthlyDue, isQuarterlyDue, type ReviewCompletion } from
 import {
   Bell,
   CalendarCheck,
+  CalendarRange,
   ClipboardCheck,
-  Wallet,
   Target,
   Menu,
   ChevronDown,
@@ -44,7 +44,7 @@ const navItems: NavItem[] = [
   { href: "/ideal-week", label: "Ideal Week", icon: CalendarCheck },
   { href: "/command-center", label: "Action Items", icon: LayoutDashboard },
   { href: "/weekly-review", label: "Weekly Review", icon: ClipboardCheck },
-  { href: "/monthly-review", label: "Monthly Review", icon: Wallet },
+  { href: "/monthly-review", label: "Monthly Review", icon: CalendarRange },
   { href: "/quarterly-review", label: "Quarterly Review", icon: Target },
 ];
 
