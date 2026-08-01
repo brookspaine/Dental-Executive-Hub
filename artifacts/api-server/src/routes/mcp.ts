@@ -10,10 +10,10 @@ import { logger } from "../lib/logger";
 /**
  * Hub Capture — remote MCP endpoint for Claude.ai's custom connector.
  *
- * Exposes ONE write-only tool, `create_action_item`, which files an idea as
- * a real cc_task in the shared "Ideas" project (visible under both business
- * pills in the Command view). Deliberately no read/list tools: a leaked
- * bearer token can add ideas but never read practice data.
+ * Exposes ONE write-only tool, `create_action_item`, which files an item as
+ * a real cc_task in the shared "From Julie" project (visible under both
+ * business pills in the Command view). Deliberately no read/list tools: a
+ * leaked bearer token can add items but never read practice data.
  *
  * Auth: `Authorization: Bearer <MCP_CAPTURE_TOKEN>` — this check is the real
  * gate (requireAuth is a permissive dev stub); the route is listed in
@@ -24,7 +24,11 @@ import { logger } from "../lib/logger";
 const router: IRouter = Router();
 
 const APP_URL = "https://ceodashboard.up.railway.app/";
-const IDEAS_PROJECT_NAME = "Ideas";
+/* Load-bearing: ensureIdeasContainers() looks the project up BY NAME, so
+   renaming it in the app UI alone will orphan captures into a freshly
+   seeded duplicate. Change this constant and add a startupMigrations
+   rename for the existing row, shipped together. */
+const IDEAS_PROJECT_NAME = "From Julie";
 const IDEAS_SECTIONS = [
   { key: "edge", name: "EDGE" },
   { key: "urgent_dental", name: "Urgent Dental" },
