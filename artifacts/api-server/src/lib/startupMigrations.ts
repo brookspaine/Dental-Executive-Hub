@@ -29,6 +29,7 @@ export async function runStartupMigrations(): Promise<void> {
       await addCcTop3PeriodColumn(client);
       await renameStartupRitualLabel(client);
       await renameSetTop3RitualItem(client);
+      await renameIdeasProject(client);
       await addWeeklyReviewTop3Bullet(client);
       await addWeeklyReviewRebuildOnDeckBullet(client);
       await createOnDeckTable(client);
@@ -654,6 +655,28 @@ async function renameSetTop3RitualItem(client: PgClient): Promise<void> {
   const rowCount = (res as unknown as { rowCount: number | null }).rowCount;
   if (rowCount && rowCount > 0) {
     logger.info({ rows: rowCount }, "startup migration: renamed Set Top 3 ritual item → 'Set Today's Top 3 From On-Deck'");
+  }
+}
+
+/**
+ * Rename the MCP capture project "Ideas" to "From Julie". The Hub Capture
+ * endpoint (routes/mcp.ts) resolves this project BY NAME, so the constant
+ * there and this row must change together — otherwise the lazy seeder
+ * creates a duplicate project and captures land in the empty one.
+ *
+ * Idempotent: once renamed, no row matches 'Ideas' and this is a no-op.
+ * Only touches an existing row, so a fresh database is left to the lazy
+ * seed in ensureIdeasContainers() (which already uses the new name).
+ */
+async function renameIdeasProject(client: PgClient): Promise<void> {
+  const res = await client.query(
+    `UPDATE cc_projects
+       SET name = 'From Julie'
+       WHERE name = 'Ideas'`,
+  );
+  const rowCount = (res as unknown as { rowCount: number | null }).rowCount;
+  if (rowCount && rowCount > 0) {
+    logger.info({ rows: rowCount }, "startup migration: renamed Ideas → From Julie");
   }
 }
 
