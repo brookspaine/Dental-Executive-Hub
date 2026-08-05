@@ -1262,9 +1262,9 @@ const MORNING_RITUAL_ITEMS = [
 ];
 
 const JOURNAL_PROMPTS = [
-  { key: "grateful", label: "Something I am Grateful for this morning:" },
-  { key: "stressors", label: "Current Stressors or Frogs:" },
-  { key: "easy", label: "What would my personal board of directors do if this were their problem?" },
+  { key: "going_well", label: "What are 3 things going well right now?" },
+  { key: "people_happy", label: "Who are 3 people I want to be happy right now?" },
+  { key: "inspiring_day", label: "What is an inspiring way to live today?" },
 ];
 
 const EVENING_PROMPTS = [
